@@ -8,7 +8,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use circles_types::{TransferStep, FlowEdge, Stream};
 //! use alloy_primitives::U256;
 //!

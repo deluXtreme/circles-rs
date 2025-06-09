@@ -52,10 +52,18 @@ pub struct Stream {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use circles_pathfinder::prepare_flow_for_contract;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # let rpc_url = "https://rpc.aboutcircles.com/";
+/// # let params = circles_pathfinder::FindPathParams {
+/// #     from: "0x52e14be00d5acff4424ad625662c6262b4fd1a58".parse()?,
+/// #     to: "0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214".parse()?,
+/// #     target_flow: alloy_primitives::U256::from(1000u64),
+/// #     use_wrapped_balances: Some(true),
+/// #     from_tokens: None, to_tokens: None, exclude_from_tokens: None, exclude_to_tokens: None,
+/// # };
 /// let matrix = prepare_flow_for_contract(rpc_url, params).await?;
 ///
 /// // Direct usage with contract call

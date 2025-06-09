@@ -18,7 +18,7 @@ use circles_types::TransferStep;
 ///
 /// # Example
 /// ```rust,no_run
-/// use pathfinder::{FindPathParams, prepare_flow_for_contract};
+/// use circles_pathfinder::{FindPathParams, prepare_flow_for_contract};
 /// use alloy_primitives::{Address, U256};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {

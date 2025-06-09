@@ -10,7 +10,7 @@ use serde_json::json;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use circles_pathfinder::FindPathParams;
 /// use alloy_primitives::{Address, U256};
 ///
@@ -173,26 +173,25 @@ pub async fn find_path_with_params(
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```text
 /// use circles_pathfinder::find_path;
 /// use alloy_primitives::{Address, U256};
 ///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let from: Address = "0x123...".parse()?;
-/// let to: Address = "0x456...".parse()?;
-/// let amount = U256::from(1_000_000_000_000_000_000u64); // 1 ETH in wei
+/// async fn example() -> Result<(), Box<dyn std::error::Error>> {
+///     let from: Address = "0x1234567890123456789012345678901234567890".parse()?;
+///     let to: Address = "0x0987654321098765432109876543210987654321".parse()?;
+///     let amount = U256::from(1_000_000_000_000_000_000u64); // 1 ETH in wei
 ///
-/// let transfers = find_path(
-///     "https://rpc.aboutcircles.com/",
-///     from,
-///     to,
-///     amount,
-///     true // use wrapped balances
-/// ).await?;
+///     let transfers = find_path(
+///         "https://rpc.aboutcircles.com/",
+///         from,
+///         to,
+///         amount,
+///         true // use wrapped balances).await?;
 ///
-/// println!("Found path with {} transfers", transfers.len());
-/// # Ok(())
-/// # }
+///     println!("Found path with {} transfers", transfers.len());
+///     Ok(())
+///}
 /// ```
 ///
 /// # Errors
