@@ -4,7 +4,9 @@ members = ["crates/types", "crates/pathfinder"]
 
 [workspace.dependencies]
 # Shared dependencies across all crates
-alloy-primitives = "1.0.9"
+alloy-primitives = { version = "1.0.9", default-features = false, features = [
+    "serde",
+] }
 reqwest = { version = "0.12.19", default-features = false, features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
