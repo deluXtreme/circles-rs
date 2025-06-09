@@ -1,14 +1,37 @@
 use crate::PathfinderError;
 use alloy_primitives::{Address, U256};
+use circles_types::TransferStep;
 use serde_json::json;
-use types::TransferStep;
 
-/// Parameters for finding a path between two addresses
+/// Parameters for pathfinding operations.
+///
+/// This struct provides a clean way to pass pathfinding parameters,
+/// with optional fields for advanced filtering and routing control.
+///
+/// # Examples
+///
+/// ```rust
+/// use circles_pathfinder::FindPathParams;
+/// use alloy_primitives::{Address, U256};
+///
+/// let params = FindPathParams {
+///     from: "0x123...".parse()?,
+///     to: "0x456...".parse()?,
+///     target_flow: U256::from(1000u64),
+///     use_wrapped_balances: Some(true),
+///     // Optional filters
+///     from_tokens: None,
+///     to_tokens: None,
+///     exclude_from_tokens: None,
+///     exclude_to_tokens: None,
+/// };
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 #[derive(Debug, Clone)]
 pub struct FindPathParams {
     /// Source address
     pub from: Address,
-    /// Destination address  
+    /// Destination address
     pub to: Address,
     /// Target flow amount
     pub target_flow: U256,
@@ -102,11 +125,11 @@ impl TryFrom<JsonRpcResp> for Vec<TransferStep> {
 }
 
 /// Find a path using structured parameters
-/// 
+///
 /// This is a convenience function that takes a `FindPathParams` struct
 /// instead of individual parameters. Currently only implements the basic
 /// functionality (from, to, target_flow, use_wrapped_balances).
-/// 
+///
 /// # Note
 /// Additional filtering parameters (from_tokens, to_tokens, etc.) are not yet
 /// implemented in the underlying RPC call but are included in the struct for
@@ -121,15 +144,61 @@ pub async fn find_path_with_params(
         params.to,
         params.target_flow,
         params.use_wrapped_balances.unwrap_or(false),
-    ).await
+    )
+    .await
     // TODO: Implement support for additional parameters:
     // - from_tokens
-    // - to_tokens  
+    // - to_tokens
     // - exclude_from_tokens
     // - exclude_to_tokens
 }
 
-/// Find a path between two addresses with individual parameters
+/// Find an optimal path between two addresses in the Circles network.
+///
+/// This function queries the Circles RPC endpoint to discover a sequence of
+/// transfers that can move value from the source to the destination address.
+///
+/// # Arguments
+///
+/// * `rpc_url` - The Circles RPC endpoint URL
+/// * `from` - Source address for the transfer
+/// * `to` - Destination address for the transfer
+/// * `target_flow` - Desired amount to transfer
+/// * `with_wrap` - Whether to use wrapped token balances
+///
+/// # Returns
+///
+/// Returns a vector of `TransferStep` representing the optimal path, or an
+/// error if no path exists or the RPC call fails.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use circles_pathfinder::find_path;
+/// use alloy_primitives::{Address, U256};
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let from: Address = "0x123...".parse()?;
+/// let to: Address = "0x456...".parse()?;
+/// let amount = U256::from(1_000_000_000_000_000_000u64); // 1 ETH in wei
+///
+/// let transfers = find_path(
+///     "https://rpc.aboutcircles.com/",
+///     from,
+///     to,
+///     amount,
+///     true // use wrapped balances
+/// ).await?;
+///
+/// println!("Found path with {} transfers", transfers.len());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+///
+/// - [`PathfinderError::Rpc`] - Network or HTTP errors
+/// - [`PathfinderError::JsonRpc`] - Invalid RPC response or protocol errors
 pub async fn find_path(
     rpc_url: &str,
     from: Address,

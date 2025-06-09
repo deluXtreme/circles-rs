@@ -1,3 +1,38 @@
+//! # Circles Types
+//!
+//! Core type definitions for the Circles protocol ecosystem.
+//!
+//! This crate provides fundamental data structures used throughout the Circles
+//! protocol implementation, including flow matrices, transfer steps, and address
+//! handling with full `serde` serialization support.
+//!
+//! ## Usage
+//!
+//! ```rust
+//! use circles_types::{TransferStep, FlowEdge, Stream};
+//! use alloy_primitives::U256;
+//!
+//! // Create a transfer step
+//! let transfer = TransferStep {
+//!     from_address: "0x123...".parse()?,
+//!     to_address: "0x456...".parse()?,
+//!     token_owner: "0x789...".parse()?,
+//!     value: U256::from(1000u64),
+//! };
+//!
+//! // Serialize to JSON
+//! let json = serde_json::to_string(&transfer)?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! ## Core Types
+//!
+//! - [`TransferStep`] - Single transfer operation in a multi-hop path
+//! - [`FlowEdge`] - Directed edge in flow graph with routing info
+//! - [`Stream`] - Collection of edges representing a transfer route
+//! - [`FlowMatrix`] - Complete flow representation for contracts
+//! - [`Address`] - Ethereum address (re-exported from alloy-primitives)
+
 use alloy_primitives::U256;
 use serde::{Deserialize, Serialize};
 

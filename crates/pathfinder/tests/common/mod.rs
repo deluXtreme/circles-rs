@@ -1,18 +1,20 @@
 use alloy_primitives::{Address, U256};
-use types::TransferStep;
+use circles_types::TransferStep;
 
 /// Create a sample address from a hex string (pads short addresses to 20 bytes)
 pub fn address_from_str(hex_str: &str) -> Address {
     let clean_hex = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-    
+
     // Pad to 40 characters (20 bytes) if needed
     let padded = if clean_hex.len() < 40 {
         format!("{:0>40}", clean_hex)
     } else {
         clean_hex.to_string()
     };
-    
-    format!("0x{}", padded).parse().expect("Invalid address format")
+
+    format!("0x{}", padded)
+        .parse()
+        .expect("Invalid address format")
 }
 
 /// Create a sample address with a specific suffix byte
@@ -23,7 +25,12 @@ pub fn sample_address(suffix: u8) -> Address {
 }
 
 /// Create a sample TransferStep for testing
-pub fn sample_transfer_step(from: Address, to: Address, token_owner: Address, value: U256) -> TransferStep {
+pub fn sample_transfer_step(
+    from: Address,
+    to: Address,
+    token_owner: Address,
+    value: U256,
+) -> TransferStep {
     TransferStep {
         from_address: from,
         to_address: to,
@@ -51,27 +58,27 @@ pub const ONE_TENTH_ETH_WEI: &str = "100000000000000000";
 pub mod addresses {
     use super::address_from_str;
     use alloy_primitives::Address;
-    
+
     pub fn sender() -> Address {
         address_from_str("0x52e14be00d5acff4424ad625662c6262b4fd1a58")
     }
-    
+
     pub fn receiver() -> Address {
         address_from_str("0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214")
     }
-    
+
     pub fn intermediate_a5() -> Address {
         address_from_str("0xa5")
     }
-    
+
     pub fn intermediate_63() -> Address {
         address_from_str("0x63")
     }
-    
+
     pub fn token_owner_7b() -> Address {
         address_from_str("0x7b")
     }
-    
+
     pub fn token_owner_f7() -> Address {
         address_from_str("0xf7")
     }

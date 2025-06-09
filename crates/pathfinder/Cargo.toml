@@ -1,14 +1,22 @@
 [package]
-name = "pathfinder"
+name = "circles-pathfinder"
 version = "0.1.0"
 edition = "2024"
+authors = ["franco <0xpantera@proton.me>"]
+description = "Pathfinding and flow matrix calculation for the Circles protocol"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aboutcircles/circles-sdk"
+documentation = "https://docs.rs/pathfinder"
+keywords = ["circles", "pathfinding", "gnosis", "defi"]
+categories = ["cryptography"]
+readme = "README.md"
 
 [dependencies]
-alloy-primitives = "1.0.9"                                                       # Address, U256
+alloy-primitives = { workspace = true }                                          # Address, U256
 alloy-provider = { version = "1.0.9", features = ["reqwest"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 reqwest = { version = "0.12.19", default-features = false, features = ["json"] }
 tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread"] }
-types = { path = "../types" }                                                    # local crate dependency
+circles-types = { version = "0.1.0", path = "../types" }                         # local crate dependency

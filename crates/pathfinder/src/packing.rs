@@ -1,7 +1,31 @@
+// src/packing.rs
+//! Coordinate packing and vertex transformation utilities.
+//!
+//! Provides efficient algorithms for packing coordinate data and transforming
+//! transfer steps into deterministically sorted vertex lists.
 use alloy_primitives::Address;
-use types::TransferStep;
+use circles_types::TransferStep;
 
-/// Pack `u16` coordinates into a byte-array (big-endian, no padding).
+/// Pack coordinate values into a compact byte representation.
+///
+/// Converts a sequence of `u16` coordinates into a packed byte array using
+/// big-endian encoding. This format is optimized for on-chain storage and
+/// smart contract consumption.
+///
+/// # Arguments
+/// * `coords` - Slice of coordinate values to pack
+///
+/// # Returns
+/// Packed byte array where each `u16` becomes 2 bytes in big-endian format.
+///
+/// # Examples
+/// ```rust
+/// use circles_pathfinder::pack_coordinates;
+///
+/// let coords = vec![0x1234, 0x5678];
+/// let packed = pack_coordinates(&coords);
+/// assert_eq!(packed, vec![0x12, 0x34, 0x56, 0x78]);
+/// ```
 pub fn pack_coordinates(coords: &[u16]) -> Vec<u8> {
     let mut out = Vec::with_capacity(coords.len() * 2);
     for &c in coords {
@@ -11,7 +35,19 @@ pub fn pack_coordinates(coords: &[u16]) -> Vec<u8> {
     out
 }
 
-/// Build a sorted vertex list + index map (like TS `transformToFlowVertices`)
+/// Transform transfer steps into sorted vertices and coordinate mapping.
+///
+/// Creates a deterministically sorted list of all unique addresses involved
+/// in the transfers, plus a mapping from addresses to vertex indices. This
+/// is used internally by flow matrix generation.
+///
+/// # Arguments
+/// * `transfers` - Transfer steps to process
+/// * `from` - Additional source address to include
+/// * `to` - Additional destination address to include
+///
+/// # Returns
+/// Tuple of (sorted_vertices, address_to_index_map)
 pub fn transform_to_flow_vertices(
     transfers: &[TransferStep],
     from: Address,

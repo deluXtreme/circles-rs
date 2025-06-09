@@ -1,5 +1,5 @@
-use alloy_primitives::{Address, U256, Bytes};
-use types::{FlowMatrix, FlowEdge as PathfinderFlowEdge, Stream as PathfinderStream};
+use alloy_primitives::{Address, Bytes, U256};
+use circles_types::{FlowEdge as PathfinderFlowEdge, FlowMatrix, Stream as PathfinderStream};
 
 /// Contract-compatible FlowEdge type matching the smart contract ABI
 #[derive(Debug, Clone, PartialEq)]
@@ -21,10 +21,56 @@ pub struct Stream {
     pub data: Bytes,
 }
 
-/// Complete flow matrix with contract-compatible types
-/// 
-/// This struct contains all the data needed to call smart contract functions
-/// that require flow matrix parameters, with types that match the contract ABI.
+/// Complete flow matrix with contract-compatible types.
+///
+/// This struct contains all data needed for smart contract function calls,
+/// with types that exactly match the expected contract ABI. All internal
+/// pathfinder types are automatically converted to contract-compatible formats.
+///
+/// # Contract ABI Compatibility
+///
+/// This struct maps to the following Solidity interface:
+/// ```solidity
+/// struct FlowEdge {
+///     uint16 streamSinkId;
+///     uint192 amount;
+/// }
+///
+/// struct Stream {
+///     uint16 sourceCoordinate;
+///     uint16[] flowEdgeIds;
+///     bytes data;
+/// }
+///
+/// function transferFlow(
+///     address[] memory flowVertices,
+///     FlowEdge[] memory flowEdges,
+///     Stream[] memory streams,
+///     bytes memory packedCoordinates
+/// ) external;
+/// ```
+///
+/// # Examples
+///
+/// ```rust
+/// use circles_pathfinder::prepare_flow_for_contract;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let matrix = prepare_flow_for_contract(rpc_url, params).await?;
+///
+/// // Direct usage with contract call
+/// let tx = contract.transferFlow(
+///     matrix.flow_vertices,
+///     matrix.flow_edges,
+///     matrix.streams,
+///     matrix.packed_coordinates
+/// ).send().await?;
+///
+/// // Or decompose for tuple-based calls
+/// let (vertices, edges, streams, coords) = matrix.into_contract_params();
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct ContractFlowMatrix {
     /// Sorted list of all addresses involved in the flow (address[] in contract)
@@ -105,7 +151,7 @@ impl From<PathfinderStream> for Stream {
 
 // Convenience functions for FlowMatrix conversion
 /// Convert a FlowMatrix to contract-compatible types
-/// 
+///
 /// This is a convenience function that converts all internal types
 /// to types that can be directly used with smart contract calls.
 pub fn flow_matrix_to_contract_types(matrix: FlowMatrix) -> ContractFlowMatrix {
@@ -113,7 +159,7 @@ pub fn flow_matrix_to_contract_types(matrix: FlowMatrix) -> ContractFlowMatrix {
 }
 
 /// Get packed coordinates as Bytes for contract calls
-/// 
+///
 /// Returns the packed coordinates in a format ready for smart contract calls.
 pub fn packed_coordinates_as_bytes(packed_coordinates: &[u8]) -> Bytes {
     Bytes::from(packed_coordinates.to_vec())
@@ -130,9 +176,9 @@ mod tests {
             stream_sink_id: 1,
             amount: U256::from(1000u64),
         };
-        
+
         let contract_edge: FlowEdge = internal_edge.into();
-        
+
         assert_eq!(contract_edge.stream_sink_id, 1);
         assert_eq!(contract_edge.amount, U256::from(1000u64));
     }
@@ -144,9 +190,9 @@ mod tests {
             flow_edge_ids: vec![1, 2, 3],
             data: vec![0x01, 0x02, 0x03],
         };
-        
+
         let contract_stream: Stream = internal_stream.into();
-        
+
         assert_eq!(contract_stream.source_coordinate, 0);
         assert_eq!(contract_stream.flow_edge_ids, vec![1, 2, 3]);
         assert_eq!(contract_stream.data, Bytes::from(vec![0x01, 0x02, 0x03]));
@@ -165,7 +211,7 @@ mod tests {
             data: Bytes::new(),
         }];
         let packed_coordinates = Bytes::from(vec![0x01, 0x02]);
-        
+
         let matrix = ContractFlowMatrix {
             flow_vertices: flow_vertices.clone(),
             flow_edges: flow_edges.clone(),
@@ -173,9 +219,9 @@ mod tests {
             packed_coordinates: packed_coordinates.clone(),
             source_coordinate: 0,
         };
-        
+
         let (vertices, edges, streams_out, coords) = matrix.into_contract_params();
-        
+
         assert_eq!(vertices, flow_vertices);
         assert_eq!(edges, flow_edges);
         assert_eq!(streams_out, streams);

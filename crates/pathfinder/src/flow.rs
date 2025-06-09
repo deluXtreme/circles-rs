@@ -1,10 +1,63 @@
+// src/flow.rs
+//! Flow matrix calculation and validation.
+//!
+//! This module handles the conversion of transfer paths into flow matrices
+//! suitable for smart contract execution, including vertex transformation,
+//! edge creation, and coordinate packing.
 use crate::PathfinderError;
 use alloy_primitives::{Address, U256};
-use types::{FlowEdge, FlowMatrix, Stream, TransferStep};
+use circles_types::{FlowEdge, FlowMatrix, Stream, TransferStep};
 
 use crate::packing::{pack_coordinates, transform_to_flow_vertices};
 
-/// Build the matrix → identical arithmetic to TS `createFlowMatrix` (https://github.com/aboutcircles/circles-sdk/raw/dev/packages/pathfinder/src/flowMatrix.ts)
+/// Create a flow matrix from a sequence of transfer steps.
+///
+/// This function takes a path discovered by [`find_path`] and converts it into
+/// a flow matrix suitable for smart contract execution. The matrix includes
+/// vertex coordinates, flow edges, streams, and packed coordinate data.
+///
+/// # Arguments
+///
+/// * `sender` - Source address for the flow
+/// * `receiver` - Destination address for the flow
+/// * `value` - Expected total value to be transferred to receiver
+/// * `transfers` - Sequence of transfer steps from pathfinding
+///
+/// # Returns
+///
+/// Returns a [`FlowMatrix`] containing all necessary data for contract calls,
+/// or an error if the transfers don't balance correctly.
+///
+/// # Examples
+///
+/// ```rust
+/// use circles_pathfinder::{find_path, create_flow_matrix};
+/// use alloy_primitives::{Address, U256};
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let from: Address = "0x123...".parse()?;
+/// let to: Address = "0x456...".parse()?;
+/// let amount = U256::from(1000u64);
+///
+/// // First find a path
+/// let transfers = find_path("https://rpc.circles.com", from, to, amount, true).await?;
+///
+/// // Then create the flow matrix
+/// let matrix = create_flow_matrix(from, to, amount, &transfers)?;
+///
+/// println!("Matrix has {} vertices", matrix.flow_vertices.len());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+///
+/// - [`PathfinderError::Imbalanced`] - When terminal flow doesn't match expected value
+///
+/// # See Also
+///
+/// - [`find_path`] - For discovering transfer paths
+/// - [`prepare_flow_for_contract`] - For one-step path finding + matrix creation
 pub fn create_flow_matrix(
     sender: Address,
     receiver: Address,

@@ -1,25 +1,26 @@
-use crate::{contract::ContractFlowMatrix, rpc::FindPathParams, PathfinderError};
-use crate::{find_path_with_params, create_flow_matrix};
+use crate::{PathfinderError, contract::ContractFlowMatrix, rpc::FindPathParams};
+use crate::{create_flow_matrix, find_path_with_params};
 use alloy_primitives::U256;
+use circles_types::TransferStep;
 
 /// High-level function that combines pathfinding and matrix creation
-/// 
+///
 /// This function performs the complete flow from pathfinding to contract-ready
 /// matrix creation in a single call. It automatically handles the case where
 /// the available flow might be less than the requested flow.
-/// 
+///
 /// # Arguments
 /// * `rpc_url` - The RPC endpoint URL
 /// * `params` - Path finding parameters
-/// 
+///
 /// # Returns
 /// A `ContractFlowMatrix` with types ready for smart contract calls
-/// 
+///
 /// # Example
 /// ```rust,no_run
 /// use pathfinder::{FindPathParams, prepare_flow_for_contract};
 /// use alloy_primitives::{Address, U256};
-/// 
+///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let params = FindPathParams {
 ///     from: "0x123...".parse()?,
@@ -31,9 +32,9 @@ use alloy_primitives::U256;
 ///     exclude_from_tokens: None,
 ///     exclude_to_tokens: None,
 /// };
-/// 
+///
 /// let matrix = prepare_flow_for_contract("https://rpc.example.com", params).await?;
-/// 
+///
 /// // Ready to use with smart contract calls
 /// // contract.some_function(matrix.flow_vertices, matrix.flow_edges, ...);
 /// # Ok(())
@@ -45,7 +46,7 @@ pub async fn prepare_flow_for_contract(
 ) -> Result<ContractFlowMatrix, PathfinderError> {
     // Step 1: Find the path
     let transfers = find_path_with_params(rpc_url, params.clone()).await?;
-    
+
     // Step 2: Calculate the actual available flow
     // In real-world scenarios, the available flow might be less than requested
     let actual_flow: U256 = transfers
@@ -53,16 +54,16 @@ pub async fn prepare_flow_for_contract(
         .filter(|t| t.to_address == params.to)
         .map(|t| t.value)
         .sum();
-    
+
     // Step 3: Create the flow matrix with the actual available flow
     let matrix = create_flow_matrix(params.from, params.to, actual_flow, &transfers)?;
-    
+
     // Step 4: Convert to contract-compatible types
     Ok(matrix.into())
 }
 
 /// Prepare flow for contract using individual parameters (legacy compatibility)
-/// 
+///
 /// This is a convenience wrapper around `prepare_flow_for_contract` for users
 /// who prefer to pass individual parameters instead of a struct.
 pub async fn prepare_flow_for_contract_simple(
@@ -82,31 +83,31 @@ pub async fn prepare_flow_for_contract_simple(
         exclude_from_tokens: None,
         exclude_to_tokens: None,
     };
-    
+
     prepare_flow_for_contract(rpc_url, params).await
 }
 
 /// Get the maximum available flow between two addresses
-/// 
+///
 /// This function finds a path and returns the maximum amount that can actually
 /// be transferred, which might be less than the requested amount due to
 /// liquidity constraints.
-/// 
+///
 /// # Returns
 /// A tuple of (available_flow, transfers) where available_flow is the actual
 /// amount that can be transferred.
 pub async fn get_available_flow(
     rpc_url: &str,
     params: FindPathParams,
-) -> Result<(U256, Vec<types::TransferStep>), PathfinderError> {
+) -> Result<(U256, Vec<TransferStep>), PathfinderError> {
     let transfers = find_path_with_params(rpc_url, params.clone()).await?;
-    
+
     let available_flow: U256 = transfers
         .iter()
         .filter(|t| t.to_address == params.to)
         .map(|t| t.value)
         .sum();
-    
+
     Ok((available_flow, transfers))
 }
 
@@ -120,7 +121,7 @@ mod tests {
         let sender = Address::ZERO;
         let receiver = Address::from([1u8; 20]);
         let value = U256::from(1000u64);
-        
+
         // This will fail with network error in tests, but tests the API
         let result = prepare_flow_for_contract_simple(
             "http://invalid-rpc.com",
@@ -128,8 +129,9 @@ mod tests {
             receiver,
             value,
             true,
-        ).await;
-        
+        )
+        .await;
+
         // Should fail with RPC error, not panic
         assert!(result.is_err());
     }
@@ -146,7 +148,7 @@ mod tests {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
         };
-        
+
         assert_eq!(params.from, Address::ZERO);
         assert_eq!(params.to, Address::from([1u8; 20]));
         assert_eq!(params.target_flow, U256::from(1000u64));

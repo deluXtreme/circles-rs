@@ -1,5 +1,5 @@
 use alloy_primitives::{Address, U256};
-use pathfinder::{create_flow_matrix, find_path};
+use circles_pathfinder::{create_flow_matrix, find_path};
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
