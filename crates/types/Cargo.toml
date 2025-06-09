@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+alloy-primitives = "1.0.9"                                     # Address, U256
+alloy-provider = { version = "1.0.9", features = ["reqwest"] }
+serde = { version = "1.0", features = ["derive"] }
