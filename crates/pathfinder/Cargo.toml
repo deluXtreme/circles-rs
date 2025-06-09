@@ -19,4 +19,4 @@ serde_json = "1.0"
 thiserror = "1.0"
 reqwest = { version = "0.12.19", default-features = false, features = ["json"] }
 tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread"] }
-circles-types = { version = "0.1.0", path = "../types" }                         # local crate dependency
+circles-types = "0.1.0"
