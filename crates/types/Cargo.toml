@@ -1,6 +1,6 @@
 [package]
 name = "circles-types"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Core type definitions for the Circles protocol"
 repository = "https://github.com/deluXtreme/circles-rs"

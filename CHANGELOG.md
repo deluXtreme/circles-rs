@@ -6,6 +6,10 @@ For detailed changes, see individual crate changelogs:
 - [circles-types](crates/types/CHANGELOG.md) - Core type definitions
 - [circles-pathfinder](crates/pathfinder/CHANGELOG.md) - Pathfinding and flow matrix calculation
 
+## [0.2.1] - 2025-06-10
+### Documentation
+- Fixed changelog formatting and content for v0.2.0 release
+
 ## [0.2.0] - 2025-06-10
 
 ### Coordinated Changes
