@@ -259,10 +259,6 @@ async fn test_concurrent_pathfinding_requests() {
     let mut join_set = JoinSet::new();
 
     for i in 0..3 {
-        let sender = sender;
-        let receiver = receiver;
-        let value = value;
-
         join_set.spawn(async move {
             let result = find_path(common::CIRCLES_RPC, sender, receiver, value, true).await;
 

@@ -1,6 +1,6 @@
 use alloy_primitives::Address;
 use alloy_primitives::aliases::U192;
-use circles_pathfinder::{PathData, FindPathParams, prepare_flow_for_contract};
+use circles_pathfinder::{FindPathParams, PathData, prepare_flow_for_contract};
 use std::str::FromStr;
 
 #[tokio::main]
@@ -31,10 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path_data: PathData = prepare_flow_for_contract(rpc_url, params).await?;
 
     println!("\nFlow matrix prepared for contract calls:");
-    println!(
-        "Flow vertices: {} addresses",
-        path_data.flow_vertices.len()
-    );
+    println!("Flow vertices: {} addresses", path_data.flow_vertices.len());
     println!("Flow edges: {} transfers", path_data.flow_edges.len());
     println!("Streams: {} streams", path_data.streams.len());
     println!(

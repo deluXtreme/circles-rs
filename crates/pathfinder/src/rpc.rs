@@ -11,14 +11,14 @@ use serde_json::json;
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use circles_pathfinder::FindPathParams;
-/// use alloy_primitives::{Address, U256};
+/// use alloy_primitives::{Address, aliases::U192};
 ///
 /// let params = FindPathParams {
-///     from: "0x123...".parse()?,
-///     to: "0x456...".parse()?,
-///     target_flow: U256::from(1000u64),
+///     from: "0xC3CCd9455b301D01d69DFB0b9Fc38Bee39829598".parse()?,
+///     to: "0xf48554937f18885c7f15c432c596b5843648231D".parse()?,
+///     target_flow: U192::from(1000u64),
 ///     use_wrapped_balances: Some(true),
 ///     // Optional filters
 ///     from_tokens: None,

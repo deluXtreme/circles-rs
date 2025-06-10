@@ -1,5 +1,5 @@
-use crate::{PathfinderError, hub::PathData, rpc::FindPathParams};
 use crate::find_path_with_params;
+use crate::{PathfinderError, hub::PathData, rpc::FindPathParams};
 use alloy_primitives::aliases::U192;
 use circles_types::TransferStep;
 

@@ -38,11 +38,11 @@
 //! # }
 //! ```
 
+use crate::{PathfinderError, create_flow_matrix};
+use alloy_primitives::aliases::U192;
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_types::sol;
-use alloy_primitives::aliases::U192;
-use circles_types::{TransferStep, FlowMatrix};
-use crate::{create_flow_matrix, PathfinderError};
+use circles_types::{FlowMatrix, TransferStep};
 
 sol!(
     /// Standard Circles Hub FlowEdge struct matching the contract ABI
@@ -52,7 +52,7 @@ sol!(
         uint192 amount;
     }
 
-    /// Standard Circles Hub Stream struct matching the contract ABI  
+    /// Standard Circles Hub Stream struct matching the contract ABI
     #[derive(Debug, PartialEq)]
     struct Stream {
         uint16 sourceCoordinate;
@@ -228,7 +228,7 @@ impl PathData {
     /// #     source_coordinate: 0,
     /// # };
     /// let (vertices, edges, streams, coords) = path_data.to_contract_params();
-    /// 
+    ///
     /// // Ready for contract calls:
     /// // contract.transferFlow(vertices, edges, streams, coords).send().await?;
     /// ```

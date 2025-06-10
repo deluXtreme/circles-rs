@@ -94,7 +94,7 @@ pub use flow::create_flow_matrix;
 pub use rpc::{FindPathParams, find_path, find_path_with_params};
 
 // Hub contract integration types and functions
-pub use hub::{FlowEdge, Stream, PathData};
+pub use hub::{FlowEdge, PathData, Stream};
 
 // High-level convenience functions
 pub use convenience::{
