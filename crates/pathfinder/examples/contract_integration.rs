@@ -1,6 +1,6 @@
 use alloy_primitives::Address;
 use alloy_primitives::aliases::U192;
-use circles_pathfinder::{ContractFlowMatrix, FindPathParams, prepare_flow_for_contract};
+use circles_pathfinder::{FindPathParams, PathData, prepare_flow_for_contract};
 use std::str::FromStr;
 
 #[tokio::main]
@@ -27,21 +27,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         exclude_to_tokens: None,
     };
 
-    // NEW API: One function call does everything!
-    let contract_matrix: ContractFlowMatrix = prepare_flow_for_contract(rpc_url, params).await?;
+    // NEW API: One function call does everything
+    let path_data: PathData = prepare_flow_for_contract(rpc_url, params).await?;
 
     println!("\nFlow matrix prepared for contract calls:");
-    println!(
-        "Flow vertices: {} addresses",
-        contract_matrix.flow_vertices.len()
-    );
-    println!("Flow edges: {} transfers", contract_matrix.flow_edges.len());
-    println!("Streams: {} streams", contract_matrix.streams.len());
+    println!("Flow vertices: {} addresses", path_data.flow_vertices.len());
+    println!("Flow edges: {} transfers", path_data.flow_edges.len());
+    println!("Streams: {} streams", path_data.streams.len());
     println!(
         "Packed coordinates: {} bytes",
-        contract_matrix.packed_coordinates.len()
+        path_data.packed_coordinates.len()
     );
-    println!("Source coordinate: {}", contract_matrix.source_coordinate);
+    println!("Source coordinate: {}", path_data.source_coordinate);
 
     // Demonstrate contract-ready data
     println!("\nContract-ready data:");
@@ -49,29 +46,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Flow vertices (already Address types)
     println!(
         "Vertices (first 3): {:?}",
-        &contract_matrix.flow_vertices[..3.min(contract_matrix.flow_vertices.len())]
+        &path_data.flow_vertices[..3.min(path_data.flow_vertices.len())]
     );
 
-    // Flow edges (already contract-compatible)
-    for (i, edge) in contract_matrix.flow_edges.iter().take(3).enumerate() {
+    // Flow edges (raw tuples - convert to contract types)
+    for (i, (stream_sink_id, amount)) in path_data.flow_edges.iter().take(3).enumerate() {
         println!(
             "Edge {}: stream_sink_id={}, amount={}",
-            i, edge.stream_sink_id, edge.amount
+            i, stream_sink_id, amount
         );
     }
 
-    // Streams (already contract-compatible)
-    for (i, stream) in contract_matrix.streams.iter().enumerate() {
+    // Streams (raw tuples - convert to contract types)
+    for (i, (source_coordinate, flow_edge_ids, _data)) in path_data.streams.iter().enumerate() {
         println!(
             "Stream {}: source_coordinate={}, flow_edge_ids={:?}",
-            i, stream.source_coordinate, stream.flow_edge_ids
+            i, source_coordinate, flow_edge_ids
         );
     }
 
-    // Packed coordinates (already Bytes type)
+    // Packed coordinates (raw bytes - convert to Bytes for contracts)
     println!(
         "Packed coordinates length: {} bytes",
-        contract_matrix.packed_coordinates.len()
+        path_data.packed_coordinates.len()
     );
 
     // Example: How you would use this in a smart contract call
@@ -82,17 +79,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("    .redeemPayment(");
     println!("        module_address,");
     println!("        subscription_id,");
-    println!("        contract_matrix.flow_vertices,     // Vec<Address>");
-    println!("        contract_matrix.flow_edges,        // Vec<ContractFlowEdge>");
-    println!("        contract_matrix.streams,           // Vec<ContractStream>");
-    println!("        contract_matrix.packed_coordinates // Bytes");
+    println!("        path_data.flow_vertices,           // Vec<Address>");
+    println!("        path_data.to_flow_edges(),         // Vec<FlowEdge>");
+    println!("        path_data.to_streams(),            // Vec<Stream>");
+    println!("        path_data.to_packed_coordinates()  // Bytes");
     println!("    )");
     println!("    .send()");
     println!("    .await?;");
     println!("```");
 
     // Demonstrate decomposition for tuple-based contract calls
-    let (vertices, edges, streams, packed_coords) = contract_matrix.into_contract_params();
+    let (vertices, edges, streams, packed_coords) = path_data.to_contract_params();
     println!("\nFor tuple-based contract calls:");
     println!("Decomposed into {} components ready for contract", 4);
     println!("- {} vertices", vertices.len());

@@ -18,7 +18,7 @@
 //! let params = FindPathParams {
 //!     from: "0x123...".parse()?,
 //!     to: "0x456...".parse()?,
-//!     target_flow: U192::from(1_000_000_000_000_000_000u64), // 1 ETH
+//!     target_flow: U192::from(1_000_000_000_000_000_000u64), // 1 CRC
 //!     use_wrapped_balances: Some(true),
 //!     from_tokens: None,
 //!     to_tokens: None,
@@ -27,10 +27,11 @@
 //! };
 //!
 //! // One function call gets contract-ready data
-//! let matrix = prepare_flow_for_contract("https://rpc.circles.com", params).await?;
+//! let path_data = prepare_flow_for_contract("https://rpc.circles.com", params).await?;
 //!
 //! // Ready for smart contract calls
-//! // contract.some_function(matrix.flow_vertices, matrix.flow_edges, ...)
+//! let (vertices, edges, streams, coords) = path_data.to_contract_params();
+//! // contract.some_function(vertices, edges, streams, coords)
 //! # Ok(())
 //! # }
 //! ```
@@ -64,7 +65,7 @@
 //!
 //! ## Modules
 //!
-//! - [`contract`] - Contract-compatible types and conversions
+//! - [`hub`] - Circles Hub contract types and conversions
 //! - [`rpc`] - RPC communication and pathfinding
 //! - [`flow`] - Flow matrix calculation
 //! - [`packing`] - Coordinate packing utilities
@@ -73,14 +74,14 @@
 //! ## Features
 //!
 //! - **Fast pathfinding** using Circles RPC endpoints
-//! - **Contract integration** with ready-to-use types
+//! - **Hub contract integration** with ready-to-use types
 //! - **Type safety** with `alloy-primitives`
 //! - **Efficient packing** for on-chain storage
 //! - **Comprehensive testing** with real-world scenarios
 
-mod contract;
 mod convenience;
 mod flow;
+pub mod hub;
 mod packing;
 mod rpc;
 
@@ -92,11 +93,8 @@ pub use flow::create_flow_matrix;
 // RPC functionality
 pub use rpc::{FindPathParams, find_path, find_path_with_params};
 
-// Contract integration types and functions
-pub use contract::{
-    ContractFlowMatrix, FlowEdge as ContractFlowEdge, Stream as ContractStream,
-    flow_matrix_to_contract_types, packed_coordinates_as_bytes,
-};
+// Hub contract integration types and functions
+pub use hub::{FlowEdge, PathData, Stream};
 
 // High-level convenience functions
 pub use convenience::{

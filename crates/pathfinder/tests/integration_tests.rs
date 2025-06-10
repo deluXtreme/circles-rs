@@ -318,27 +318,27 @@ async fn test_improved_user_workflow() {
     // NEW API: One function call does everything!
     let result = prepare_flow_for_contract(common::CIRCLES_RPC, params).await;
 
-    if let Ok(contract_matrix) = result {
+    if let Ok(path_data) = result {
         println!("New API test succeeded!");
 
-        // Verify we get contract-ready types without manual conversion
-        assert!(!contract_matrix.flow_vertices.is_empty());
-        assert!(!contract_matrix.flow_edges.is_empty());
-        assert!(!contract_matrix.streams.is_empty());
+        // Verify we get path data ready for contract conversion
+        assert!(!path_data.flow_vertices.is_empty());
+        assert!(!path_data.flow_edges.is_empty());
+        assert!(!path_data.streams.is_empty());
 
-        // Verify types are already correct for contract calls
+        // Verify PathData can be converted to contract types
         // flow_vertices: Vec<Address> ✓
-        // flow_edges: Vec<ContractFlowEdge> ✓
-        // streams: Vec<ContractStream> ✓
-        // packed_coordinates: Bytes ✓
+        // flow_edges: Vec<(u16, U192)> -> Vec<FlowEdge> ✓
+        // streams: Vec<(u16, Vec<u16>, Vec<u8>)> -> Vec<Stream> ✓
+        // packed_coordinates: Vec<u8> -> Bytes ✓
 
         // Store lengths before decomposition
-        let vertices_len = contract_matrix.flow_vertices.len();
-        let edges_len = contract_matrix.flow_edges.len();
-        let streams_len = contract_matrix.streams.len();
+        let vertices_len = path_data.flow_vertices.len();
+        let edges_len = path_data.flow_edges.len();
+        let streams_len = path_data.streams.len();
 
         // Test decomposition for tuple-based contract calls
-        let (vertices, edges, streams, packed_coords) = contract_matrix.into_contract_params();
+        let (vertices, edges, streams, packed_coords) = path_data.to_contract_params();
         assert_eq!(vertices.len(), vertices_len);
         assert_eq!(edges.len(), edges_len);
         assert_eq!(streams.len(), streams_len);
