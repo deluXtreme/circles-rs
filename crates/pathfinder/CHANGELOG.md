@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Updated all amount types from `U256` to `U192` for better contract ABI alignment
+- Switched to workspace path dependencies for `circles-types` instead of crates.io dependency
+- Improved type safety and contract compatibility across all APIs
+
+### Fixed
+- Silenced dead code warnings for unused JSON-RPC protocol fields (`jsonrpc`, `id`)
+
+### Documentation
+- Removed emoji usage from markdown files for cleaner formatting
+- Updated GitHub repository links to reflect correct ownership
+- Removed references to non-existent testnet RPC endpoint
+
 ## [0.1.0] - 2025-01-XX
 
 ### Added
@@ -62,5 +75,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive error handling with `thiserror`
 - Modular architecture supporting both high-level and composable APIs
 
-[Unreleased]: https://github.com/aboutcircles/circles-sdk/compare/pathfinder-v0.1.0...HEAD
-[0.1.0]: https://github.com/aboutcircles/circles-sdk/releases/tag/pathfinder-v0.1.0
+[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/pathfinder-v0.1.0...HEAD
+[0.1.0]: https://github.com/deluXtreme/circles-rs/releases/tag/pathfinder-v0.1.0
