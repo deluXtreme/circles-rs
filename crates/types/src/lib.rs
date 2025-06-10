@@ -32,8 +32,7 @@
 //! - [`Stream`] - Collection of edges representing a transfer route
 //! - [`FlowMatrix`] - Complete flow representation for contracts
 //! - [`Address`] - Ethereum address (re-exported from alloy-primitives)
-
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 use serde::{Deserialize, Serialize};
 
 pub type Address = alloy_primitives::Address;
@@ -42,7 +41,7 @@ pub type Address = alloy_primitives::Address;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FlowEdge {
     pub stream_sink_id: u16,
-    pub amount: U256,
+    pub amount: U192,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -57,7 +56,7 @@ pub struct TransferStep {
     pub from_address: Address,
     pub to_address: Address,
     pub token_owner: Address,
-    pub value: U256,
+    pub value: U192,
 }
 
 /// ABI-ready matrix returned by `create_flow_matrix`

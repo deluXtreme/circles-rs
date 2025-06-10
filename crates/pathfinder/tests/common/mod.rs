@@ -1,4 +1,5 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
+use alloy_primitives::aliases::U192;
 use circles_types::TransferStep;
 
 /// Create a sample address from a hex string (pads short addresses to 20 bytes)
@@ -29,7 +30,7 @@ pub fn sample_transfer_step(
     from: Address,
     to: Address,
     token_owner: Address,
-    value: U256,
+    value: U192,
 ) -> TransferStep {
     TransferStep {
         from_address: from,
@@ -40,13 +41,13 @@ pub fn sample_transfer_step(
 }
 
 /// Convert a value in wei (as string) to U256
-pub fn wei_from_str(wei_str: &str) -> U256 {
-    U256::from_str_radix(wei_str, 10).expect("Invalid wei value")
+pub fn wei_from_str(wei_str: &str) -> U192 {
+    U192::from_str_radix(wei_str, 10).expect("Invalid wei value")
 }
 
 /// Convert ETH amount to wei (1 ETH = 1e18 wei)
-pub fn eth_to_wei(eth_amount: u64) -> U256 {
-    U256::from(eth_amount) * U256::from(10_u64.pow(18))
+pub fn eth_to_wei(eth_amount: u64) -> U192 {
+    U192::from(eth_amount) * U192::from(10_u64.pow(18))
 }
 
 /// Common test constants

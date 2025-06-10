@@ -1,4 +1,5 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
+use alloy_primitives::aliases::U192;
 use circles_pathfinder::{ContractFlowMatrix, FindPathParams, prepare_flow_for_contract};
 use std::str::FromStr;
 
@@ -7,7 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example addresses (replace with real addresses)
     let sender = Address::from_str("0x52e14be00d5acff4424ad625662c6262b4fd1a58")?;
     let receiver = Address::from_str("0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214")?;
-    let amount = U256::from_str("1000000000000000000")?; // 1 CRC in wei
+    let amount = U192::from_str("1000000000000000000")?; // 1 CRC in wei
     let rpc_url = "https://rpc.aboutcircles.com/";
 
     println!("Finding path and preparing contract data...");

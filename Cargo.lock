@@ -860,11 +860,11 @@ dependencies = [
 
 [[package]]
 name = "circles-pathfinder"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "alloy-primitives",
  "alloy-provider",
- "circles-types 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "circles-types",
  "reqwest",
  "serde",
  "serde_json",
@@ -874,17 +874,7 @@ dependencies = [
 
 [[package]]
 name = "circles-types"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "serde",
-]
-
-[[package]]
-name = "circles-types"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63bca28f86576593ccc623f0d0b270e77984599d43f50293c4759491eb017cfd"
+version = "0.2.0"
 dependencies = [
  "alloy-primitives",
  "serde",

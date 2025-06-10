@@ -1,4 +1,4 @@
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 use circles_pathfinder::{PathfinderError, create_flow_matrix, find_path};
 
 mod common;
@@ -17,7 +17,7 @@ async fn test_full_pathfinding_flow() {
         println!("Found {} transfer steps", transfers.len());
 
         // Calculate the actual available flow from transfers going to receiver
-        let actual_flow: U256 = transfers
+        let actual_flow: U192 = transfers
             .iter()
             .filter(|t| t.to_address == receiver)
             .map(|t| t.value)
@@ -65,7 +65,7 @@ async fn test_full_pathfinding_flow() {
         );
 
         // Verify terminal sum matches actual available value
-        let terminal_sum: U256 = matrix
+        let terminal_sum: U192 = matrix
             .flow_edges
             .iter()
             .filter(|e| e.stream_sink_id == 1)
@@ -99,9 +99,9 @@ async fn test_pathfinding_with_different_values() {
 
     // Test different values to see how the pathfinding behaves
     let test_values = vec![
-        U256::from(1_000_000_000_000_000u64),   // 0.001 ETH
-        U256::from(10_000_000_000_000_000u64),  // 0.01 ETH
-        U256::from(100_000_000_000_000_000u64), // 0.1 ETH
+        U192::from(1_000_000_000_000_000u64),   // 0.001 ETH
+        U192::from(10_000_000_000_000_000u64),  // 0.01 ETH
+        U192::from(100_000_000_000_000_000u64), // 0.1 ETH
     ];
 
     for value in test_values {
@@ -217,7 +217,7 @@ fn test_edge_case_scenarios() {
     // 1. Zero value transfers
     let sender = common::addresses::sender();
     let receiver = common::addresses::receiver();
-    let zero_value = U256::ZERO;
+    let zero_value = U192::ZERO;
 
     let zero_transfers = vec![common::sample_transfer_step(
         sender, receiver, sender, zero_value,
@@ -235,7 +235,7 @@ fn test_edge_case_scenarios() {
     assert!(result.is_ok(), "Same sender/receiver should work");
 
     // 3. Large value (near U256::MAX)
-    let large_value = U256::MAX - U256::from(1);
+    let large_value = U192::MAX - U192::from(1);
     let large_transfers = vec![common::sample_transfer_step(
         sender,
         receiver,
@@ -323,7 +323,7 @@ async fn test_improved_user_workflow() {
     let result = prepare_flow_for_contract(common::CIRCLES_RPC, params).await;
 
     if let Ok(contract_matrix) = result {
-        println!("✅ New API test succeeded!");
+        println!("New API test succeeded!");
 
         // Verify we get contract-ready types without manual conversion
         assert!(!contract_matrix.flow_vertices.is_empty());

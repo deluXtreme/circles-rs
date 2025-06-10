@@ -1,6 +1,6 @@
 use crate::{PathfinderError, contract::ContractFlowMatrix, rpc::FindPathParams};
 use crate::{create_flow_matrix, find_path_with_params};
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 use circles_types::TransferStep;
 
 /// High-level function that combines pathfinding and matrix creation
@@ -49,7 +49,7 @@ pub async fn prepare_flow_for_contract(
 
     // Step 2: Calculate the actual available flow
     // In real-world scenarios, the available flow might be less than requested
-    let actual_flow: U256 = transfers
+    let actual_flow: U192 = transfers
         .iter()
         .filter(|t| t.to_address == params.to)
         .map(|t| t.value)
@@ -70,7 +70,7 @@ pub async fn prepare_flow_for_contract_simple(
     rpc_url: &str,
     from: alloy_primitives::Address,
     to: alloy_primitives::Address,
-    target_flow: U256,
+    target_flow: U192,
     use_wrapped_balances: bool,
 ) -> Result<ContractFlowMatrix, PathfinderError> {
     let params = FindPathParams {
@@ -99,10 +99,10 @@ pub async fn prepare_flow_for_contract_simple(
 pub async fn get_available_flow(
     rpc_url: &str,
     params: FindPathParams,
-) -> Result<(U256, Vec<TransferStep>), PathfinderError> {
+) -> Result<(U192, Vec<TransferStep>), PathfinderError> {
     let transfers = find_path_with_params(rpc_url, params.clone()).await?;
 
-    let available_flow: U256 = transfers
+    let available_flow: U192 = transfers
         .iter()
         .filter(|t| t.to_address == params.to)
         .map(|t| t.value)
@@ -120,7 +120,7 @@ mod tests {
     async fn test_prepare_flow_for_contract_simple() {
         let sender = Address::ZERO;
         let receiver = Address::from([1u8; 20]);
-        let value = U256::from(1000u64);
+        let value = U192::from(1000u64);
 
         // This will fail with network error in tests, but tests the API
         let result = prepare_flow_for_contract_simple(
@@ -141,7 +141,7 @@ mod tests {
         let params = FindPathParams {
             from: Address::ZERO,
             to: Address::from([1u8; 20]),
-            target_flow: U256::from(1000u64),
+            target_flow: U192::from(1000u64),
             use_wrapped_balances: Some(true),
             from_tokens: None,
             to_tokens: None,
@@ -151,7 +151,7 @@ mod tests {
 
         assert_eq!(params.from, Address::ZERO);
         assert_eq!(params.to, Address::from([1u8; 20]));
-        assert_eq!(params.target_flow, U256::from(1000u64));
+        assert_eq!(params.target_flow, U192::from(1000u64));
         assert_eq!(params.use_wrapped_balances, Some(true));
     }
 }

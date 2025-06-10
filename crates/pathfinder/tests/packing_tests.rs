@@ -1,4 +1,4 @@
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 use circles_pathfinder::{pack_coordinates, transform_to_flow_vertices};
 
 mod common;
@@ -39,7 +39,7 @@ fn test_transform_to_flow_vertices() {
         sender,
         intermediate,
         sender,
-        U256::from(1000),
+        U192::from(1000),
     )];
 
     let (sorted_vertices, idx) = transform_to_flow_vertices(&transfers, sender, receiver);
@@ -112,7 +112,7 @@ fn test_transform_to_flow_vertices_complex() {
 fn test_transform_to_flow_vertices_duplicate_addresses() {
     let sender = common::addresses::sender();
     let receiver = common::addresses::receiver();
-    let value = U256::from(1000);
+    let value = U192::from(1000);
 
     // Create transfers where the same address appears multiple times
     let transfers = vec![
@@ -133,7 +133,7 @@ fn test_transform_to_flow_vertices_duplicate_addresses() {
 #[test]
 fn test_transform_to_flow_vertices_sender_receiver_same() {
     let address = common::addresses::sender();
-    let value = U256::from(1000);
+    let value = U192::from(1000);
 
     let transfers = vec![common::sample_transfer_step(
         address, address, address, value,

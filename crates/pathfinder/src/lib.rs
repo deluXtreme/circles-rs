@@ -84,7 +84,7 @@ mod flow;
 mod packing;
 mod rpc;
 
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 
 // Core public API - the main functions users need
 pub use flow::create_flow_matrix;
@@ -125,9 +125,9 @@ pub enum PathfinderError {
     #[error("terminal sum {terminal_sum} != expected {expected}")]
     Imbalanced {
         /// Actual sum of terminal flow edges
-        terminal_sum: U256,
+        terminal_sum: U192,
         /// Expected total flow amount
-        expected: U256,
+        expected: U192,
     },
 
     /// Network or HTTP communication error.
