@@ -1,4 +1,4 @@
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 use circles_pathfinder::{PathfinderError, find_path};
 
 mod common;
@@ -55,7 +55,7 @@ async fn test_find_path_with_invalid_rpc() {
 async fn test_find_path_with_zero_value() {
     let sender = common::addresses::sender();
     let receiver = common::addresses::receiver();
-    let value = U256::ZERO;
+    let value = U192::ZERO;
 
     let result = find_path(common::CIRCLES_RPC, sender, receiver, value, true).await;
 

@@ -1,4 +1,5 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
+use alloy_primitives::aliases::U192;
 use circles_pathfinder::{create_flow_matrix, find_path};
 
 #[tokio::main]
@@ -8,7 +9,7 @@ async fn main() -> Result<(), std::io::Error> {
         Address::parse_checksummed("0xcF6Dc192dc292D5F2789DA2DB02D6dD4f41f4214", None).unwrap();
     let to =
         Address::parse_checksummed("0xeDe0C2E70E8e2d54609c1BdF79595506B6F623FE", None).unwrap();
-    let amount = U256::from(1000000000000000000_u64); // 1 CRC
+    let amount = U192::from(1000000000000000000_u64); // 1 CRC
     let rpc = "https://rpc.aboutcircles.com/";
 
     // 1. ask RPC for transfers

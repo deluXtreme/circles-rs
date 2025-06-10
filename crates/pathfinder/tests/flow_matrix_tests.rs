@@ -1,6 +1,5 @@
-use alloy_primitives::U256;
+use alloy_primitives::aliases::U192;
 use circles_pathfinder::{PathfinderError, create_flow_matrix};
-use circles_types::{FlowEdge, Stream};
 
 mod common;
 
@@ -159,7 +158,7 @@ fn test_create_flow_matrix_no_terminal_edges() {
 fn test_create_flow_matrix_multiple_terminal_edges() {
     let sender = common::addresses::sender();
     let receiver = common::addresses::receiver();
-    let half_value = common::wei_from_str(common::ONE_ETH_WEI) / U256::from(2);
+    let half_value = common::wei_from_str(common::ONE_ETH_WEI) / U192::from(2);
     let total_value = common::wei_from_str(common::ONE_ETH_WEI);
 
     // Two transfers to receiver, each with half the value

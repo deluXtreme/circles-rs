@@ -1,5 +1,6 @@
 use crate::PathfinderError;
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
+use alloy_primitives::aliases::U192;
 use circles_types::TransferStep;
 use serde_json::json;
 
@@ -34,7 +35,7 @@ pub struct FindPathParams {
     /// Destination address
     pub to: Address,
     /// Target flow amount
-    pub target_flow: U256,
+    pub target_flow: U192,
     /// Whether to use wrapped balances
     pub use_wrapped_balances: Option<bool>,
     /// Specific tokens to use from the source (optional)
@@ -49,7 +50,9 @@ pub struct FindPathParams {
 
 #[derive(serde::Deserialize, Debug)]
 struct JsonRpcResp {
+    #[allow(dead_code)]
     jsonrpc: String,
+    #[allow(dead_code)]
     id: u32,
     result: Option<serde_json::Value>,
     error: Option<serde_json::Value>,
@@ -115,7 +118,7 @@ impl TryFrom<JsonRpcResp> for Vec<TransferStep> {
                     from_address,
                     to_address,
                     token_owner,
-                    value: U256::from(value_u128),
+                    value: U192::from(value_u128),
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -202,7 +205,7 @@ pub async fn find_path(
     rpc_url: &str,
     from: Address,
     to: Address,
-    target_flow: U256,
+    target_flow: U192,
     with_wrap: bool,
 ) -> Result<Vec<TransferStep>, PathfinderError> {
     let body = json!({

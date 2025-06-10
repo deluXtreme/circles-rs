@@ -1,4 +1,5 @@
-use alloy_primitives::{Address, Bytes, U256};
+use alloy_primitives::aliases::U192;
+use alloy_primitives::{Address, Bytes};
 use circles_types::{FlowEdge as PathfinderFlowEdge, FlowMatrix, Stream as PathfinderStream};
 
 /// Contract-compatible FlowEdge type matching the smart contract ABI
@@ -7,7 +8,7 @@ pub struct FlowEdge {
     /// Stream sink ID (uint16 in contract)
     pub stream_sink_id: u16,
     /// Amount (uint192 in contract, but U256 is compatible)
-    pub amount: U256,
+    pub amount: U192,
 }
 
 /// Contract-compatible Stream type matching the smart contract ABI
@@ -176,19 +177,19 @@ pub fn packed_coordinates_as_bytes(packed_coordinates: &[u8]) -> Bytes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::U256;
+    use alloy_primitives::aliases::U192;
 
     #[test]
     fn test_flow_edge_conversion() {
         let internal_edge = PathfinderFlowEdge {
             stream_sink_id: 1,
-            amount: U256::from(1000u64),
+            amount: U192::from(1000u64),
         };
 
         let contract_edge: FlowEdge = internal_edge.into();
 
         assert_eq!(contract_edge.stream_sink_id, 1);
-        assert_eq!(contract_edge.amount, U256::from(1000u64));
+        assert_eq!(contract_edge.amount, U192::from(1000u64));
     }
 
     #[test]
@@ -211,7 +212,7 @@ mod tests {
         let flow_vertices = vec![Address::ZERO];
         let flow_edges = vec![FlowEdge {
             stream_sink_id: 1,
-            amount: U256::from(1000u64),
+            amount: U192::from(1000u64),
         }];
         let streams = vec![Stream {
             source_coordinate: 0,

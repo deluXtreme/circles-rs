@@ -5,7 +5,8 @@
 //! suitable for smart contract execution, including vertex transformation,
 //! edge creation, and coordinate packing.
 use crate::PathfinderError;
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
+use alloy_primitives::aliases::U192;
 use circles_types::{FlowEdge, FlowMatrix, Stream, TransferStep};
 
 use crate::packing::{pack_coordinates, transform_to_flow_vertices};
@@ -61,7 +62,7 @@ use crate::packing::{pack_coordinates, transform_to_flow_vertices};
 pub fn create_flow_matrix(
     sender: Address,
     receiver: Address,
-    value: U256,
+    value: U192,
     transfers: &[TransferStep],
 ) -> Result<FlowMatrix, PathfinderError> {
     let (flow_vertices, idx) = transform_to_flow_vertices(transfers, sender, receiver);
@@ -85,7 +86,7 @@ pub fn create_flow_matrix(
     }
 
     // Check terminal balance
-    let terminal_sum: U256 = flow_edges
+    let terminal_sum: U192 = flow_edges
         .iter()
         .filter(|e| e.stream_sink_id == 1)
         .map(|e| e.amount)
