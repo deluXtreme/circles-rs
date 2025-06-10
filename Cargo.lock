@@ -860,10 +860,11 @@ dependencies = [
 
 [[package]]
 name = "circles-pathfinder"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "alloy-primitives",
  "alloy-provider",
+ "alloy-sol-types",
  "circles-types",
  "reqwest",
  "serde",

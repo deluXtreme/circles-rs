@@ -18,14 +18,8 @@ pub fn address_from_str(hex_str: &str) -> Address {
         .expect("Invalid address format")
 }
 
-/// Create a sample address with a specific suffix byte
-pub fn sample_address(suffix: u8) -> Address {
-    let mut bytes = [0u8; 20];
-    bytes[19] = suffix;
-    Address::from(bytes)
-}
-
 /// Create a sample TransferStep for testing
+#[allow(dead_code)]
 pub fn sample_transfer_step(
     from: Address,
     to: Address,
@@ -45,14 +39,11 @@ pub fn wei_from_str(wei_str: &str) -> U192 {
     U192::from_str_radix(wei_str, 10).expect("Invalid wei value")
 }
 
-/// Convert ETH amount to wei (1 ETH = 1e18 wei)
-pub fn eth_to_wei(eth_amount: u64) -> U192 {
-    U192::from(eth_amount) * U192::from(10_u64.pow(18))
-}
-
 /// Common test constants
+#[allow(dead_code)]
 pub const CIRCLES_RPC: &str = "https://rpc.aboutcircles.com/";
 pub const ONE_ETH_WEI: &str = "1000000000000000000";
+#[allow(dead_code)]
 pub const ONE_TENTH_ETH_WEI: &str = "100000000000000000";
 
 /// Sample addresses used in tests
@@ -68,18 +59,22 @@ pub mod addresses {
         address_from_str("0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214")
     }
 
+    #[allow(dead_code)]
     pub fn intermediate_a5() -> Address {
         address_from_str("0xa5")
     }
 
+    #[allow(dead_code)]
     pub fn intermediate_63() -> Address {
         address_from_str("0x63")
     }
 
+    #[allow(dead_code)]
     pub fn token_owner_7b() -> Address {
         address_from_str("0x7b")
     }
 
+    #[allow(dead_code)]
     pub fn token_owner_f7() -> Address {
         address_from_str("0xf7")
     }

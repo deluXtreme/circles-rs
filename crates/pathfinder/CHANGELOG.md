@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-01-20
+
+### Added
+- New `hub.rs` module with standard Circles Hub contract types using `sol!` macro
+- `PathData` struct for simplified pathfinding result handling
+- Automatic conversion methods: `to_flow_edges()`, `to_streams()`, `to_contract_params()`
+- Built-in Circles Hub contract compatibility with exact ABI matching
+- `FlowEdge` and `Stream` types generated from Solidity contract definitions
+
+### Changed
+- **BREAKING**: Removed `contract.rs` module and `ContractFlowMatrix` type
+- **BREAKING**: `prepare_flow_for_contract()` now returns `PathData` instead of `ContractFlowMatrix`
+- **BREAKING**: Users must use `path_data.to_contract_params()` for contract calls
+- Simplified API eliminates manual snake_case to camelCase field conversions
+- Made `hub` module public to allow direct access to contract types
+
+### Removed
+- **BREAKING**: `ContractFlowMatrix`, `ContractFlowEdge`, `ContractStream` types
+- **BREAKING**: `flow_matrix_to_contract_types()` and `packed_coordinates_as_bytes()` functions
+- Manual conversion boilerplate - replaced with automatic methods
+
+### Dependencies
+- Added `alloy-sol-types` for `sol!` macro support
+
+### Documentation
+- Updated README with new simplified API examples
+- Added comprehensive documentation for hub contract integration
+- Updated examples to demonstrate zero-boilerplate conversions
+
 ## [0.2.1] - 2025-06-10
 ### Documentation
 - Fixed changelog formatting and content for v0.2.0 release

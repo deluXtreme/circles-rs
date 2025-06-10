@@ -1,6 +1,6 @@
 [package]
 name = "circles-pathfinder"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 authors = ["franco <0xpantera@proton.me>"]
 description = "Pathfinding and flow matrix calculation for the Circles protocol"
@@ -13,6 +13,7 @@ readme = "README.md"
 [dependencies]
 alloy-primitives = { workspace = true }                                          # Address, U256
 alloy-provider = { version = "1.0.9", features = ["reqwest"] }
+alloy-sol-types = { version = "1.0.9" }                                          # sol! macro
 circles-types = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
