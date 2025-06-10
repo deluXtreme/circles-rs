@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use alloy_primitives::Address;
 use alloy_primitives::aliases::U192;
 use circles_types::TransferStep;

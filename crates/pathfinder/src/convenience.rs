@@ -19,13 +19,13 @@ use circles_types::TransferStep;
 /// # Example
 /// ```rust,no_run
 /// use circles_pathfinder::{FindPathParams, prepare_flow_for_contract};
-/// use alloy_primitives::{Address, U256};
+/// use alloy_primitives::{Address, aliases::U192};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let params = FindPathParams {
 ///     from: "0x123...".parse()?,
 ///     to: "0x456...".parse()?,
-///     target_flow: U256::from(1000000000000000000u64), // 1 ETH in wei
+///     target_flow: U192::from(1000000000000000000u64), // 1 ETH in wei
 ///     use_wrapped_balances: Some(true),
 ///     from_tokens: None,
 ///     to_tokens: None,

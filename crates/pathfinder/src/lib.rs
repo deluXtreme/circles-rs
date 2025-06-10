@@ -12,13 +12,13 @@
 //!
 //! ```rust,no_run
 //! use circles_pathfinder::{FindPathParams, prepare_flow_for_contract};
-//! use alloy_primitives::{Address, U256};
+//! use alloy_primitives::{Address, aliases::U192};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let params = FindPathParams {
 //!     from: "0x123...".parse()?,
 //!     to: "0x456...".parse()?,
-//!     target_flow: U256::from(1_000_000_000_000_000_000u64), // 1 ETH
+//!     target_flow: U192::from(1_000_000_000_000_000_000u64), // 1 ETH
 //!     use_wrapped_balances: Some(true),
 //!     from_tokens: None,
 //!     to_tokens: None,
@@ -39,7 +39,7 @@
 //!
 //! ```rust,no_run
 //! use circles_pathfinder::{find_path, create_flow_matrix};
-//! use alloy_primitives::{Address, U256};
+//! use alloy_primitives::{Address, aliases::U192};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Step 1: Find path
@@ -47,7 +47,7 @@
 //!     "https://rpc.circles.com",
 //!     "0x123...".parse()?,
 //!     "0x456...".parse()?,
-//!     U256::from(1000u64),
+//!     U192::from(1000u64),
 //!     true
 //! ).await?;
 //!
@@ -55,7 +55,7 @@
 //! let matrix = create_flow_matrix(
 //!     "0x123...".parse()?,
 //!     "0x456...".parse()?,
-//!     U256::from(1000u64),
+//!     U192::from(1000u64),
 //!     &transfers
 //! )?;
 //! # Ok(())
