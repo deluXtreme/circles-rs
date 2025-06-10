@@ -1,5 +1,5 @@
-use crate::{PathfinderError, contract::ContractFlowMatrix, rpc::FindPathParams};
-use crate::{create_flow_matrix, find_path_with_params};
+use crate::{PathfinderError, hub::PathData, rpc::FindPathParams};
+use crate::find_path_with_params;
 use alloy_primitives::aliases::U192;
 use circles_types::TransferStep;
 
@@ -14,18 +14,18 @@ use circles_types::TransferStep;
 /// * `params` - Path finding parameters
 ///
 /// # Returns
-/// A `ContractFlowMatrix` with types ready for smart contract calls
+/// A `PathData` with types ready for smart contract calls
 ///
 /// # Example
 /// ```rust,no_run
 /// use circles_pathfinder::{FindPathParams, prepare_flow_for_contract};
-/// use alloy_primitives::{Address, U256};
+/// use alloy_primitives::{Address, aliases::U192};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let params = FindPathParams {
 ///     from: "0x123...".parse()?,
 ///     to: "0x456...".parse()?,
-///     target_flow: U256::from(1000000000000000000u64), // 1 ETH in wei
+///     target_flow: U192::from(1000000000000000000u64), // 1 CRC in wei
 ///     use_wrapped_balances: Some(true),
 ///     from_tokens: None,
 ///     to_tokens: None,
@@ -33,33 +33,23 @@ use circles_types::TransferStep;
 ///     exclude_to_tokens: None,
 /// };
 ///
-/// let matrix = prepare_flow_for_contract("https://rpc.example.com", params).await?;
+/// let path_data = prepare_flow_for_contract("https://rpc.example.com", params).await?;
 ///
 /// // Ready to use with smart contract calls
-/// // contract.some_function(matrix.flow_vertices, matrix.flow_edges, ...);
+/// let (vertices, edges, streams, coords) = path_data.to_contract_params();
+/// // contract.some_function(vertices, edges, streams, coords);
 /// # Ok(())
 /// # }
 /// ```
 pub async fn prepare_flow_for_contract(
     rpc_url: &str,
     params: FindPathParams,
-) -> Result<ContractFlowMatrix, PathfinderError> {
+) -> Result<PathData, PathfinderError> {
     // Step 1: Find the path
     let transfers = find_path_with_params(rpc_url, params.clone()).await?;
 
-    // Step 2: Calculate the actual available flow
-    // In real-world scenarios, the available flow might be less than requested
-    let actual_flow: U192 = transfers
-        .iter()
-        .filter(|t| t.to_address == params.to)
-        .map(|t| t.value)
-        .sum();
-
-    // Step 3: Create the flow matrix with the actual available flow
-    let matrix = create_flow_matrix(params.from, params.to, actual_flow, &transfers)?;
-
-    // Step 4: Convert to contract-compatible types
-    Ok(matrix.into())
+    // Step 2: Create PathData from transfers (handles flow calculation internally)
+    PathData::from_transfers(&transfers, params.from, params.to, params.target_flow)
 }
 
 /// Prepare flow for contract using individual parameters (legacy compatibility)
@@ -72,7 +62,7 @@ pub async fn prepare_flow_for_contract_simple(
     to: alloy_primitives::Address,
     target_flow: U192,
     use_wrapped_balances: bool,
-) -> Result<ContractFlowMatrix, PathfinderError> {
+) -> Result<PathData, PathfinderError> {
     let params = FindPathParams {
         from,
         to,
