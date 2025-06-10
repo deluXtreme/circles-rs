@@ -864,6 +864,7 @@ version = "0.2.1"
 dependencies = [
  "alloy-primitives",
  "alloy-provider",
+ "alloy-sol-types",
  "circles-types",
  "reqwest",
  "serde",
