@@ -6,7 +6,7 @@ For detailed changes, see individual crate changelogs:
 - [circles-types](crates/types/CHANGELOG.md) - Core type definitions
 - [circles-pathfinder](crates/pathfinder/CHANGELOG.md) - Pathfinding and flow matrix calculation
 
-## [Unreleased]
+## [0.2.0] - 2025-06-10
 
 ### Coordinated Changes
 - **BREAKING**: Migrated all amount types from `U256` to `U192` across both crates for contract ABI alignment
