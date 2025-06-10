@@ -33,12 +33,12 @@ use crate::packing::{pack_coordinates, transform_to_flow_vertices};
 ///
 /// ```rust
 /// use circles_pathfinder::{find_path, create_flow_matrix};
-/// use alloy_primitives::{Address, U256};
+/// use alloy_primitives::{Address, aliases::U192};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let from: Address = "0x123...".parse()?;
 /// let to: Address = "0x456...".parse()?;
-/// let amount = U256::from(1000u64);
+/// let amount = U192::from(1000u64);
 ///
 /// // First find a path
 /// let transfers = find_path("https://rpc.circles.com", from, to, amount, true).await?;
