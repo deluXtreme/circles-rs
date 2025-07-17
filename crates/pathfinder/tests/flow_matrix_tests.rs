@@ -1,4 +1,4 @@
-use alloy_primitives::aliases::U192;
+use alloy_primitives::{U256, aliases::U192};
 use circles_pathfinder::{PathfinderError, create_flow_matrix};
 
 mod common;
@@ -120,7 +120,7 @@ fn test_create_flow_matrix_terminal_sum_mismatch() {
             assert_eq!(terminal_sum, wrong_value);
             assert_eq!(expected, expected_value);
         }
-        other => panic!("Expected Imbalanced error, got: {:?}", other),
+        other => panic!("Expected Imbalanced error, got: {other:?}"),
     }
 }
 
@@ -221,5 +221,5 @@ fn test_create_flow_matrix_source_coordinate() {
         .position(|&addr| addr == sender)
         .expect("Sender should be in vertices");
 
-    assert_eq!(matrix.source_coordinate, sender_index as u16);
+    assert_eq!(matrix.source_coordinate, U256::from(sender_index));
 }

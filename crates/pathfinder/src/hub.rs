@@ -40,7 +40,7 @@
 
 use crate::{FlowEdge, FlowMatrix, PathfinderError, Stream, create_flow_matrix};
 use alloy_primitives::aliases::U192;
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::{Address, Bytes, U256};
 use circles_types::TransferStep;
 
 /// Simplified pathfinding result data structure
@@ -59,7 +59,7 @@ pub struct PathData {
     /// Packed coordinates as raw bytes
     pub packed_coordinates: Vec<u8>,
     /// Source coordinate index
-    pub source_coordinate: u16,
+    pub source_coordinate: U256,
 }
 
 impl PathData {
@@ -109,18 +109,6 @@ impl PathData {
     ///
     /// Internal constructor for converting from the core FlowMatrix type.
     fn from_flow_matrix(matrix: FlowMatrix) -> Self {
-        // let flow_edges = matrix
-        //     .flow_edges
-        //     .into_iter()
-        //     .map(|edge| (edge.stream_sink_id, edge.amount))
-        //     .collect();
-
-        // let streams = matrix
-        //     .streams
-        //     .into_iter()
-        //     .map(|stream| (stream.source_coordinate, stream.flow_edge_ids, stream.data))
-        //     .collect();
-
         Self {
             flow_vertices: matrix.flow_vertices,
             flow_edges: matrix.flow_edges,
@@ -139,13 +127,14 @@ impl PathData {
     /// ```rust,no_run
     /// # use circles_pathfinder::hub::PathData;
     /// # use alloy_primitives::aliases::U192;
+    /// # use alloy_primitives::U256;
     /// # use circles_pathfinder::FlowEdge;
     /// # let path_data = PathData {
     /// #     flow_vertices: vec![],
     /// #     flow_edges: vec![FlowEdge { streamSinkId: 1, amount: U192::from(1000u64) }],
     /// #     streams: vec![],
     /// #     packed_coordinates: vec![],
-    /// #     source_coordinate: 0,
+    /// #     source_coordinate: U256::from(0),
     /// # };
     /// let edges = path_data.to_flow_edges();
     /// assert_eq!(edges[0].streamSinkId, 1);
@@ -170,12 +159,13 @@ impl PathData {
     /// ```rust,no_run
     /// # use circles_pathfinder::hub::PathData;
     /// # use circles_pathfinder::Stream;
+    /// # use alloy_primitives::U256;
     /// # let path_data = PathData {
     /// #     flow_vertices: vec![],
     /// #     flow_edges: vec![],
     /// #     streams: vec![Stream { sourceCoordinate:0, flowEdgeIds: vec![1, 2], data: vec![0x01, 0x02].into(),}],
     /// #     packed_coordinates: vec![],
-    /// #     source_coordinate: 0,
+    /// #     source_coordinate: U256::from(0),
     /// # };
     /// let streams = path_data.to_streams();
     /// assert_eq!(streams[0].sourceCoordinate, 0);
@@ -187,7 +177,7 @@ impl PathData {
             .map(|stream| Stream {
                 sourceCoordinate: stream.sourceCoordinate,
                 flowEdgeIds: stream.flowEdgeIds.clone(),
-                data: Bytes::from(stream.data.clone()),
+                data: stream.data.clone(),
             })
             .collect()
     }
@@ -204,12 +194,13 @@ impl PathData {
     /// # Example
     /// ```rust,no_run
     /// # use circles_pathfinder::hub::PathData;
+    /// # use alloy_primitives::U256;
     /// # let path_data = PathData {
     /// #     flow_vertices: vec![],
     /// #     flow_edges: vec![],
     /// #     streams: vec![],
     /// #     packed_coordinates: vec![0x01, 0x02],
-    /// #     source_coordinate: 0,
+    /// #     source_coordinate: U256::from(0),
     /// # };
     /// let (vertices, edges, streams, coords) = path_data.to_contract_params();
     ///
@@ -300,7 +291,7 @@ mod tests {
             flow_edges: vec![],
             streams: vec![],
             packed_coordinates: vec![0x01, 0x02, 0x03],
-            source_coordinate: 0,
+            source_coordinate: U256::from(0),
         };
 
         let coords = path_data.to_packed_coordinates();

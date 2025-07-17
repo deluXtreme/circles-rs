@@ -5,7 +5,7 @@
 //! suitable for smart contract execution, including vertex transformation,
 //! edge creation, and coordinate packing.
 use crate::{FlowEdge, FlowMatrix, PathfinderError, Stream};
-use alloy_primitives::aliases::U192;
+use alloy_primitives::aliases::{U192, U256};
 use alloy_primitives::{Address, Bytes};
 use circles_types::TransferStep;
 
@@ -125,6 +125,6 @@ pub fn create_flow_matrix(
         flow_edges,
         streams,
         packed_coordinates,
-        source_coordinate: *idx.get(&sender).unwrap() as u16,
+        source_coordinate: U256::from(*idx.get(&sender).unwrap()),
     })
 }

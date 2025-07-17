@@ -1,93 +1,81 @@
-use alloy_primitives::Address;
-use alloy_primitives::aliases::{U192, U256};
+use alloy_primitives::aliases::U192;
+use alloy_primitives::hex::ToHexExt;
+use alloy_primitives::{Address, FixedBytes};
 use circles_pathfinder::{
-    create_flow_matrix, encode_redeem_trusted_data, find_path, prepare_flow_for_contract_simple,
+    create_flow_matrix, encode_redeem_flow_matrix, encode_redeem_trusted_data, find_path,
+    prepare_flow_for_contract_simple,
 };
 use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let from =
-        Address::parse_checksummed("0xcF6Dc192dc292D5F2789DA2DB02D6dD4f41f4214", None).unwrap();
-    let to =
-        Address::parse_checksummed("0xeDe0C2E70E8e2d54609c1BdF79595506B6F623FE", None).unwrap();
-    let amount = U192::from(1000000000000000000_u64); // 1 CRC
-    let rpc = "https://rpc.aboutcircles.com/";
-
-    // 1. ask RPC for transfers
-    let transfers = find_path(rpc, from, to, amount, true).await.unwrap();
-
-    // 2. build ABI flow-matrix
-    let _matrix = create_flow_matrix(from, to, amount, &transfers).unwrap();
-    let encoded_data = test_redeem_trusted_data_encoding().await;
-
-    println!("Encoded data: \n{:?}", encoded_data[0]);
-    Ok(())
-}
-
-async fn test_redeem_trusted_data_encoding() -> Vec<Vec<u8>> {
     let rpc_url = "https://rpc.aboutcircles.com/";
 
     // Hardcoded JSON payloads as strings
-    let _payload1 = r#"
+    let _payload = r#"
     {
-        "id": "0x4652021487668a2c25747c81dc7d553d3c3121df19fac8c7f49e5adc478d1d31",
+        "id": "0x9c4412d30af600c6de7a2c746d92d63d30e67cac94946358f43422c2e08d067d",
         "subscriber": "0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214",
         "recipient": "0x6b69683c8897e3d18e74b1ba117b49f80423da5d",
         "amount": "10000000000000000",
+        "periods": 47,
         "category": "trusted",
-        "next_redeem_at": 0
-    }
-    "#;
-
-    let _payload2 = r#"
-    {
-        "id": "0xdc849e3b51c6cd3b3c5b5f028c7889f1b2d722f9f8ddbaffd3693208e34a494e",
-        "subscriber": "0x6b69683c8897e3d18e74b1ba117b49f80423da5d",
-        "recipient": "0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214",
-        "amount": "10000000000000000",
-        "category": "trusted",
-        "next_redeem_at": 0
+        "next_redeem_at": 1752862015
     }
     "#;
 
     // Parse payloads (assuming we have serde for real test)
     // For simplicity, hardcode values
-    let subs = vec![
-        (
-            "0x4652021487668a2c25747c81dc7d553d3c3121df19fac8c7f49e5adc478d1d31",
-            "0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214",
-            "0x6b69683c8897e3d18e74b1ba117b49f80423da5d",
-            "10000000000000000",
-        ),
-        (
-            "0xdc849e3b51c6cd3b3c5b5f028c7889f1b2d722f9f8ddbaffd3693208e34a494e",
-            "0x6b69683c8897e3d18e74b1ba117b49f80423da5d",
-            "0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214",
-            "10000000000000000",
-        ),
-    ];
+    let id_str = "0x9c4412d30af600c6de7a2c746d92d63d30e67cac94946358f43422c2e08d067d";
+    let sub_str = "0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214";
+    let rec_str = "0x6b69683c8897e3d18e74b1ba117b49f80423da5d";
+    let amt_str = "10000000000000000";
+    let periods_str = "47";
 
-    let mut redemptions = vec![];
-    for (_id, sub_str, rec_str, amt_str) in subs {
-        let subscriber = Address::from_str(sub_str).unwrap();
-        let recipient = Address::from_str(rec_str).unwrap();
-        let amount = U192::from_str_radix(amt_str, 10).unwrap();
+    let _id: FixedBytes<32> = id_str.parse().unwrap();
+    let subscriber = Address::from_str(sub_str).unwrap();
+    let recipient = Address::from_str(rec_str).unwrap();
+    let amount = U192::from_str_radix(amt_str, 10).unwrap();
+    let periods = U192::from_str_radix(periods_str, 10).unwrap();
+    let target_flow = amount * periods;
 
-        let path_data = prepare_flow_for_contract_simple(
-            rpc_url, subscriber, recipient, amount, false, // use_wrapped_balances = false
-        )
+    let path_data = prepare_flow_for_contract_simple(
+        rpc_url,
+        subscriber,
+        recipient,
+        target_flow,
+        true, // use_wrapped_balances
+    )
+    .await
+    .expect("Failed to prepare flow data");
+
+    let data = encode_redeem_trusted_data(
+        path_data.flow_vertices,
+        path_data.flow_edges,
+        path_data.streams,
+        path_data.packed_coordinates,
+        path_data.source_coordinate,
+    );
+
+    let expected_data = "00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000260000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000006b69683c8897e3d18e74b1ba117b49f80423da5d000000000000000000000000cf6dc192dc292d5f2789da2db02d6dd4f41f4214000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000685c682846f0000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060001000100000000000000000000000000000000000000000000000000000000";
+
+    // 1. ask RPC for transfers
+    let transfers = find_path(rpc_url, subscriber, recipient, target_flow, true)
         .await
-        .expect("Failed to prepare flow data");
+        .unwrap();
 
-        let data = encode_redeem_trusted_data(
-            path_data.flow_vertices,
-            path_data.flow_edges,
-            path_data.streams,
-            path_data.packed_coordinates,
-            U256::ZERO,
-        );
-        redemptions.push(data);
-    }
-    redemptions
+    // 2. build ABI flow-matrix
+    let matrix = create_flow_matrix(subscriber, recipient, target_flow, &transfers).unwrap();
+    let matrix_encoded_data = encode_redeem_flow_matrix(matrix);
+    let matrix_hex_data = matrix_encoded_data.encode_hex();
+
+    let encoded_data = data;
+    let hex_data = encoded_data.encode_hex();
+
+    println!("Encoded data: \n{hex_data}");
+    println!("-------------------------------------------------");
+    println!("Expected data: \n{matrix_hex_data}");
+    assert_eq!(hex_data, expected_data);
+    assert_eq!(matrix_hex_data, expected_data);
+    Ok(())
 }

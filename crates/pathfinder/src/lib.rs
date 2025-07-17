@@ -85,7 +85,7 @@ pub mod hub;
 mod packing;
 mod rpc;
 
-use alloy_primitives::aliases::U192;
+use alloy_primitives::{U256, aliases::U192};
 
 // Core public API - the main functions users need
 pub use flow::create_flow_matrix;
@@ -100,8 +100,8 @@ pub use hub::PathData;
 
 // High-level convenience functions
 pub use convenience::{
-    encode_redeem_trusted_data, get_available_flow, prepare_flow_for_contract,
-    prepare_flow_for_contract_simple,
+    encode_redeem_flow_matrix, encode_redeem_trusted_data, get_available_flow,
+    prepare_flow_for_contract, prepare_flow_for_contract_simple,
 };
 
 // Utility functions for advanced users
@@ -113,7 +113,7 @@ pub struct FlowMatrix {
     pub flow_edges: Vec<FlowEdge>,
     pub streams: Vec<Stream>,
     pub packed_coordinates: Vec<u8>,
-    pub source_coordinate: u16,
+    pub source_coordinate: U256,
 }
 
 sol!(
@@ -131,6 +131,8 @@ sol!(
         uint16[] flowEdgeIds;
         bytes data;
     }
+
+    function redeem(bytes32 id, bytes calldata data) external;
 );
 
 /// Errors that can occur during pathfinding and flow matrix operations.

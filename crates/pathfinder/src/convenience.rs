@@ -1,5 +1,5 @@
-use crate::find_path_with_params;
 use crate::{FlowEdge, PathData, Stream};
+use crate::{FlowMatrix, find_path_with_params};
 use crate::{PathfinderError, rpc::FindPathParams};
 use alloy_primitives::Address;
 use alloy_primitives::aliases::{U192, U256};
@@ -118,7 +118,17 @@ pub fn encode_redeem_trusted_data(
         packed_coordinates,
         source_coordinate,
     )
-        .abi_encode()
+        .abi_encode_params()
+}
+
+pub fn encode_redeem_flow_matrix(matrix: FlowMatrix) -> Vec<u8> {
+    encode_redeem_trusted_data(
+        matrix.flow_vertices,
+        matrix.flow_edges,
+        matrix.streams,
+        matrix.packed_coordinates,
+        matrix.source_coordinate,
+    )
 }
 
 #[cfg(test)]
@@ -226,9 +236,9 @@ mod tests {
                 path_data.flow_edges,
                 path_data.streams,
                 path_data.packed_coordinates,
-                U256::ZERO,
+                path_data.source_coordinate,
             );
-            println!("Encoded data: {:?}", data);
+            println!("Encoded data: {data:?}");
             assert!(!data.is_empty(), "Encoded data should not be empty");
         }
     }
