@@ -6,6 +6,30 @@ For detailed changes, see individual crate changelogs:
 - [circles-types](crates/types/CHANGELOG.md) - Core type definitions
 - [circles-pathfinder](crates/pathfinder/CHANGELOG.md) - Pathfinding and flow matrix calculation
 
+## [0.3.0] - 2025-07-17
+
+### Coordinated Changes
+- **circles-pathfinder v0.4.0**: Enhanced Circles Hub contract integration
+  - Improved `PathData` API with zero-boilerplate contract conversions
+  - Better type safety and error handling for contract interactions
+  - Enhanced test coverage and documentation
+
+### Workspace Improvements
+- Updated contract integration patterns across workspace
+- Improved developer experience with streamlined APIs
+- Enhanced type safety for Circles Hub interactions
+
+### Documentation
+- Updated integration examples for improved contract workflow
+- Enhanced API documentation with real-world usage patterns
+- Improved error handling guidance
+
+### Developer Experience
+- Simplified contract integration with automatic type conversions
+- Better debugging support with enhanced error messages
+- Streamlined development workflow for contract interactions
+
+
 ## [0.2.1] - 2025-06-10
 ### Documentation
 - Fixed changelog formatting and content for v0.2.0 release

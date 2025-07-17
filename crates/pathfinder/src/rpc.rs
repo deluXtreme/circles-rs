@@ -90,28 +90,20 @@ impl TryFrom<JsonRpcResp> for Vec<TransferStep> {
 
                 let from_address = from_str.parse::<Address>().map_err(|e| {
                     PathfinderError::JsonRpc(format!(
-                        "failed to parse from address '{}': {}",
-                        from_str, e
+                        "failed to parse from address '{from_str}': {e}"
                     ))
                 })?;
                 let to_address = to_str.parse::<Address>().map_err(|e| {
-                    PathfinderError::JsonRpc(format!(
-                        "failed to parse to address '{}': {}",
-                        to_str, e
-                    ))
+                    PathfinderError::JsonRpc(format!("failed to parse to address '{to_str}': {e}"))
                 })?;
                 let token_owner = token_owner_str.parse::<Address>().map_err(|e| {
                     PathfinderError::JsonRpc(format!(
-                        "failed to parse token_owner address '{}': {}",
-                        token_owner_str, e
+                        "failed to parse token_owner address '{token_owner_str}': {e}"
                     ))
                 })?;
 
                 let value_u128 = value_str.parse::<u128>().map_err(|e| {
-                    PathfinderError::JsonRpc(format!(
-                        "failed to parse value '{}': {}",
-                        value_str, e
-                    ))
+                    PathfinderError::JsonRpc(format!("failed to parse value '{value_str}': {e}"))
                 })?;
 
                 Ok(TransferStep {

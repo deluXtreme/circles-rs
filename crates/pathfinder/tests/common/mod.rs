@@ -10,12 +10,12 @@ pub fn address_from_str(hex_str: &str) -> Address {
 
     // Pad to 40 characters (20 bytes) if needed
     let padded = if clean_hex.len() < 40 {
-        format!("{:0>40}", clean_hex)
+        format!("{clean_hex:0>40}")
     } else {
         clean_hex.to_string()
     };
 
-    format!("0x{}", padded)
+    format!("0x{padded}")
         .parse()
         .expect("Invalid address format")
 }
