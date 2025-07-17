@@ -68,7 +68,7 @@ async fn test_full_pathfinding_flow() {
         let terminal_sum: U192 = matrix
             .flow_edges
             .iter()
-            .filter(|e| e.stream_sink_id == 1)
+            .filter(|e| e.streamSinkId == 1)
             .map(|e| e.amount)
             .sum();
         assert_eq!(

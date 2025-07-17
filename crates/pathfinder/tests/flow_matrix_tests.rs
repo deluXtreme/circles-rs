@@ -26,7 +26,7 @@ fn test_create_flow_matrix_simple() {
     // Should have one flow edge
     assert_eq!(matrix.flow_edges.len(), 1);
     assert_eq!(matrix.flow_edges[0].amount, value);
-    assert_eq!(matrix.flow_edges[0].stream_sink_id, 1); // Terminal edge
+    assert_eq!(matrix.flow_edges[0].streamSinkId, 1); // Terminal edge
 
     // Should have one stream
     assert_eq!(matrix.streams.len(), 1);
@@ -72,20 +72,20 @@ fn test_create_flow_matrix_complex() {
     // Check flow edges
     assert_eq!(matrix.flow_edges.len(), 3);
 
-    // First two edges should be non-terminal (stream_sink_id = 0)
-    assert_eq!(matrix.flow_edges[0].stream_sink_id, 0);
+    // First two edges should be non-terminal (streamSinkId = 0)
+    assert_eq!(matrix.flow_edges[0].streamSinkId, 0);
     assert_eq!(matrix.flow_edges[0].amount, value);
 
-    assert_eq!(matrix.flow_edges[1].stream_sink_id, 0);
+    assert_eq!(matrix.flow_edges[1].streamSinkId, 0);
     assert_eq!(matrix.flow_edges[1].amount, value);
 
-    // Last edge should be terminal (stream_sink_id = 1)
-    assert_eq!(matrix.flow_edges[2].stream_sink_id, 1);
+    // Last edge should be terminal (streamSinkId = 1)
+    assert_eq!(matrix.flow_edges[2].streamSinkId, 1);
     assert_eq!(matrix.flow_edges[2].amount, value);
 
     // Check streams
     assert_eq!(matrix.streams.len(), 1);
-    assert_eq!(matrix.streams[0].flow_edge_ids, vec![2]); // Only terminal edge
+    assert_eq!(matrix.streams[0].flowEdgeIds, vec![2]); // Only terminal edge
 
     // Check packed coordinates is not empty
     assert!(!matrix.packed_coordinates.is_empty());
@@ -151,7 +151,7 @@ fn test_create_flow_matrix_no_terminal_edges() {
 
     let matrix = result.unwrap();
     assert_eq!(matrix.flow_edges.len(), 1);
-    assert_eq!(matrix.flow_edges[0].stream_sink_id, 1); // Should be terminal
+    assert_eq!(matrix.flow_edges[0].streamSinkId, 1); // Should be terminal
 }
 
 #[test]
@@ -177,11 +177,11 @@ fn test_create_flow_matrix_multiple_terminal_edges() {
 
     // Both edges should be terminal
     assert_eq!(matrix.flow_edges.len(), 2);
-    assert_eq!(matrix.flow_edges[0].stream_sink_id, 1);
-    assert_eq!(matrix.flow_edges[1].stream_sink_id, 1);
+    assert_eq!(matrix.flow_edges[0].streamSinkId, 1);
+    assert_eq!(matrix.flow_edges[1].streamSinkId, 1);
 
     // Stream should reference both terminal edges
-    assert_eq!(matrix.streams[0].flow_edge_ids, vec![0, 1]);
+    assert_eq!(matrix.streams[0].flowEdgeIds, vec![0, 1]);
 }
 
 #[test]
