@@ -120,7 +120,7 @@ fn test_create_flow_matrix_terminal_sum_mismatch() {
             assert_eq!(terminal_sum, wrong_value);
             assert_eq!(expected, expected_value);
         }
-        other => panic!("Expected Imbalanced error, got: {:?}", other),
+        other => panic!("Expected Imbalanced error, got: {other:?}"),
     }
 }
 

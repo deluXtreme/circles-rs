@@ -109,18 +109,6 @@ impl PathData {
     ///
     /// Internal constructor for converting from the core FlowMatrix type.
     fn from_flow_matrix(matrix: FlowMatrix) -> Self {
-        // let flow_edges = matrix
-        //     .flow_edges
-        //     .into_iter()
-        //     .map(|edge| (edge.stream_sink_id, edge.amount))
-        //     .collect();
-
-        // let streams = matrix
-        //     .streams
-        //     .into_iter()
-        //     .map(|stream| (stream.source_coordinate, stream.flow_edge_ids, stream.data))
-        //     .collect();
-
         Self {
             flow_vertices: matrix.flow_vertices,
             flow_edges: matrix.flow_edges,
@@ -187,7 +175,7 @@ impl PathData {
             .map(|stream| Stream {
                 sourceCoordinate: stream.sourceCoordinate,
                 flowEdgeIds: stream.flowEdgeIds.clone(),
-                data: Bytes::from(stream.data.clone()),
+                data: stream.data.clone(),
             })
             .collect()
     }

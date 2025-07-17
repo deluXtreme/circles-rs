@@ -47,7 +47,7 @@ async fn test_find_path_with_invalid_rpc() {
     // Check that it's the right kind of error
     match result.unwrap_err() {
         PathfinderError::Rpc(_) => {} // Expected
-        other => panic!("Expected RPC error, got: {:?}", other),
+        other => panic!("Expected RPC error, got: {other:?}"),
     }
 }
 
@@ -71,7 +71,7 @@ async fn test_find_path_with_zero_value() {
         }
         Err(e) => {
             // If it fails, it should be a meaningful error
-            println!("Zero value request failed as expected: {}", e);
+            println!("Zero value request failed as expected: {e}");
         }
     }
 }
@@ -103,7 +103,7 @@ async fn test_find_path_same_sender_receiver() {
             );
         }
         Err(e) => {
-            println!("Same address request failed: {}", e);
+            println!("Same address request failed: {e}");
         }
     }
 }

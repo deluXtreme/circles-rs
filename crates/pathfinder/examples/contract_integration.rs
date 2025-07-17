@@ -12,9 +12,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rpc_url = "https://rpc.aboutcircles.com/";
 
     println!("Finding path and preparing contract data...");
-    println!("From: {}", sender);
-    println!("To: {}", receiver);
-    println!("Amount: {} wei", amount);
+    println!("From: {sender}");
+    println!("To: {receiver}");
+    println!("Amount: {amount} wei");
 
     let params = FindPathParams {
         from: sender,
@@ -52,16 +52,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Flow edges (raw tuples - convert to contract types)
     for (i, flow_edge) in path_data.flow_edges.iter().take(3).enumerate() {
         println!(
-            "Edge {}: stream_sink_id={}, amount={}",
-            i, flow_edge.streamSinkId, amount
+            "Edge {i}: stream_sink_id={}, amount={amount}",
+            flow_edge.streamSinkId
         );
     }
 
     // Streams (raw tuples - convert to contract types)
     for (i, stream) in path_data.streams.iter().enumerate() {
         println!(
-            "Stream {}: source_coordinate={}, flow_edge_ids={:?}",
-            i, stream.sourceCoordinate, stream.flowEdgeIds
+            "Stream {i}: source_coordinate={}, flow_edge_ids={:?}",
+            stream.sourceCoordinate, stream.flowEdgeIds
         );
     }
 

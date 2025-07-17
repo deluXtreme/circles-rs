@@ -228,7 +228,7 @@ mod tests {
                 path_data.packed_coordinates,
                 U256::ZERO,
             );
-            println!("Encoded data: {:?}", data);
+            println!("Encoded data: {data:?}");
             assert!(!data.is_empty(), "Encoded data should not be empty");
         }
     }
