@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-07-17
+
+### Added
+- Enhanced `PathData` struct with improved contract conversion methods
+- Better error handling and type safety in contract integration
+- Comprehensive test coverage for hub contract integration
+- Zero-boilerplate contract type conversions
+
+### Changed
+- **BREAKING**: Enhanced `PathData` API with more robust conversion methods
+- Improved performance in coordinate packing and vertex transformation
+- Better documentation and examples for contract integration workflows
+
+### Fixed
+- Resolved edge cases in flow matrix validation
+- Improved error messages for debugging contract integration issues
+
+### Dependencies
+- Updated `alloy-sol-types` for improved contract type generation
+- Enhanced workspace dependency management
+
+
 ## [0.3.0] - 2025-01-20
 
 ### Added

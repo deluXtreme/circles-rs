@@ -28,8 +28,8 @@ Add the crates to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-circles-types = "0.1.0"
-circles-pathfinder = "0.1.0"
+circles-types = "0.2.1"
+circles-pathfinder = "0.4.0"
 ```
 
 ### Basic Pathfinding Example
