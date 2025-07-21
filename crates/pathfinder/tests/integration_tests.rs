@@ -23,18 +23,15 @@ async fn test_full_pathfinding_flow() {
             .map(|t| t.value)
             .sum();
 
-        println!("Requested: {}, Available: {}", value, actual_flow);
+        println!("Requested: {value}, Available: {actual_flow}");
 
         // Step 2: Create flow matrix from transfers using the actual available flow
         let matrix_result = create_flow_matrix(sender, receiver, actual_flow, &transfers);
 
         if let Err(e) = &matrix_result {
-            println!("Flow matrix creation failed: {:?}", e);
-            println!("Transfers: {:?}", transfers);
-            println!(
-                "Sender: {:?}, Receiver: {:?}, Actual Flow: {:?}",
-                sender, receiver, actual_flow
-            );
+            println!("Flow matrix creation failed: {e:?}");
+            println!("Transfers: {transfers:?}");
+            println!("Sender: {sender:?}, Receiver: {receiver:?}, Actual Flow: {actual_flow:?}");
         }
 
         assert!(
@@ -68,7 +65,7 @@ async fn test_full_pathfinding_flow() {
         let terminal_sum: U192 = matrix
             .flow_edges
             .iter()
-            .filter(|e| e.stream_sink_id == 1)
+            .filter(|e| e.streamSinkId == 1)
             .map(|e| e.amount)
             .sum();
         assert_eq!(
@@ -105,7 +102,7 @@ async fn test_pathfinding_with_different_values() {
     ];
 
     for value in test_values {
-        println!("Testing with value: {}", value);
+        println!("Testing with value: {value}");
 
         let transfers_result = find_path(common::CIRCLES_RPC, sender, receiver, value, true).await;
 
@@ -114,18 +111,16 @@ async fn test_pathfinding_with_different_values() {
             let matrix_result = create_flow_matrix(sender, receiver, value, &transfers);
 
             if matrix_result.is_ok() {
-                println!("✓ Value {} works end-to-end", value);
+                println!("✓ Value {value} works end-to-end");
             } else {
                 println!(
-                    "✗ Value {} failed matrix creation: {:?}",
-                    value,
+                    "✗ Value {value} failed matrix creation: {:?}",
                     matrix_result.unwrap_err()
                 );
             }
         } else {
             println!(
-                "✗ Value {} failed pathfinding: {:?}",
-                value,
+                "✗ Value {value} failed pathfinding: {:?}",
                 transfers_result.unwrap_err()
             );
         }
@@ -147,7 +142,7 @@ async fn test_pathfinding_flow_with_error_handling() {
     assert!(invalid_rpc_result.is_err(), "Invalid RPC should fail");
     match invalid_rpc_result.unwrap_err() {
         PathfinderError::Rpc(_) => {} // Expected
-        other => panic!("Expected RPC error, got: {:?}", other),
+        other => panic!("Expected RPC error, got: {other:?}"),
     }
 
     // 2. Test matrix creation with mismatched values
@@ -171,7 +166,7 @@ async fn test_pathfinding_flow_with_error_handling() {
             assert_eq!(terminal_sum, wrong_value);
             assert_eq!(expected, value);
         }
-        other => panic!("Expected Imbalanced error, got: {:?}", other),
+        other => panic!("Expected Imbalanced error, got: {other:?}"),
     }
 }
 
@@ -183,15 +178,14 @@ async fn test_pathfinding_with_wrapping_variations() {
 
     // Test both with and without wrapping
     for with_wrap in [true, false] {
-        println!("Testing with wrap = {}", with_wrap);
+        println!("Testing with wrap = {with_wrap}");
 
         let result = find_path(common::CIRCLES_RPC, sender, receiver, value, with_wrap).await;
 
         match result {
             Ok(transfers) => {
                 println!(
-                    "✓ with_wrap={} succeeded with {} transfers",
-                    with_wrap,
+                    "✓ with_wrap={with_wrap} succeeded with {} transfers",
                     transfers.len()
                 );
 
@@ -204,7 +198,7 @@ async fn test_pathfinding_with_wrapping_variations() {
                 }
             }
             Err(e) => {
-                println!("✗ with_wrap={} failed: {:?}", with_wrap, e);
+                println!("✗ with_wrap={with_wrap} failed: {e:?}");
             }
         }
     }
@@ -272,24 +266,21 @@ async fn test_concurrent_pathfinding_requests() {
     while let Some(result) = join_set.join_next().await {
         match result {
             Ok((request_id, Ok(_transfers))) => {
-                println!("✓ Concurrent request {} succeeded", request_id);
+                println!("✓ Concurrent request {request_id} succeeded");
                 success_count += 1;
             }
             Ok((request_id, Err(e))) => {
-                println!("✗ Concurrent request {} failed: {:?}", request_id, e);
+                println!("✗ Concurrent request {request_id} failed: {e:?}");
                 error_count += 1;
             }
             Err(join_error) => {
-                println!("✗ Join error: {:?}", join_error);
+                println!("✗ Join error: {join_error:?}");
                 error_count += 1;
             }
         }
     }
 
-    println!(
-        "Concurrent test results: {} successes, {} errors",
-        success_count, error_count
-    );
+    println!("Concurrent test results: {success_count} successes, {error_count} errors");
 
     // We don't assert specific counts because RPC might be unavailable
     // The test is mainly to ensure no panics or deadlocks occur

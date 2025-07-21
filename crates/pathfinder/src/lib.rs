@@ -85,7 +85,7 @@ pub mod hub;
 mod packing;
 mod rpc;
 
-use alloy_primitives::aliases::U192;
+use alloy_primitives::{U256, aliases::U192};
 
 // Core public API - the main functions users need
 pub use flow::create_flow_matrix;
@@ -94,15 +94,46 @@ pub use flow::create_flow_matrix;
 pub use rpc::{FindPathParams, find_path, find_path_with_params};
 
 // Hub contract integration types and functions
-pub use hub::{FlowEdge, PathData, Stream};
+use alloy_primitives::Address;
+use alloy_sol_types::sol;
+pub use hub::PathData;
 
 // High-level convenience functions
 pub use convenience::{
-    get_available_flow, prepare_flow_for_contract, prepare_flow_for_contract_simple,
+    encode_redeem_flow_matrix, encode_redeem_trusted_data, get_available_flow,
+    prepare_flow_for_contract, prepare_flow_for_contract_simple,
 };
 
 // Utility functions for advanced users
 pub use packing::{pack_coordinates, transform_to_flow_vertices};
+
+#[derive(Clone, Debug)]
+pub struct FlowMatrix {
+    pub flow_vertices: Vec<Address>,
+    pub flow_edges: Vec<FlowEdge>,
+    pub streams: Vec<Stream>,
+    pub packed_coordinates: Vec<u8>,
+    pub source_coordinate: U256,
+}
+
+sol!(
+    /// Standard Circles Hub FlowEdge struct matching the contract ABI
+    #[derive(Debug, PartialEq)]
+    struct FlowEdge {
+        uint16 streamSinkId;
+        uint192 amount;
+    }
+
+    /// Standard Circles Hub Stream struct matching the contract ABI
+    #[derive(Debug, PartialEq)]
+    struct Stream {
+        uint16 sourceCoordinate;
+        uint16[] flowEdgeIds;
+        bytes data;
+    }
+
+    function redeem(bytes32 id, bytes calldata data) external;
+);
 
 /// Errors that can occur during pathfinding and flow matrix operations.
 #[derive(thiserror::Error, Debug)]

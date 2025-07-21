@@ -10,12 +10,12 @@ pub fn address_from_str(hex_str: &str) -> Address {
 
     // Pad to 40 characters (20 bytes) if needed
     let padded = if clean_hex.len() < 40 {
-        format!("{:0>40}", clean_hex)
+        format!("{clean_hex:0>40}")
     } else {
         clean_hex.to_string()
     };
 
-    format!("0x{}", padded)
+    format!("0x{padded}")
         .parse()
         .expect("Invalid address format")
 }
@@ -54,11 +54,11 @@ pub mod addresses {
     use alloy_primitives::{Address, address};
 
     pub fn sender() -> Address {
-        address!("0x52e14be00d5acff4424ad625662c6262b4fd1a58")
+        address!("0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214")
     }
 
     pub fn receiver() -> Address {
-        address!("0xcf6dc192dc292d5f2789da2db02d6dd4f41f4214")
+        address!("0x6b69683c8897e3d18e74b1ba117b49f80423da5d")
     }
 
     #[allow(dead_code)]

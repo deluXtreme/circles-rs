@@ -4,10 +4,10 @@
 //! This module handles the conversion of transfer paths into flow matrices
 //! suitable for smart contract execution, including vertex transformation,
 //! edge creation, and coordinate packing.
-use crate::PathfinderError;
-use alloy_primitives::Address;
-use alloy_primitives::aliases::U192;
-use circles_types::{FlowEdge, FlowMatrix, Stream, TransferStep};
+use crate::{FlowEdge, FlowMatrix, PathfinderError, Stream};
+use alloy_primitives::aliases::{U192, U256};
+use alloy_primitives::{Address, Bytes};
+use circles_types::TransferStep;
 
 use crate::packing::{pack_coordinates, transform_to_flow_vertices};
 
@@ -71,24 +71,24 @@ pub fn create_flow_matrix(
     let mut flow_edges: Vec<FlowEdge> = transfers
         .iter()
         .map(|t| FlowEdge {
-            stream_sink_id: if t.to_address == receiver { 1 } else { 0 },
+            streamSinkId: if t.to_address == receiver { 1 } else { 0 },
             amount: t.value,
         })
         .collect();
 
     // Ensure at least one terminal edge
-    if !flow_edges.iter().any(|e| e.stream_sink_id == 1) {
+    if !flow_edges.iter().any(|e| e.streamSinkId == 1) {
         let fallback = transfers
             .iter()
             .rposition(|t| t.to_address == receiver)
             .unwrap_or(flow_edges.len() - 1);
-        flow_edges[fallback].stream_sink_id = 1;
+        flow_edges[fallback].streamSinkId = 1;
     }
 
     // Check terminal balance
     let terminal_sum: U192 = flow_edges
         .iter()
-        .filter(|e| e.stream_sink_id == 1)
+        .filter(|e| e.streamSinkId == 1)
         .map(|e| e.amount)
         .sum();
     if terminal_sum != value {
@@ -102,13 +102,13 @@ pub fn create_flow_matrix(
     let term_edge_ids: Vec<u16> = flow_edges
         .iter()
         .enumerate()
-        .filter_map(|(i, e)| (e.stream_sink_id == 1).then_some(i as u16))
+        .filter_map(|(i, e)| (e.streamSinkId == 1).then_some(i as u16))
         .collect();
 
     let streams = vec![Stream {
-        source_coordinate: *idx.get(&sender).unwrap() as u16,
-        flow_edge_ids: term_edge_ids,
-        data: Vec::new(),
+        sourceCoordinate: *idx.get(&sender).unwrap() as u16,
+        flowEdgeIds: term_edge_ids,
+        data: Bytes::new(),
     }];
 
     // Pack coordinates
@@ -125,6 +125,6 @@ pub fn create_flow_matrix(
         flow_edges,
         streams,
         packed_coordinates,
-        source_coordinate: *idx.get(&sender).unwrap() as u16,
+        source_coordinate: U256::from(*idx.get(&sender).unwrap()),
     })
 }
