@@ -185,7 +185,6 @@ fn test_create_flow_matrix_multiple_terminal_edges() {
 }
 
 #[test]
-#[should_panic(expected = "attempt to subtract with overflow")]
 fn test_create_flow_matrix_empty_transfers() {
     let sender = common::addresses::sender();
     let receiver = common::addresses::receiver();
@@ -193,10 +192,7 @@ fn test_create_flow_matrix_empty_transfers() {
 
     let transfers = vec![];
 
-    // This currently panics due to an implementation bug where flow_edges.len() - 1
-    // underflows when there are no transfers. This test documents the current behavior.
-    // TODO: Fix the implementation to handle empty transfers gracefully
-    let _result = create_flow_matrix(sender, receiver, value, &transfers);
+    assert!(create_flow_matrix(sender, receiver, value, &transfers).is_err());
 }
 
 #[test]
