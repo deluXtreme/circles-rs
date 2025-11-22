@@ -65,6 +65,15 @@ pub fn create_flow_matrix(
     value: U192,
     transfers: &[TransferStep],
 ) -> Result<FlowMatrix, PathfinderError> {
+    if transfers.is_empty() {
+        // If the TS version never calls this with an empty path,
+        // treat it as a logic error / invalid input:
+        return Err(PathfinderError::Imbalanced {
+            expected: value,
+            terminal_sum: U192::from(0u64),
+        });
+    }
+
     let (flow_vertices, idx) = transform_to_flow_vertices(transfers, sender, receiver);
 
     // Build edges

@@ -11,12 +11,13 @@ categories = ["cryptography"]
 readme = "README.md"
 
 [dependencies]
+alloy-contract = "1.1.2"
 alloy-primitives = { workspace = true }                                          # Address, U256
-alloy-provider = { version = "1.0.9", features = ["reqwest"] }
-alloy-sol-types = { version = "1.0.9" }                                          # sol! macro
+alloy-provider = { version = "1.1.2", features = ["reqwest"] }
+alloy-sol-types = { version = "1.4.1", features = ["json"] }                     # sol! macro
 circles-types = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-reqwest = { version = "0.12.19", default-features = false, features = ["json"] }
-tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
+tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
