@@ -32,19 +32,18 @@ pub fn parse(event: RpcSubscriptionEvent) -> Result<CirclesEvent, serde_json::Er
 
 fn parse_event_type(raw: &str) -> Result<CirclesEventType, serde_json::Error> {
     // First try as-is using serde's rename mapping.
-    if let Ok(et) = serde_json::from_str::<CirclesEventType>(&format!("\"{}\"", raw)) {
+    if let Ok(et) = serde_json::from_str::<CirclesEventType>(&format!("\"{raw}\"")) {
         return Ok(et);
     }
     // Try inserting an underscore after namespace prefix (e.g., CrcV2RegisterHuman -> CrcV2_RegisterHuman).
     if raw.starts_with("CrcV2") && !raw.contains('_') {
         let alt = format!("CrcV2_{}", &raw[5..]);
-        if let Ok(et) = serde_json::from_str::<CirclesEventType>(&format!("\"{}\"", alt)) {
+        if let Ok(et) = serde_json::from_str::<CirclesEventType>(&format!("\"{alt}\"")) {
             return Ok(et);
         }
     }
     Err(serde_json::Error::custom(format!(
-        "unknown event type: {}",
-        raw
+        "unknown event type: {raw}"
     )))
 }
 

@@ -35,7 +35,7 @@ impl PathfinderMethods {
         }
         let payload = Payload {
             params,
-            simulated_balances: simulated_balances,
+            simulated_balances,
         };
         self.client.call("circlesV2_findPath", (payload,)).await
     }
