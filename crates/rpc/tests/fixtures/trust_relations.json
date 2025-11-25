@@ -1,0 +1,12 @@
+[
+  {
+    "block_number": 40000001,
+    "timestamp": 1716000000,
+    "transaction_index": 2,
+    "log_index": 4,
+    "transaction_hash": "0xaaa0000000000000000000000000000000000000000000000000000000000001",
+    "truster": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+    "trustee": "0xfeed00000000000000000000000000000000beef",
+    "expiry_time": 1800000000
+  }
+]
