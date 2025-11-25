@@ -1,6 +1,6 @@
 # Circles SDK Rust
 
-A Rust implementation of the Circles protocol SDK, providing pathfinding, flow matrix calculation, and type-safe interactions with the Circles ecosystem.
+A comprehensive Rust implementation of the Circles protocol SDK, providing complete type definitions, pathfinding, RPC communication, contract interactions, and type-safe operations for the Circles ecosystem.
 
 ## Overview
 
@@ -8,19 +8,24 @@ The Circles protocol enables a network of interconnected personal currencies, al
 
 ## Features
 
+- **Complete Protocol Coverage**: Comprehensive types for avatars, trust relations, tokens, groups, events, and more
 - **Pathfinding**: Discover optimal transfer routes through the Circles trust network
 - **Flow Matrix Calculation**: Generate contract-ready flow matrices for multi-hop transfers
+- **RPC Integration**: Full JSON-RPC client support with query DSL for circles_query
+- **Event System**: Complete event handling with 25+ supported event types
 - **Type Safety**: Strongly-typed Ethereum addresses and amounts with compile-time guarantees
-- **Performance**: Zero-copy operations and efficient serialization
+- **Alloy Integration**: Built on alloy-primitives for seamless Ethereum compatibility
+- **API Compatibility**: Direct compatibility with TypeScript Circles SDK
+- **Async Ready**: Async traits for contract runners and batch operations
 - **Contract Integration**: Direct compatibility with Circles smart contract ABIs
-- **Well Tested**: Comprehensive test suite with integration and unit tests
 
 ## Workspace Structure
 
-This workspace contains two main crates:
+This workspace contains multiple crates:
 
-- **[`circles-types`](crates/types/)** - Core type definitions and data structures
-- **[`circles-pathfinder`](crates/pathfinder/)** - Pathfinding algorithms and contract integration
+- **[`circles-types`](crates/types/)** - Complete type definitions for the entire Circles protocol ecosystem
+- **[`circles-pathfinder`](crates/pathfinder/)** - Pathfinding algorithms and contract integration  
+- **[`abis`](crates/abis/)** - Contract ABI definitions for all Circles smart contracts
 
 ## Quick Start
 
@@ -28,8 +33,9 @@ Add the crates to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-circles-types = "0.2.1"
+circles-types = "0.3.0"
 circles-pathfinder = "0.4.0"
+abis = "0.1.0"
 ```
 
 ### Basic Pathfinding Example
@@ -69,31 +75,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Working with Types
 
 ```rust
-use circles_types::{TransferStep, FlowMatrix, Address};
-use alloy_primitives::U256;
-
-let transfer = TransferStep {
-    from_address: "0x123...".parse()?,
-    to_address: "0x456...".parse()?,
-    token_owner: "0x789...".parse()?,
-    value: U256::from(1000u64),
+use circles_types::{
+    AvatarInfo, AvatarType, CirclesConfig, Address, TxHash, U256,
+    FindPathParams, Balance, TokenBalanceResponse
 };
 
+// Create avatar information
+let avatar = AvatarInfo {
+    block_number: 12345,
+    timestamp: Some(1234567890),
+    transaction_index: 1,
+    log_index: 0,
+    transaction_hash: "0xabc123...".parse()?,
+    version: 2,
+    avatar_type: AvatarType::CrcV2RegisterHuman,
+    avatar: "0x123...".parse()?,
+    token_id: Some(U256::from(1)),
+    has_v1: false,
+    v1_token: None,
+    cid_v0_digest: None,
+    cid_v0: None,
+    v1_stopped: None,
+    is_human: true,
+    name: None,
+    symbol: None,
+};
+
+// Work with flexible balance types
+let balance = Balance::Raw(U256::from(1000000000000000000u64)); // 1 token
+match balance {
+    Balance::Raw(amount) => println!("Raw: {}", amount),
+    Balance::TimeCircles(amount) => println!("TimeCircles: {:.6}", amount),
+}
+
 // Serialize to JSON for API calls
-let json = serde_json::to_string(&transfer)?;
+let json = serde_json::to_string(&avatar)?;
 ```
 
 ## Crate Documentation
 
 ### circles-types
 
-Core type definitions for the Circles protocol ecosystem. Provides fundamental data structures with full serde serialization support:
+Complete type definitions for the Circles protocol ecosystem. Provides comprehensive data structures for all protocol aspects with full serde serialization support:
 
-- `TransferStep` - Individual transfer operations
-- `FlowEdge` - Directed edges in flow graphs
-- `Stream` - Collections of edges representing transfer routes
-- `FlowMatrix` - Complete flow representations for contracts
-- `Address` - Ethereum addresses (re-exported from alloy-primitives)
+**Core Types:**
+- `Address`, `TxHash`, `U256` - Ethereum primitives (re-exported from alloy)
+- `TransactionRequest`, `Balance` - Transaction and balance handling
+
+**Protocol Types:**
+- `AvatarInfo`, `Profile`, `AvatarType` - Avatar and profile management
+- `TrustRelation`, `TrustRelationType` - Trust network relationships
+- `TokenBalance`, `TokenInfo` - Token operations and metadata
+- `CirclesEvent`, `CirclesEventType` - Complete event system (25+ types)
+- `GroupRow`, `GroupMembershipRow` - Group management
+- `FindPathParams`, `PathfindingResult` - Pathfinding operations
+- `QueryParams`, `FilterPredicate` - Query DSL for RPC calls
+- `CirclesConfig` - Protocol configuration
+
+**Contract Integration:**
+- `ContractRunner`, `BatchRun` - Async traits for contract execution
+- `FlowMatrix`, `TransferStep` - Flow calculations and transfers
+- `JsonRpcRequest`, `JsonRpcResponse` - RPC communication
 
 **[View Documentation](crates/types/)**
 
@@ -224,8 +266,8 @@ at your option.
 
 ## Acknowledgments
 
-- Built on [alloy-primitives](https://github.com/alloy-rs/core) for Ethereum type compatibility
-- Inspired by the [TypeScript Circles SDK](https://github.com/aboutcircles/circles-sdk)
+- Built on [alloy-rs](https://github.com/alloy-rs/alloy) for comprehensive Ethereum type compatibility and RPC functionality
+- API-compatible with the [TypeScript Circles SDK](https://github.com/aboutcircles/circles-sdk)
 - Part of the [Circles Protocol](https://aboutcircles.com/) ecosystem
 
 ---
