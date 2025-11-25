@@ -1,158 +1,263 @@
 # Circles Types
 
-Core type definitions for the Circles protocol ecosystem.
+Complete type definitions for the Circles protocol ecosystem in Rust.
 
-This crate provides fundamental data structures used throughout the Circles protocol implementation, including flow matrices, transfer steps, and address handling.
+This crate provides comprehensive data structures for all aspects of the Circles protocol, including avatar management, trust relations, token operations, pathfinding, event handling, RPC communication, and contract interactions.
 
 ## Overview
 
-The `circles-types` crate serves as the foundation for all Circles protocol operations, providing type-safe representations of:
-
-- Network addresses and transaction data
-- Flow graph structures for pathfinding
-- Transfer operations and routing information
-- Matrix representations for smart contract interactions
+The `circles-types` crate serves as the foundation for all Circles protocol operations, providing type-safe representations of the entire protocol ecosystem. It includes over 60 types organized into logical modules covering every aspect of the Circles network.
 
 ## Features
 
-- **Type Safety**: Leverages Rust's type system with `alloy-primitives` for Ethereum compatibility
-- **Serialization**: Full `serde` support for JSON serialization/deserialization
-- **Zero-Copy Operations**: Efficient memory usage with borrowed data where possible
-- **Protocol Compatibility**: Types designed to match Circles smart contract interfaces
+- **Complete Protocol Coverage**: Types for avatars, trust, tokens, groups, events, and more
+- **Alloy Integration**: Built on `alloy-primitives` for seamless Ethereum compatibility
+- **API Compatible**: Matches TypeScript Circles SDK structure exactly
+- **Type Safety**: Leverages Rust's type system while maintaining flexibility
+- **Serialization Support**: Full `serde` support for JSON serialization/deserialization
+- **Async Ready**: Traits for contract runners and batch operations
+- **Query DSL**: Complete query builder for `circles_query` RPC method
 
-## Usage
+## Installation
 
 Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-circles-types = "0.1.0"
+circles-types = "0.3.0"
 ```
 
-### Basic Usage
+## Quick Start
 
 ```rust
-use circles_types::{Address, TransferStep, FlowMatrix, FlowEdge, Stream};
-use alloy_primitives::U256;
+use circles_types::{
+    // Core types
+    Address, U256, TxHash,
+    // Avatar and profile types
+    AvatarInfo, Profile, AvatarType,
+    // Trust relations
+    TrustRelation, TrustRelationType,
+    // Pathfinding
+    FindPathParams, PathfindingResult,
+    // Configuration
+    CirclesConfig,
+};
 
-// Create a transfer step
+// Create avatar information
+let avatar = AvatarInfo {
+    block_number: 12345,
+    timestamp: Some(1234567890),
+    transaction_index: 1,
+    log_index: 0,
+    transaction_hash: "0xabc123...".parse()?,
+    version: 2,
+    avatar_type: AvatarType::CrcV2RegisterHuman,
+    avatar: "0x123...".parse()?,
+    token_id: Some(U256::from(1)),
+    has_v1: false,
+    v1_token: None,
+    cid_v0_digest: None,
+    cid_v0: None,
+    v1_stopped: None,
+    is_human: true,
+    name: None,
+    symbol: None,
+};
+
+// Create pathfinding parameters
+let params = FindPathParams {
+    from: "0xabc...".parse()?,
+    to: "0xdef...".parse()?,
+    target_flow: U256::from(1000u64),
+    use_wrapped_balances: Some(true),
+    from_tokens: None,
+    to_tokens: None,
+    exclude_from_tokens: None,
+    exclude_to_tokens: None,
+    simulated_balances: None,
+    max_transfers: Some(10),
+};
+
+// Serialize to JSON
+let json = serde_json::to_string(&avatar)?;
+```
+
+## Type Categories
+
+### Core Blockchain Types
+- `Address` - Ethereum addresses (re-exported from alloy-primitives)
+- `TxHash`, `BlockHash` - Transaction and block hashes
+- `U256`, `U192` - Large unsigned integers
+- `TransactionRequest` - Transaction request data
+
+### Avatar & Profile Management
+- `AvatarInfo` - Complete avatar information and metadata
+- `Profile` - User profile with name, description, images
+- `GroupProfile` - Group profile extending Profile with symbol
+- `AvatarType` - Registration event types (Human, Group, Organization)
+
+### Trust & Social Graph
+- `TrustRelation` - Individual trust relationship
+- `AggregatedTrustRelation` - Processed trust relationships
+- `TrustRelationType` - Trust relationship types
+
+### Token Operations
+- `TokenBalance` - Token balance with metadata
+- `TokenInfo` - Token creation and type information
+- `TokenHolder` - Account token holdings
+- `Balance` - Flexible balance type (raw or formatted)
+
+### Group Management
+- `GroupRow` - Group registration and metadata
+- `GroupMembershipRow` - Group membership records
+- `GroupQueryParams` - Parameters for group queries
+
+### Pathfinding & Transfers
+- `FindPathParams` - Parameters for path computation
+- `PathfindingResult` - Computed transfer path
+- `TransferStep` - Individual transfer in a path
+- `FlowMatrix` - Complete flow representation for contracts
+- `SimulatedBalance` - Balance simulation for pathfinding
+
+### Event System
+- `CirclesEvent` - Universal event structure
+- `CirclesEventType` - All supported event types (25+ variants)
+- `CirclesBaseEvent` - Common event metadata
+
+### RPC & Communication
+- `JsonRpcRequest`, `JsonRpcResponse` - Standard JSON-RPC types
+- `CirclesQueryResponse` - Response format for queries
+- `TokenBalanceResponse` - Token balance from RPC calls
+
+### Query System
+- `QueryParams` - Parameters for `circles_query` RPC method
+- `FilterPredicate`, `Conjunction` - Query filtering DSL
+- `PagedResult` - Paginated query results
+- `SortOrder`, `OrderBy` - Result sorting
+
+### Contract Execution
+- `ContractRunner` - Async trait for contract interactions
+- `BatchRun` - Trait for batched transaction execution
+- `RunnerConfig` - Configuration for contract runners
+
+## Usage Examples
+
+### Working with Balances
+
+```rust
+use circles_types::{Balance, U256};
+
+let balance = Balance::Raw(U256::from(1000000000000000000u64)); // 1 token
+match balance {
+    Balance::Raw(amount) => println!("Raw balance: {} wei", amount),
+    Balance::TimeCircles(amount) => println!("TimeCircles: {:.6}", amount),
+}
+```
+
+### Query Building
+
+```rust
+use circles_types::{QueryParams, FilterPredicate, FilterType, OrderBy, SortOrder};
+
+let query = QueryParams::new(
+    "CrcV2".to_string(),
+    "Avatars".to_string(),
+    vec!["avatar".to_string(), "version".to_string()],
+)
+.with_filter(vec![
+    FilterPredicate::equals("version".to_string(), 2).into()
+])
+.with_order(vec![
+    OrderBy::desc("block_number".to_string())
+])
+.with_limit(100);
+```
+
+### Event Handling
+
+```rust
+use circles_types::{CirclesEvent, CirclesEventType};
+
+// Parse events from RPC
+let event: CirclesEvent = serde_json::from_str(&json_data)?;
+match event.event_type {
+    CirclesEventType::CrcV2RegisterHuman => {
+        println!("New human registered!");
+    }
+    CirclesEventType::CrcV2Trust => {
+        println!("Trust relationship established");
+    }
+    _ => println!("Other event type"),
+}
+```
+
+## Flow Matrix Operations
+
+```rust
+use circles_types::{FlowMatrix, FlowEdge, Stream, TransferStep, Address, U192};
+
+// Create transfer step
 let transfer = TransferStep {
     from_address: "0x123...".parse()?,
     to_address: "0x456...".parse()?,
     token_owner: "0x789...".parse()?,
-    value: U256::from(1000u64),
+    value: U192::from(1000u64),
 };
 
-// Create flow edges for routing
+// Create flow edge
 let edge = FlowEdge {
     stream_sink_id: 1,
-    amount: U256::from(1000u64),
+    amount: U192::from(1000u64),
 };
 
-// Create streams for flow organization
+// Create stream
 let stream = Stream {
     source_coordinate: 0,
-    flow_edge_ids: vec![0, 1, 2],
+    flow_edge_ids: vec![0],
     data: vec![],
 };
-```
 
-### Working with Flow Matrices
-
-```rust
-use circles_types::{FlowMatrix, Address};
-
+// Assemble flow matrix
 let matrix = FlowMatrix {
-    flow_vertices: vec![/* addresses */],
-    flow_edges: vec![/* edges */],
-    streams: vec![/* streams */],
-    packed_coordinates: vec![/* coordinate data */],
+    flow_vertices: vec!["0x123...".parse()?, "0x456...".parse()?],
+    flow_edges: vec![edge],
+    streams: vec![stream],
+    packed_coordinates: vec![0, 1, 2, 3],
     source_coordinate: 0,
 };
-
-// Flow matrices are ready for use with pathfinding algorithms
-// and smart contract interactions
-```
-
-## Type Reference
-
-### Core Types
-
-- **`Address`**: Ethereum address type (re-exported from `alloy-primitives`)
-- **`TransferStep`**: Represents a single transfer operation in a multi-hop path
-- **`FlowEdge`**: Directed edge in the flow graph with amount and routing information
-- **`Stream`**: Collection of flow edges representing a complete transfer route
-- **`FlowMatrix`**: Complete flow representation ready for smart contract execution
-
-### Transfer Operations
-
-The `TransferStep` struct captures all information needed for a single transfer:
-
-```rust
-pub struct TransferStep {
-    pub from_address: Address,    // Source of the transfer
-    pub to_address: Address,      // Destination of the transfer
-    pub token_owner: Address,     // Owner of the token being transferred
-    pub value: U256,             // Amount to transfer
-}
-```
-
-### Flow Graph Structures
-
-Flow edges represent the routing information:
-
-```rust
-pub struct FlowEdge {
-    pub stream_sink_id: u16,     // 0 = intermediate, 1 = terminal
-    pub amount: U256,            // Amount flowing through this edge
-}
-```
-
-Streams organize related flow edges:
-
-```rust
-pub struct Stream {
-    pub source_coordinate: u16,   // Starting vertex index
-    pub flow_edge_ids: Vec<u16>, // Edges belonging to this stream
-    pub data: Vec<u8>,           // Additional protocol data
-}
-```
-
-## Serialization
-
-All types implement `Serialize` and `Deserialize` for easy JSON handling:
-
-```rust
-use circles_types::TransferStep;
-
-let transfer = TransferStep { /* ... */ };
-let json = serde_json::to_string(&transfer)?;
-let parsed: TransferStep = serde_json::from_str(&json)?;
 ```
 
 ## Compatibility
 
 This crate is designed to work seamlessly with:
 
-- **`circles-pathfinder`**: Pathfinding and flow matrix calculation
+- **Alloy Ecosystem**: Full compatibility with alloy-primitives and alloy-rpc-types
+- **Circles RPC**: Direct serialization support for all RPC methods
 - **Smart Contracts**: Types match Solidity struct layouts
-- **`alloy`**: Full compatibility with the Alloy crate ecosystem
-- **JSON-RPC**: Direct serialization support for protocol communication
+- **TypeScript SDK**: API-compatible with the TypeScript Circles SDK
+- **Async Runtimes**: Works with tokio, async-std, and other runtimes
 
 ## Contributing
 
 Contributions are welcome! Please ensure that:
 
-- All public types implement `Clone`, `Debug`, and serde traits where appropriate
-- New types include comprehensive documentation
-- Changes maintain backward compatibility where possible
-- Tests cover both serialization and basic usage patterns
+- All public types implement appropriate traits (`Clone`, `Debug`, `Serialize`, `Deserialize`)
+- New types include comprehensive documentation with examples
+- API compatibility with TypeScript SDK is maintained
+- Changes include appropriate tests
+- Follow Rust naming conventions (snake_case)
 
 ## License
 
 Licensed under either of
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- MIT license ([LICENSE-MIT](../../LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
+
+## Links
+
+- [Workspace Documentation](../../README.md)
+- [Circles Protocol](https://aboutcircles.com/)
+- [TypeScript SDK](https://github.com/aboutcircles/circles-sdk)
+- [Alloy Documentation](https://alloy-rs.github.io/alloy/)
