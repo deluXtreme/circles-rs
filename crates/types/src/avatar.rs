@@ -1,6 +1,5 @@
 use alloy_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 /// Avatar type variants
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
