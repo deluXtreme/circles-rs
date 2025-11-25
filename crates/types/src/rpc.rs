@@ -3,15 +3,15 @@ use serde::{Deserialize, Serialize};
 
 /// JSON-RPC request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonRpcRequest<TParams = serde_json::Value> {
+pub struct JsonRpcRequest<T = serde_json::Value> {
     pub jsonrpc: String,
     pub id: serde_json::Value, // Can be number or string
     pub method: String,
-    pub params: TParams,
+    pub params: T,
 }
 
-impl<TParams> JsonRpcRequest<TParams> {
-    pub fn new(id: impl Into<serde_json::Value>, method: String, params: TParams) -> Self {
+impl<T> JsonRpcRequest<T> {
+    pub fn new(id: impl Into<serde_json::Value>, method: String, params: T) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
             id: id.into(),
@@ -32,17 +32,17 @@ pub struct JsonRpcError {
 
 /// JSON-RPC response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonRpcResponse<TResult = serde_json::Value> {
+pub struct JsonRpcResponse<T = serde_json::Value> {
     pub jsonrpc: String,
     pub id: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub result: Option<TResult>,
+    pub result: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<JsonRpcError>,
 }
 
-impl<TResult> JsonRpcResponse<TResult> {
-    pub fn success(id: impl Into<serde_json::Value>, result: TResult) -> Self {
+impl<T> JsonRpcResponse<T> {
+    pub fn success(id: impl Into<serde_json::Value>, result: T) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
             id: id.into(),
