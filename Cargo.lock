@@ -626,6 +626,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
+
+[[package]]
 name = "ark-ff"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1085,14 +1091,17 @@ dependencies = [
 
 [[package]]
 name = "circles-pathfinder"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "alloy-contract",
  "alloy-primitives",
  "alloy-provider",
  "alloy-sol-types",
+ "anyhow",
+ "circles-rpc",
  "circles-types",
- "reqwest",
+ "circles-utils",
+ "futures",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -1118,6 +1127,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "circles-transfers"
+version = "0.1.0"
+dependencies = [
+ "abis",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-sol-types",
+ "bytes",
+ "circles-pathfinder",
+ "circles-rpc",
+ "circles-types",
+ "circles-utils",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "circles-types"
 version = "0.2.1"
 dependencies = [
@@ -1128,6 +1156,17 @@ dependencies = [
  "async-trait",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "circles-utils"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "num-bigint",
+ "num-traits",
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

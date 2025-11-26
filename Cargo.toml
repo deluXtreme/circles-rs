@@ -1,6 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["crates/types", "crates/pathfinder", "crates/abis", "crates/rpc"]
+members = [
+    "crates/types",
+    "crates/pathfinder",
+    "crates/abis",
+    "crates/rpc",
+    "crates/utils",
+    "crates/transfers",
+]
 
 [workspace.dependencies]
 # Shared dependencies across all crates
