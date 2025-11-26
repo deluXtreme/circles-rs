@@ -1,0 +1,28 @@
+[package]
+name = "circles-transfers"
+version = "0.1.0"
+edition = "2021"
+description = "Transfer transaction builder for Circles protocol"
+authors = ["franco <0xpantera@proton.me>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/deluXtreme/circles-rs"
+
+[dependencies]
+alloy-primitives = { workspace = true }
+alloy-provider = { version = "1.1.2", features = ["reqwest"] }
+alloy-sol-types = "1.4.1"
+abis = { path = "../abis" }
+circles-rpc = { path = "../rpc" }
+circles-pathfinder = { path = "../pathfinder" }
+circles-types = { workspace = true }
+circles-utils = { path = "../utils" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = "1.0"
+tokio = { workspace = true, optional = true }
+futures = "0.3"
+bytes = "1.6"
+
+[features]
+default = []
+ws = ["circles-rpc/ws"]
