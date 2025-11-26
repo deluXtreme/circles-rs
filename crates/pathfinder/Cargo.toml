@@ -1,6 +1,6 @@
 [package]
 name = "circles-pathfinder"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 authors = ["franco <0xpantera@proton.me>"]
 description = "Pathfinding and flow matrix calculation for the Circles protocol"
@@ -16,8 +16,15 @@ alloy-primitives = { workspace = true }                                         
 alloy-provider = { version = "1.1.2", features = ["reqwest"] }
 alloy-sol-types = { version = "1.4.1", features = ["json"] }                     # sol! macro
 circles-types = { workspace = true }
+circles-rpc = { path = "../rpc" }
+circles-utils = { path = "../utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
 tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
+futures = "0.3"
+anyhow = "1"
+
+[features]
+default = []
+ws = ["circles-rpc/ws"]

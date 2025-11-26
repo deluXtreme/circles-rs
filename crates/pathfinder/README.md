@@ -94,6 +94,22 @@ function redeemPayment(
 ) external;
 ```
 
+### Examples
+
+- `contract_integration`: end-to-end pathfinding and flow matrix creation for contract calls.
+- `path_and_events`: pathfinding plus optional WS event subscription (`CIRCLES_RPC_URL`, `CIRCLES_RPC_WS_URL`). HTTP defaults to the official RPC `https://rpc.aboutcircles.com/`. WS defaults to `wss://rpc.helsinki.aboutcircles.com/ws` (publishes events in our testing, but it may be a testnet/backing node—set `CIRCLES_RPC_WS_URL` explicitly if you have a known mainnet-capable WS endpoint).
+
+### Wrapped tokens & netted flow
+
+- Use `token_info_map_from_path` + `wrapped_totals_from_path` + `expected_unwrapped_totals` to replace wrapped token owners with underlying avatars, e.g.:
+```rust
+let info_map = token_info_map_from_path(current_avatar, &rpc, &path).await?;
+let wrapped = wrapped_totals_from_path(&path, &info_map);
+let unwrapped = expected_unwrapped_totals(&wrapped, &info_map);
+let rewritten = replace_wrapped_tokens(&path, &unwrapped);
+```
+- To sanity-check flows: `compute_netted_flow(&rewritten)` and `assert_no_netted_flow_mismatch(&rewritten, None, None)` (optionally pass explicit source/sink).
+
 ### No Manual Conversions Required
 
 The old approach required manual field-by-field conversion:

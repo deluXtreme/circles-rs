@@ -1139,6 +1139,7 @@ dependencies = [
  "circles-rpc",
  "circles-types",
  "circles-utils",
+ "futures",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
