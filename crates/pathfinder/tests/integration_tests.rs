@@ -141,7 +141,7 @@ async fn test_pathfinding_flow_with_error_handling() {
 
     assert!(invalid_rpc_result.is_err(), "Invalid RPC should fail");
     match invalid_rpc_result.unwrap_err() {
-        PathfinderError::Rpc(_) => {} // Expected
+        PathfinderError::Transport(_) => {} // Expected
         other => panic!("Expected RPC error, got: {other:?}"),
     }
 
@@ -298,12 +298,14 @@ async fn test_improved_user_workflow() {
     let params = FindPathParams {
         from: sender,
         to: receiver,
-        target_flow: value,
+        target_flow: alloy_primitives::U256::from(value),
         use_wrapped_balances: Some(true),
         from_tokens: None,
         to_tokens: None,
         exclude_from_tokens: None,
         exclude_to_tokens: None,
+        simulated_balances: None,
+        max_transfers: None,
     };
 
     // NEW API: One function call does everything!
