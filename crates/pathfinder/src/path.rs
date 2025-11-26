@@ -14,10 +14,10 @@ pub async fn token_info_map_from_path(
 ) -> Result<HashMap<Address, TokenInfo>, PathfinderError> {
     let mut unique = Vec::new();
     for t in &path.transfers {
-        if t.from == current_avatar {
-            if let Ok(addr) = Address::from_str(&t.token_owner) {
-                unique.push(addr);
-            }
+        if t.from == current_avatar
+            && let Ok(addr) = Address::from_str(&t.token_owner)
+        {
+            unique.push(addr);
         }
     }
     unique.sort();
@@ -46,15 +46,14 @@ pub fn wrapped_totals_from_path(
 ) -> HashMap<Address, (U256, String)> {
     let mut out = HashMap::new();
     for t in &path.transfers {
-        if let Ok(owner) = Address::from_str(&t.token_owner) {
-            if let Some(info) = token_info_map.get(&owner) {
-                if info.token_type.starts_with("CrcV2_ERC20WrapperDeployed") {
-                    let entry = out
-                        .entry(owner)
-                        .or_insert((U256::ZERO, info.token_type.clone()));
-                    entry.0 = entry.0.saturating_add(t.value);
-                }
-            }
+        if let Ok(owner) = Address::from_str(&t.token_owner)
+            && let Some(info) = token_info_map.get(&owner)
+            && info.token_type.starts_with("CrcV2_ERC20WrapperDeployed")
+        {
+            let entry = out
+                .entry(owner)
+                .or_insert((U256::ZERO, info.token_type.clone()));
+            entry.0 = entry.0.saturating_add(t.value);
         }
     }
     out
