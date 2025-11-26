@@ -12,18 +12,20 @@
 //!
 //! ```rust,no_run
 //! use circles_pathfinder::{FindPathParams, prepare_flow_for_contract};
-//! use alloy_primitives::{Address, aliases::U192};
+//! use alloy_primitives::{Address, aliases::U192, U256};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let params = FindPathParams {
 //!     from: "0x123...".parse()?,
 //!     to: "0x456...".parse()?,
-//!     target_flow: U192::from(1_000_000_000_000_000_000u64), // 1 CRC
+//!     target_flow: U256::from(1_000_000_000_000_000_000u64), // 1 CRC
 //!     use_wrapped_balances: Some(true),
 //!     from_tokens: None,
 //!     to_tokens: None,
 //!     exclude_from_tokens: None,
 //!     exclude_to_tokens: None,
+//!     simulated_balances: None,
+//!     max_transfers: None,
 //! };
 //!
 //! // One function call gets contract-ready data
@@ -89,9 +91,11 @@ use alloy_primitives::{U256, aliases::U192};
 
 // Core public API - the main functions users need
 pub use flow::create_flow_matrix;
+pub mod path;
 
 // RPC functionality
-pub use rpc::{FindPathParams, find_path, find_path_with_params};
+pub use circles_types::FindPathParams;
+pub use rpc::{find_path, find_path_with_params};
 
 // Hub contract integration types and functions
 use alloy_primitives::Address;
@@ -102,6 +106,11 @@ pub use hub::PathData;
 pub use convenience::{
     encode_redeem_flow_matrix, encode_redeem_trusted_data, get_available_flow,
     prepare_flow_for_contract, prepare_flow_for_contract_simple,
+};
+
+pub use path::{
+    assert_no_netted_flow_mismatch, compute_netted_flow, expected_unwrapped_totals,
+    replace_wrapped_tokens, shrink_path_values, token_info_map_from_path, wrapped_totals_from_path,
 };
 
 // Utility functions for advanced users
@@ -159,16 +168,11 @@ pub enum PathfinderError {
         expected: U192,
     },
 
-    /// Network or HTTP communication error.
-    ///
-    /// This wraps underlying `reqwest` errors that occur during RPC communication.
-    #[error("rpc error: {0}")]
-    Rpc(#[from] reqwest::Error),
+    /// RPC transport/client error (HTTP/WS or deserialization).
+    #[error("rpc transport error: {0}")]
+    Transport(#[from] circles_rpc::CirclesRpcError),
 
-    /// JSON-RPC protocol error or invalid response.
-    ///
-    /// This occurs when the RPC endpoint returns an error, or when the response
-    /// format doesn't match expectations (missing fields, wrong types, etc.).
-    #[error("json-rpc error: {0}")]
-    JsonRpc(String),
+    /// JSON-RPC payload error returned by the server or an invalid response body.
+    #[error("rpc response error: {0}")]
+    RpcResponse(String),
 }

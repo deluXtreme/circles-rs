@@ -10,26 +10,29 @@
 //!
 //! ```rust,no_run
 //! use circles_pathfinder::{find_path_with_params, FindPathParams, PathData};
-//! use alloy_primitives::Address;
+//! use alloy_primitives::{Address, U256};
 //! use alloy_primitives::aliases::U192;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let target_flow = U192::from(1000u64);
 //! let params = FindPathParams {
 //!     from: Address::ZERO,
 //!     to: Address::from([1u8; 20]),
-//!     target_flow: U192::from(1000u64),
+//!     target_flow: U256::from(target_flow),
 //!     use_wrapped_balances: Some(true),
 //!     from_tokens: None,
 //!     to_tokens: None,
 //!     exclude_from_tokens: None,
 //!     exclude_to_tokens: None,
+//!     simulated_balances: None,
+//!     max_transfers: None,
 //! };
 //!
 //! // Find the path
 //! let transfers = find_path_with_params("https://rpc.aboutcircles.com", params.clone()).await?;
 //!
 //! // Create PathData and convert to contract types
-//! let path_data = PathData::from_transfers(&transfers, params.from, params.to, params.target_flow)?;
+//! let path_data = PathData::from_transfers(&transfers, params.from, params.to, target_flow)?;
 //! let (vertices, edges, streams, coords) = path_data.to_contract_params();
 //!
 //! // Ready for contract calls!
