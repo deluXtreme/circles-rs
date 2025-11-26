@@ -1140,6 +1140,17 @@ dependencies = [
  "circles-types",
  "circles-utils",
  "futures",
+name = "circles-rpc"
+version = "0.1.0"
+dependencies = [
+ "alloy-json-rpc",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-transport-http",
+ "alloy-transport-ws",
+ "circles-types",
+ "futures",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
