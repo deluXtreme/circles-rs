@@ -48,10 +48,45 @@ impl EventsMethods {
     where
         F: RpcSend + 'static,
     {
+        // Subscribe as serde_json::Value to tolerate keep-alive frames like `[]`
+        // that some public endpoints emit, then map into RpcSubscriptionEvent.
         let provider = self.client.provider().clone();
-        let sub = self.client.subscribe(("circles", filter))?;
-        let (stream, id) = EventStream::from_subscription(sub).await?;
-        Ok(CirclesSubscription::new(stream, id, provider))
+        let sub = self
+            .client
+            .subscribe::<_, serde_json::Value>(("circles", filter))?;
+        let (raw_stream, id) = EventStream::from_subscription(sub).await?;
+        let mapped = raw_stream.into_inner().flat_map(|item| match item {
+            Ok(val) => {
+                // Normalize frames: empty arrays are heartbeats, arrays batch events.
+                if let Some(arr) = val.as_array() {
+                    if arr.is_empty() {
+                        return futures::stream::empty().boxed();
+                    }
+                    let iter = arr.clone().into_iter().map(|v| {
+                        serde_json::from_value::<RpcSubscriptionEvent>(v).map_err(|err| {
+                            crate::error::CirclesRpcError::InvalidResponse {
+                                message: err.to_string(),
+                            }
+                        })
+                    });
+                    return futures::stream::iter(iter).boxed();
+                }
+                futures::stream::once(async {
+                    serde_json::from_value::<RpcSubscriptionEvent>(val).map_err(|err| {
+                        crate::error::CirclesRpcError::InvalidResponse {
+                            message: err.to_string(),
+                        }
+                    })
+                })
+                .boxed()
+            }
+            Err(e) => futures::stream::once(async { Err(e) }).boxed(),
+        });
+        Ok(CirclesSubscription::new(
+            EventStream::new(mapped),
+            id,
+            provider,
+        ))
     }
 
     /// Subscribe and parse into `CirclesEvent` using the canonical parser.
@@ -64,15 +99,47 @@ impl EventsMethods {
         F: RpcSend + 'static,
     {
         let provider = self.client.provider().clone();
-        let sub = self.client.subscribe(("circles", filter))?;
+        let sub = self
+            .client
+            .subscribe::<_, serde_json::Value>(("circles", filter))?;
         let (raw_stream, id) = EventStream::from_subscription(sub).await?;
-        let mapped = raw_stream.into_inner().map(|item| match item {
-            Ok(raw) => crate::events::parser::parse(raw).map_err(|e| {
-                crate::error::CirclesRpcError::InvalidResponse {
-                    message: e.to_string(),
+        let mapped = raw_stream.into_inner().flat_map(|item| match item {
+            Ok(val) => {
+                if let Some(arr) = val.as_array() {
+                    if arr.is_empty() {
+                        return futures::stream::empty().boxed();
+                    }
+                    let iter = arr.clone().into_iter().map(|v| {
+                        serde_json::from_value::<RpcSubscriptionEvent>(v)
+                            .map_err(|e| crate::error::CirclesRpcError::InvalidResponse {
+                                message: e.to_string(),
+                            })
+                            .and_then(|raw| {
+                                crate::events::parser::parse(raw).map_err(|e| {
+                                    crate::error::CirclesRpcError::InvalidResponse {
+                                        message: e.to_string(),
+                                    }
+                                })
+                            })
+                    });
+                    return futures::stream::iter(iter).boxed();
                 }
-            }),
-            Err(e) => Err(e),
+                futures::stream::once(async {
+                    serde_json::from_value::<RpcSubscriptionEvent>(val)
+                        .map_err(|e| crate::error::CirclesRpcError::InvalidResponse {
+                            message: e.to_string(),
+                        })
+                        .and_then(|raw| {
+                            crate::events::parser::parse(raw).map_err(|e| {
+                                crate::error::CirclesRpcError::InvalidResponse {
+                                    message: e.to_string(),
+                                }
+                            })
+                        })
+                })
+                .boxed()
+            }
+            Err(e) => futures::stream::once(async { Err(e) }).boxed(),
         });
         Ok(CirclesSubscription::new(
             EventStream::new(mapped),

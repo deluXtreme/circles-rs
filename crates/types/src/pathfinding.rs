@@ -14,21 +14,32 @@ pub struct SimulatedBalance {
 /// Path finding parameters for circlesV2_findPath
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FindPathParams {
+    #[serde(rename = "Source")]
     pub from: Address,
+    #[serde(rename = "Sink")]
     pub to: Address,
+    #[serde(rename = "TargetFlow")]
     pub target_flow: U256,
+    #[serde(rename = "UseWrappedBalances")]
     pub use_wrapped_balances: Option<bool>,
+    #[serde(rename = "FromTokens")]
     pub from_tokens: Option<Vec<Address>>,
+    #[serde(rename = "ToTokens")]
     pub to_tokens: Option<Vec<Address>>,
+    #[serde(rename = "ExcludeFromTokens")]
     pub exclude_from_tokens: Option<Vec<Address>>,
+    #[serde(rename = "ExcludeToTokens")]
     pub exclude_to_tokens: Option<Vec<Address>>,
+    #[serde(rename = "SimulatedBalances")]
     pub simulated_balances: Option<Vec<SimulatedBalance>>,
+    #[serde(rename = "MaxTransfers")]
     pub max_transfers: Option<u32>,
 }
 
 /// A single transfer step in a pathfinding result
 /// This is the pathfinding version - different from the existing TransferStep in lib.rs
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PathfindingTransferStep {
     pub from: Address,
     pub to: Address,
@@ -38,6 +49,7 @@ pub struct PathfindingTransferStep {
 
 /// Result of pathfinding computation
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PathfindingResult {
     pub max_flow: U256,
     pub transfers: Vec<PathfindingTransferStep>,
