@@ -1,0 +1,10 @@
+{
+  "event": "CrcV2RegisterHuman",
+  "values": {
+    "avatar": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+    "blockNumber": 30000000,
+    "transactionIndex": 1,
+    "logIndex": 0,
+    "timestamp": 1710000000
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "account": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+    "token_address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+    "demurraged_total_balance": "12345678901234567890"
+  },
+  {
+    "account": "0xfeed00000000000000000000000000000000beef",
+    "token_address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+    "demurraged_total_balance": "0"
+  }
+]
