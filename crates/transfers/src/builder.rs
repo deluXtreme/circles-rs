@@ -152,7 +152,7 @@ impl TransferBuilder {
         let wrapped_totals = wrapped_totals_from_path(&path, &token_info_map);
         let has_wrapped = !wrapped_totals.is_empty();
 
-        if has_wrapped && opts.use_wrapped_balances.unwrap_or(false) == false {
+        if has_wrapped && opts.use_wrapped_balances.unwrap_or(false) {
             return Err(TransferError::wrapped_tokens_required());
         }
 
@@ -176,6 +176,7 @@ impl TransferBuilder {
     }
 
     #[doc(hidden)]
+    #[allow(clippy::too_many_arguments)]
     pub fn assemble_transactions_inner(
         &self,
         from: Address,
@@ -327,6 +328,7 @@ impl TransferBuilder {
     }
 
     #[doc(hidden)]
+    #[allow(clippy::too_many_arguments)]
     pub fn assemble_transactions(
         &self,
         from: Address,
@@ -418,7 +420,7 @@ impl TransferBuilder {
         let provider = alloy_provider::ProviderBuilder::new().connect_http(url);
         let lift = LiftERC20::new(self.config.lift_erc20_address, provider);
         let dem = lift
-            .erc20Circles(0u8.into(), to_token)
+            .erc20Circles(0u8, to_token)
             .call()
             .await
             .map_err(|e| {
@@ -430,7 +432,7 @@ impl TransferBuilder {
             })?
             .0;
         let inf = lift
-            .erc20Circles(1u8.into(), to_token)
+            .erc20Circles(1u8, to_token)
             .call()
             .await
             .map_err(|e| {

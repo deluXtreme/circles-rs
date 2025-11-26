@@ -4,7 +4,6 @@ use circles_transfers::TransferBuilder;
 use circles_types::{
     Address, CirclesConfig, PathfindingResult, PathfindingTransferStep, TokenInfo,
 };
-use circles_utils::converter::atto_circles_to_atto_static_circles;
 use std::collections::HashMap;
 
 fn demo_config() -> CirclesConfig {

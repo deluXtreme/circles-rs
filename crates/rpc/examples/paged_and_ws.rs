@@ -153,7 +153,7 @@ async fn debug_raw_ws(address: Address) {
         Ok((mut stream, _id)) => {
             let mut count = 0u8;
             while let Some(msg) = stream.next().await {
-                println!("raw ws message: {:?}", msg);
+                println!("raw ws message: {msg:?}");
                 count += 1;
                 if count >= 3 {
                     break;
