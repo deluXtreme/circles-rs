@@ -1,0 +1,13 @@
+[package]
+name = "circles-utils"
+version = "0.1.0"
+edition = "2024"
+description = "Shared Circles utilities (demurrage/inflation conversions, helpers)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+alloy-primitives = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = { workspace = true }
+num-bigint = "0.4"
+num-traits = "0.2"
