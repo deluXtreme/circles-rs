@@ -77,7 +77,9 @@ async fn stream_events(rpc: &CirclesRpc, address: Address) -> Result<()> {
     use tokio::time::timeout;
 
     println!("Subscribing to Circles events for address {address}");
-    let filter = serde_json::json!({ "address": address });
+    // Empty filter = firehose; add {"address": <addr>} to narrow. Some public WS
+    // endpoints currently emit empty [] heartbeats and no payloads.
+    let filter = serde_json::json!({});
     let mut sub = match rpc.events().subscribe_parsed_events(filter).await {
         Ok(sub) => sub,
         Err(e) => {
@@ -117,5 +119,47 @@ async fn stream_events(rpc: &CirclesRpc, address: Address) -> Result<()> {
     println!("Unsubscribing after {seen} events");
     // Drop will best-effort eth_unsubscribe, but explicit is fine too.
     let _ = sub.unsubscribe();
+
+    // Debug helper: also try a raw Value subscription to inspect payloads when parsing fails.
+    debug_raw_ws(address).await;
     Ok(())
+}
+
+#[cfg(feature = "ws")]
+async fn debug_raw_ws(address: Address) {
+    use alloy_provider::{Identity, Provider, ProviderBuilder};
+    use alloy_transport_ws::WsConnect;
+    use futures::StreamExt;
+    use serde_json::Value;
+
+    let ws_url = std::env::var("CIRCLES_RPC_WS_URL").unwrap_or_else(|_| DEFAULT_WS_URL.to_string());
+    println!("Debugging raw WS frames from {ws_url}");
+
+    let provider: alloy_provider::RootProvider =
+        match ProviderBuilder::<Identity, Identity>::default()
+            .connect_ws(WsConnect::new(ws_url.clone()))
+            .await
+        {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("raw ws connect failed: {e}");
+                return;
+            }
+        };
+
+    let filter = serde_json::json!({ "address": address });
+    let sub = provider.subscribe::<_, Value>(("circles", filter));
+    match circles_rpc::EventStream::from_subscription(sub).await {
+        Ok((mut stream, _id)) => {
+            let mut count = 0u8;
+            while let Some(msg) = stream.next().await {
+                println!("raw ws message: {msg:?}");
+                count += 1;
+                if count >= 3 {
+                    break;
+                }
+            }
+        }
+        Err(e) => eprintln!("failed to build raw stream: {e}"),
+    }
 }

@@ -1,12 +1,14 @@
 [
   {
-    "token_id": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+    "tokenId": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
     "balance": "0x1234",
+    "staticAttoCircles": "0x1234",
     "token_owner": "0xde374ece6fa50e781e81aac78e811b33d16912c7"
   },
   {
-    "token_id": "0xfeed00000000000000000000000000000000beef",
+    "tokenId": "0xfeed00000000000000000000000000000000beef",
     "balance": 100000,
+    "staticAttoCircles": 100000,
     "token_owner": "0xde374ece6fa50e781e81aac78e811b33d16912c7"
   }
 ]

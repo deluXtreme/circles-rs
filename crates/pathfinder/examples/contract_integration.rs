@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use alloy_primitives::aliases::U192;
+use alloy_primitives::{U256, aliases::U192};
 use circles_pathfinder::{FindPathParams, PathData, prepare_flow_for_contract};
 use std::str::FromStr;
 
@@ -19,12 +19,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let params = FindPathParams {
         from: sender,
         to: receiver,
-        target_flow: amount,
+        target_flow: U256::from(amount),
         use_wrapped_balances: Some(true),
         from_tokens: None,
         to_tokens: None,
         exclude_from_tokens: None,
         exclude_to_tokens: None,
+        simulated_balances: None,
+        max_transfers: None,
     };
 
     // NEW API: One function call does everything

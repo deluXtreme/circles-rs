@@ -130,7 +130,13 @@ pub enum Balance {
 /// Token balance response from circles_getTokenBalances
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenBalanceResponse {
+    #[serde(rename = "tokenId")]
     pub token_id: Address,
     pub balance: Balance,
+    /// Static atto-circles (inflationary wrappers) when provided by the backend.
+    #[serde(default, rename = "staticAttoCircles")]
+    pub static_atto_circles: Option<U256>,
+    #[serde(default, rename = "staticCircles")]
+    pub static_circles: Option<f64>,
     pub token_owner: Address,
 }

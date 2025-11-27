@@ -48,6 +48,8 @@ pub const ONE_ETH_WEI: &str = "1000000000000000000";
 #[allow(dead_code)]
 pub const ONE_TENTH_ETH_WEI: &str = "100000000000000000";
 
+pub mod path_helpers;
+
 /// Sample addresses used in tests
 pub mod addresses {
     use super::address_from_str;

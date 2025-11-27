@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-07-18
+
+### Added
+- Integrated demurrage/inflation conversion via `circles-utils` (converter parity with TS SDK).
+- Wrapped-token helpers (`expected_unwrapped_totals`, `replace_wrapped_tokens`, `wrapped_totals_from_path`) now normalize ERC20 wrapper types and convert inflationary balances using timestamp hints.
+- Netted flow checks (`assert_no_netted_flow_mismatch`) and shrink/scale helpers for partial redemption flows.
+- Pathfinder README/docs updated with wrapper/netted-flow guidance and WS example notes.
+
+### Changed
+- Default wrapper normalization now coerces non-inflationary wrappers to the Demurraged type to mirror TS behavior.
+- `PathfinderError` improved invalid-response messaging for better debugging.
+- Path helpers accept timestamp hints from token info when unwrapping inflationary balances to reduce drift.
+
+### Fixed
+- Demurrage round-trip drift minimized and guarded with tolerances matching the TS converter fixture.
+- Tests cover inflationary wrapper unwrapping and demurrage conversions.
+
 ## [0.4.0] - 2025-07-17
 
 ### Added

@@ -1,151 +1,31 @@
 use crate::PathfinderError;
 use alloy_primitives::Address;
-use alloy_primitives::aliases::U192;
-use circles_types::TransferStep;
-use serde_json::json;
+use alloy_primitives::aliases::{U192, U256};
+use circles_rpc::CirclesRpc;
+use circles_types::{FindPathParams, PathfindingResult, PathfindingTransferStep, TransferStep};
 
-/// Parameters for pathfinding operations.
-///
-/// This struct provides a clean way to pass pathfinding parameters,
-/// with optional fields for advanced filtering and routing control.
-///
-/// # Examples
-///
-/// ```rust
-/// use circles_pathfinder::FindPathParams;
-/// use alloy_primitives::{Address, aliases::U192};
-///
-/// let params = FindPathParams {
-///     from: "0xC3CCd9455b301D01d69DFB0b9Fc38Bee39829598".parse()?,
-///     to: "0xf48554937f18885c7f15c432c596b5843648231D".parse()?,
-///     target_flow: U192::from(1000u64),
-///     use_wrapped_balances: Some(true),
-///     // Optional filters
-///     from_tokens: None,
-///     to_tokens: None,
-///     exclude_from_tokens: None,
-///     exclude_to_tokens: None,
-/// };
-/// # Ok::<(), Box<dyn std::error::Error>>(())
-/// ```
-#[derive(Debug, Clone)]
-pub struct FindPathParams {
-    /// Source address
-    pub from: Address,
-    /// Destination address
-    pub to: Address,
-    /// Target flow amount
-    pub target_flow: U192,
-    /// Whether to use wrapped balances
-    pub use_wrapped_balances: Option<bool>,
-    /// Specific tokens to use from the source (optional)
-    pub from_tokens: Option<Vec<Address>>,
-    /// Specific tokens to accept at destination (optional)
-    pub to_tokens: Option<Vec<Address>>,
-    /// Tokens to exclude from source (optional)
-    pub exclude_from_tokens: Option<Vec<Address>>,
-    /// Tokens to exclude at destination (optional)
-    pub exclude_to_tokens: Option<Vec<Address>>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-struct JsonRpcResp {
-    #[allow(dead_code)]
-    jsonrpc: String,
-    #[allow(dead_code)]
-    id: u32,
-    result: Option<serde_json::Value>,
-    error: Option<serde_json::Value>,
-}
-
-impl TryFrom<JsonRpcResp> for Vec<TransferStep> {
-    type Error = PathfinderError;
-
-    fn try_from(resp: JsonRpcResp) -> Result<Self, Self::Error> {
-        if let Some(err) = resp.error {
-            return Err(PathfinderError::JsonRpc(err.to_string()));
-        }
-
-        let transfers = resp
-            .result
-            .ok_or_else(|| PathfinderError::JsonRpc("missing result".into()))?
-            .get("transfers")
-            .ok_or_else(|| PathfinderError::JsonRpc("missing transfers".into()))?
-            .as_array()
-            .ok_or_else(|| PathfinderError::JsonRpc("transfers not array".into()))?
-            .iter()
-            .map(|t| -> Result<TransferStep, PathfinderError> {
-                let from_str = t["from"]
-                    .as_str()
-                    .ok_or_else(|| PathfinderError::JsonRpc("from field is not a string".into()))?;
-                let to_str = t["to"]
-                    .as_str()
-                    .ok_or_else(|| PathfinderError::JsonRpc("to field is not a string".into()))?;
-                let token_owner_str = t["tokenOwner"].as_str().ok_or_else(|| {
-                    PathfinderError::JsonRpc("tokenOwner field is not a string".into())
-                })?;
-                let value_str = t["value"].as_str().ok_or_else(|| {
-                    PathfinderError::JsonRpc("value field is not a string".into())
-                })?;
-
-                let from_address = from_str.parse::<Address>().map_err(|e| {
-                    PathfinderError::JsonRpc(format!(
-                        "failed to parse from address '{from_str}': {e}"
-                    ))
-                })?;
-                let to_address = to_str.parse::<Address>().map_err(|e| {
-                    PathfinderError::JsonRpc(format!("failed to parse to address '{to_str}': {e}"))
-                })?;
-                let token_owner = token_owner_str.parse::<Address>().map_err(|e| {
-                    PathfinderError::JsonRpc(format!(
-                        "failed to parse token_owner address '{token_owner_str}': {e}"
-                    ))
-                })?;
-
-                let value_u128 = value_str.parse::<u128>().map_err(|e| {
-                    PathfinderError::JsonRpc(format!("failed to parse value '{value_str}': {e}"))
-                })?;
-
-                Ok(TransferStep {
-                    from_address,
-                    to_address,
-                    token_owner,
-                    value: U192::from(value_u128),
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(transfers)
+pub(crate) fn u256_to_u192(value: U256) -> Result<U192, PathfinderError> {
+    let limbs = value.into_limbs();
+    if limbs[3] != 0 {
+        return Err(PathfinderError::RpcResponse(
+            "transfer value exceeds U192".into(),
+        ));
     }
+    Ok(U192::from_limbs([limbs[0], limbs[1], limbs[2]]))
 }
 
-/// Find a path using structured parameters
-///
-/// This is a convenience function that takes a `FindPathParams` struct
-/// instead of individual parameters. Currently only implements the basic
-/// functionality (from, to, target_flow, use_wrapped_balances).
-///
-/// # Note
-/// Additional filtering parameters (from_tokens, to_tokens, etc.) are not yet
-/// implemented in the underlying RPC call but are included in the struct for
-/// future compatibility.
-pub async fn find_path_with_params(
-    rpc_url: &str,
-    params: FindPathParams,
-) -> Result<Vec<TransferStep>, PathfinderError> {
-    find_path(
-        rpc_url,
-        params.from,
-        params.to,
-        params.target_flow,
-        params.use_wrapped_balances.unwrap_or(false),
-    )
-    .await
-    // TODO: Implement support for additional parameters:
-    // - from_tokens
-    // - to_tokens
-    // - exclude_from_tokens
-    // - exclude_to_tokens
+fn convert_step(step: &PathfindingTransferStep) -> Result<TransferStep, PathfinderError> {
+    let token_owner: Address = step
+        .token_owner
+        .parse()
+        .map_err(|e| PathfinderError::RpcResponse(format!("invalid tokenOwner: {e}")))?;
+    let value = u256_to_u192(step.value)?;
+    Ok(TransferStep {
+        from_address: step.from,
+        to_address: step.to,
+        token_owner,
+        value,
+    })
 }
 
 /// Find an optimal path between two addresses in the Circles network.
@@ -200,31 +80,37 @@ pub async fn find_path(
     target_flow: U192,
     with_wrap: bool,
 ) -> Result<Vec<TransferStep>, PathfinderError> {
-    let body = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "circlesV2_findPath",
-        "params": [{
-            "Source": format!("{:#x}", from),
-            "Sink": format!("{:#x}", to),
-            "TargetFlow": target_flow.to_string(),
-            "WithWrap": with_wrap,
-        }]
-    });
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    let params = FindPathParams {
+        from,
+        to,
+        target_flow: U256::from(target_flow),
+        use_wrapped_balances: Some(with_wrap),
+        from_tokens: None,
+        to_tokens: None,
+        exclude_from_tokens: None,
+        exclude_to_tokens: None,
+        simulated_balances: None,
+        max_transfers: None,
+    };
+    let result: PathfindingResult = rpc.pathfinder().find_path(params).await?;
+    result
+        .transfers
+        .iter()
+        .map(convert_step)
+        .collect::<Result<Vec<_>, _>>()
+}
 
-    let resp: JsonRpcResp = reqwest::Client::new()
-        .post(rpc_url)
-        .json(&body)
-        .send()
-        .await?
-        .json()
-        .await?;
-
-    if let Some(err) = resp.error {
-        return Err(PathfinderError::JsonRpc(err.to_string()));
-    }
-
-    let transfers = resp.try_into()?;
-
-    Ok(transfers)
+/// Find a path using structured parameters.
+pub async fn find_path_with_params(
+    rpc_url: &str,
+    params: FindPathParams,
+) -> Result<Vec<TransferStep>, PathfinderError> {
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    let result: PathfindingResult = rpc.pathfinder().find_path(params).await?;
+    result
+        .transfers
+        .iter()
+        .map(convert_step)
+        .collect::<Result<Vec<_>, _>>()
 }

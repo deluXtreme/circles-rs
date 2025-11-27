@@ -1,5 +1,4 @@
 use circles_types::{CirclesBaseEvent, CirclesEvent, CirclesEventType, RpcSubscriptionEvent};
-use serde::de::Error as DeError;
 use std::collections::HashMap;
 
 /// Parse a raw RpcSubscriptionEvent into a typed CirclesEvent without losing bytes.
@@ -42,9 +41,8 @@ fn parse_event_type(raw: &str) -> Result<CirclesEventType, serde_json::Error> {
             return Ok(et);
         }
     }
-    Err(serde_json::Error::custom(format!(
-        "unknown event type: {raw}"
-    )))
+    // Fall back to unknown event type to avoid dropping frames entirely.
+    Ok(CirclesEventType::CrcUnknownEvent)
 }
 
 fn take_u64(map: &mut HashMap<String, serde_json::Value>, key: &str) -> Option<u64> {

@@ -91,6 +91,10 @@ WebSocket subscription (enable the `ws` feature):
 }
 ```
 
+### WS caveat (Helsinki)
+
+The public WS endpoints we tested (`wss://rpc.aboutcircles.com/ws`, `wss://rpc.helsinki.aboutcircles.com/ws`) currently emit periodic empty-array frames (`[]`) and, so far, no actual event payloads. Our example logs and exits gracefully when parsing fails. If you have access to a busier node, try pointing `CIRCLES_RPC_WS_URL` there; we may need to filter heartbeats or adjust parsing once real payloads are observed.
+
 ## Status / TODO
 
 - Subscription resilience (reconnect/backoff, pending cleanup) is best-effort today.
