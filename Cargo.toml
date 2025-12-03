@@ -5,6 +5,8 @@ members = [
     "crates/pathfinder",
     "crates/abis",
     "crates/rpc",
+    "crates/sdk",
+    "crates/profiles",
     "crates/utils",
     "crates/transfers",
 ]
