@@ -71,6 +71,7 @@ pub struct AvatarInfo {
 
 /// Profile information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub name: String,
     pub description: Option<String>,
@@ -87,4 +88,31 @@ pub struct GroupProfile {
     #[serde(flatten)]
     pub profile: Profile,
     pub symbol: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Profile;
+
+    #[test]
+    fn profile_deserializes_camel_case() {
+        let json = r#"{
+            "name": "franco",
+            "previewImageUrl": "data:image/jpeg;base64,abc",
+            "imageUrl": "https://example.com/full.jpg",
+            "location": "Berlin"
+        }"#;
+
+        let profile: Profile = serde_json::from_str(json).expect("should deserialize");
+        assert_eq!(profile.name, "franco");
+        assert_eq!(
+            profile.preview_image_url.as_deref(),
+            Some("data:image/jpeg;base64,abc")
+        );
+        assert_eq!(
+            profile.image_url.as_deref(),
+            Some("https://example.com/full.jpg")
+        );
+        assert_eq!(profile.location.as_deref(), Some("Berlin"));
+    }
 }
