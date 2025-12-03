@@ -41,6 +41,12 @@ cargo test -p circles-sdk
 cargo test -p circles-sdk --features ws
 ```
 
+Optional live checks (ignored by default):
+```
+RUN_LIVE=1 LIVE_AVATAR=0x... cargo test -p circles-sdk -- --ignored
+```
+You can override endpoints with `CIRCLES_RPC_URL`, `CIRCLES_PATHFINDER_URL`, and `CIRCLES_PROFILE_URL`.
+
 ## Notes
 
 - The SDK is runner-agnostic: provide a `ContractRunner` for write paths; omit for read-only.
