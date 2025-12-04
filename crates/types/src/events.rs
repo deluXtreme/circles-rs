@@ -2,7 +2,7 @@ use alloy_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Base event information shared by all Circles events
+/// Base event information shared by all Circles events.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CirclesBaseEvent {
     pub block_number: u64,
@@ -12,7 +12,7 @@ pub struct CirclesBaseEvent {
     pub transaction_hash: Option<TxHash>,
 }
 
-/// All possible Circles event types
+/// All possible Circles event types (unknowns map to `CrcUnknownEvent`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CirclesEventType {
     // HubV2 events
@@ -88,7 +88,7 @@ pub enum CirclesEventType {
     CrcUnknownEvent,
 }
 
-/// Generic Circles event with dynamic data
+/// Generic Circles event with dynamic data parsed from HTTP/WS.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CirclesEvent {
     #[serde(flatten)]
@@ -101,7 +101,7 @@ pub struct CirclesEvent {
     pub data: HashMap<String, serde_json::Value>,
 }
 
-/// RPC subscription event structure
+/// Raw RPC subscription event (`eth_subscribe("circles")`) before parsing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RpcSubscriptionEvent {
     pub event: String,

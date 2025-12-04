@@ -65,6 +65,9 @@ fn big_to_u256(val: BigUint) -> U256 {
 }
 
 /// Demurraged atto-circles → static atto-circles for a given timestamp.
+///
+/// If `now_unix_seconds` is `None`, uses the current time. Negative day indices
+/// (pre-epoch) are returned unchanged.
 pub fn atto_circles_to_atto_static_circles(
     demurraged: U256,
     now_unix_seconds: Option<u64>,
@@ -80,6 +83,9 @@ pub fn atto_circles_to_atto_static_circles(
 }
 
 /// Static atto-circles → demurraged atto-circles for a given timestamp.
+///
+/// If `now_unix_seconds` is `None`, uses the current time. Negative day indices
+/// (pre-epoch) are returned unchanged.
 pub fn atto_static_circles_to_atto_circles(
     static_circles: U256,
     now_unix_seconds: Option<u64>,

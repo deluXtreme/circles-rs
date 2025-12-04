@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Filter types for query predicates
+/// Filter types for query predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FilterType {
     Equals,
@@ -12,14 +12,14 @@ pub enum FilterType {
     Like,
 }
 
-/// Conjunction types for combining predicates
+/// Conjunction types for combining predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConjunctionType {
     And,
     Or,
 }
 
-/// Filter predicate for querying
+/// Filter predicate for querying.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterPredicate {
     #[serde(rename = "Type")]
@@ -67,7 +67,7 @@ impl FilterPredicate {
     }
 }
 
-/// Conjunction for combining multiple predicates
+/// Conjunction for combining multiple predicates.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Conjunction {
     #[serde(rename = "Type")]
@@ -96,7 +96,7 @@ impl Conjunction {
     }
 }
 
-/// Filter type (either a predicate or conjunction)
+/// Filter type (either a predicate or conjunction).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Filter {
@@ -116,14 +116,14 @@ impl From<Conjunction> for Filter {
     }
 }
 
-/// Order direction for query results
+/// Order direction for query results.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SortOrder {
     ASC,
     DESC,
 }
 
-/// Order by clause
+/// Order by clause.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderBy {
     #[serde(rename = "Column")]
@@ -146,7 +146,7 @@ impl OrderBy {
     }
 }
 
-/// Query parameters for circles_query
+/// Query parameters for `circles_query`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryParams {
     #[serde(rename = "Namespace")]
@@ -191,7 +191,7 @@ impl QueryParams {
     }
 }
 
-/// Column information for table metadata
+/// Column information for table metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnInfo {
     #[serde(rename = "Name")]
