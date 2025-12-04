@@ -36,6 +36,9 @@ pub struct TransferBuilder {
 
 impl TransferBuilder {
     /// Create a new builder from a Circles config.
+    ///
+    /// Uses the config's `circles_rpc_url` for pathfinding + balances; does not
+    /// submit transactions (pair with a runner in the SDK to send).
     pub fn new(config: CirclesConfig) -> Result<Self, TransferError> {
         let rpc = CirclesRpc::try_from(config.circles_rpc_url.as_str()).map_err(|e| {
             TransferError::generic(
@@ -55,14 +58,21 @@ impl TransferBuilder {
         &self.config
     }
 
-    /// Control whether approval is checked (default: true). If false, approval tx is always included.
+    /// Control whether approval is checked (default: true).
+    ///
+    /// If `false`, the safety approval (`setApprovalForAll`) is always included
+    /// without checking existing approval status.
     pub fn with_approval_check(mut self, check: bool) -> Self {
         self.check_approval = check;
         self
     }
 
-    /// Construct an advanced transfer.
-    /// Returns the list of transactions to execute in order.
+    /// Construct an advanced transfer and return the ordered transaction list.
+    ///
+    /// Flow: optional self-unwrap fast-path (from==to, single token pair),
+    /// pathfind with wrapped balances by default, unwrap inflationary/demurraged
+    /// wrappers, operateFlowMatrix, and re-wrap inflationary leftovers when
+    /// static balances are available. Does not send transactions.
     pub async fn construct_advanced_transfer(
         &self,
         from: Address,
