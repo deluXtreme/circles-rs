@@ -31,6 +31,8 @@ use std::sync::Arc;
 use thiserror::Error;
 
 /// Generic registration outcome carrying submitted transactions and an optional avatar.
+///
+/// Registration helpers may return prepared txs without sending if no runner is provided.
 pub struct RegistrationResult<T> {
     pub avatar: Option<T>,
     pub txs: Vec<SubmittedTx>,
@@ -121,7 +123,7 @@ impl Sdk {
         self.sender_address
     }
 
-    /// Create and pin a profile via the profile service.
+    /// Create and pin a profile via the profile service (runner not required).
     pub async fn create_profile(&self, profile: &Profile) -> Result<String, SdkError> {
         Ok(self.profiles.create(profile).await?)
     }

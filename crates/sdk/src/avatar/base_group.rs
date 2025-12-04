@@ -26,6 +26,7 @@ pub struct BaseGroupAvatar {
 }
 
 impl BaseGroupAvatar {
+    /// Get detailed token balances (v1/v2 selectable).
     pub async fn balances(
         &self,
         as_time_circles: bool,
@@ -34,14 +35,17 @@ impl BaseGroupAvatar {
         self.common.balances(as_time_circles, use_v2).await
     }
 
+    /// Get trust relations.
     pub async fn trust_relations(&self) -> Result<Vec<TrustRelation>, SdkError> {
         self.common.trust_relations().await
     }
 
+    /// Fetch profile (cached by CID in memory).
     pub async fn profile(&self) -> Result<Option<Profile>, SdkError> {
         self.common.profile(self.info.cid_v0.as_deref()).await
     }
 
+    /// Update profile metadata digest on the base group (requires runner).
     pub async fn update_profile(&self, profile: &Profile) -> Result<Vec<SubmittedTx>, SdkError> {
         let cid = self.common.pin_profile(profile).await?;
         let digest = cid_v0_to_digest(&cid)?;
@@ -52,6 +56,7 @@ impl BaseGroupAvatar {
         self.common.send(vec![tx]).await
     }
 
+    /// Trust one or more avatars via BaseGroup::trust (requires runner).
     pub async fn trust_add(
         &self,
         avatars: &[Address],
@@ -69,6 +74,7 @@ impl BaseGroupAvatar {
         Ok(runner.send_transactions(txs).await?)
     }
 
+    /// Remove trust (sets expiry to 0). Requires runner.
     pub async fn trust_remove(&self, avatars: &[Address]) -> Result<Vec<SubmittedTx>, SdkError> {
         self.trust_add(avatars, 0).await
     }
@@ -94,6 +100,7 @@ impl BaseGroupAvatar {
             .await
     }
 
+    /// Plan a transfer without submitting.
     pub async fn plan_transfer(
         &self,
         to: Address,
@@ -103,6 +110,7 @@ impl BaseGroupAvatar {
         self.common.plan_transfer(to, amount, options).await
     }
 
+    /// Execute a transfer using the runner (requires runner).
     pub async fn transfer(
         &self,
         to: Address,
@@ -112,6 +120,7 @@ impl BaseGroupAvatar {
         self.common.transfer(to, amount, options).await
     }
 
+    /// Find a path between this avatar and `to` with a target flow.
     pub async fn find_path(
         &self,
         to: Address,
@@ -121,6 +130,7 @@ impl BaseGroupAvatar {
         self.common.find_path(to, target_flow, options).await
     }
 
+    /// Max-flow helper: sets target_flow to U256::MAX.
     pub async fn max_flow_to(
         &self,
         to: Address,
