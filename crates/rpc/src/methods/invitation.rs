@@ -5,6 +5,9 @@ use futures::pin_mut;
 use futures::stream::{self, StreamExt};
 
 /// Methods for invitation discovery and balance lookups.
+///
+/// `get_invitations` fetches inviters then batches `circles_getInvitationBalance`
+/// with bounded concurrency to avoid hammering the RPC.
 #[derive(Clone, Debug)]
 pub struct InvitationMethods {
     client: RpcClient,

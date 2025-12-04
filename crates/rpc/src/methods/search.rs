@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::Profile;
 
-/// Methods for full-text profile search.
+/// Methods for full-text profile search (`circles_searchProfiles`).
 #[derive(Clone, Debug)]
 pub struct SearchMethods {
     client: RpcClient,

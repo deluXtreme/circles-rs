@@ -4,6 +4,9 @@ use circles_types::{CirclesQueryResponse, OrderBy, PagedQueryParams, PagedResult
 use serde_json::Value;
 
 /// Methods for issuing `circles_query` requests and decoding the tabular response.
+///
+/// Includes a pager that adds stable ordering (block/tx/log/timestamp) and
+/// extracts cursors for streaming.
 #[derive(Clone, Debug)]
 pub struct QueryMethods {
     client: RpcClient,

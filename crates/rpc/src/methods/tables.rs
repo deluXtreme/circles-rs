@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::TableInfo;
 
-/// Methods for table/schema introspection.
+/// Methods for table/schema introspection (`circles_tables`).
 #[derive(Clone, Debug)]
 pub struct TablesMethods {
     client: RpcClient,

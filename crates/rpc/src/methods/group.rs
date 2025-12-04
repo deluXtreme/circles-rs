@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::{GroupMembershipRow, GroupRow};
 
-/// Methods for group membership lookups.
+/// Methods for group membership lookups (`circles_getGroupMemberships`, `circles_getGroups`).
 #[derive(Clone, Debug)]
 pub struct GroupMethods {
     client: RpcClient,

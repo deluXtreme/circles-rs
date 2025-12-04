@@ -9,7 +9,7 @@ pub struct HealthResponse {
     pub status: String,
 }
 
-/// Methods for indexer health checks.
+/// Methods for indexer health checks (`circles_health`).
 #[derive(Clone, Debug)]
 pub struct HealthMethods {
     client: RpcClient,

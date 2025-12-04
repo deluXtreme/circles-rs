@@ -3,6 +3,8 @@ use crate::error::Result;
 use circles_types::{Address, AvatarInfo, Profile};
 
 /// Methods for avatar/profile lookups.
+///
+/// Mirrors Circles RPC `circles_getAvatarInfo` + profile CID/resolution helpers.
 #[derive(Clone, Debug)]
 pub struct AvatarMethods {
     client: RpcClient,

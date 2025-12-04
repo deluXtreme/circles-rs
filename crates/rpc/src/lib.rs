@@ -1,8 +1,10 @@
-//! Circles RPC client crate (work in progress).
+//! Circles RPC client: async HTTP/WS JSON-RPC wrapper mirroring the TS SDK.
 //!
-//! This crate will provide an async JSON-RPC client for the Circles protocol,
-//! mirroring the TypeScript SDK surface while relying on Alloy transports and
-//! shared `circles-types` definitions.
+//! - HTTP via `alloy-provider`; WebSocket subscriptions behind the `ws` feature.
+//! - Method namespaces under [`methods`] map directly to Circles RPC methods
+//!   (balance, token, trust, avatar, query, events, invitation, pathfinder, group, tables, health, network, search).
+//! - `paged_query`/`paged_stream` helpers for `circles_query` with cursor handling.
+//! - WS parsing tolerates heartbeats (`[]`) and batched frames; unknown event types surface as `CrcUnknownEvent`.
 
 pub mod client;
 pub mod error;
