@@ -116,6 +116,7 @@ pub async fn register_organisation(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn register_group(
     sdk: &Sdk,
     owner: Address,

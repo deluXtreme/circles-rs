@@ -95,7 +95,7 @@ async fn live_max_flow_to_targets() -> Result<(), Box<dyn std::error::Error>> {
                     println!("max_flow to {:#x}: {}", target, res.max_flow);
                 }
                 Err(err) => {
-                    eprintln!("max_flow_to {:#x} failed: {err}", target);
+                    eprintln!("max_flow_to {target:#x} failed: {err}");
                 }
             }
         }

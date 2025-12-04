@@ -19,7 +19,7 @@ async fn fetch_profile_when_cid_provided() {
     let client = Profiles::new(PROFILE_SERVICE_URL).expect("valid profile service url");
     let profile = client.get(&cid).await.expect("profile fetch request");
     let profile = profile.expect("expected profile to exist");
-    println!("Fetched profile for {}: {:?}", cid, profile);
+    println!("Fetched profile for {cid}: {profile:?}");
 }
 
 /// Ignored by default: hits the live profile service to pin and fetch a profile.
@@ -63,8 +63,5 @@ async fn create_and_fetch_round_trip() {
     assert_eq!(fetched.description, profile.description);
     assert_eq!(fetched.preview_image_url, profile.preview_image_url);
 
-    println!(
-        "Created + fetched profile: cid={cid}, profile={:?}",
-        fetched
-    );
+    println!("Created + fetched profile: cid={cid}, profile={fetched:?}");
 }

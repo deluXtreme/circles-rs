@@ -110,7 +110,7 @@ struct PinResponse {
 
 fn endpoint(base: &Url, path: &str) -> Result<Url, ProfilesError> {
     base.join(path).map_err(|source| ProfilesError::InvalidUrl {
-        url: format!("{}{}", base, path),
+        url: format!("{base}{path}"),
         source,
     })
 }

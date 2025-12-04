@@ -259,6 +259,7 @@ impl Sdk {
     }
 
     /// Register a base group via the factory. Returns submitted txs and best-effort avatar.
+    #[allow(clippy::too_many_arguments)]
     pub async fn register_group(
         &self,
         owner: Address,
