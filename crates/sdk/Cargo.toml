@@ -1,0 +1,35 @@
+[package]
+name = "circles-sdk"
+version = "0.1.0"
+edition = "2024"
+description = "Circles SDK orchestrating RPC, profiles, pathfinding, transfers, and contract runners."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+alloy-primitives = { workspace = true }
+async-trait = "0.1"
+circles-profiles = { path = "../profiles" }
+circles-rpc = { path = "../rpc" }
+circles-types = { workspace = true }
+circles-transfers = { path = "../transfers" }
+abis = { path = "../abis" }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
+alloy-provider = { version = "1.1.2", features = ["reqwest"] }
+alloy-sol-types = "1.4.1"
+bs58 = "0.5"
+serde_json = "1.0"
+rand = "0.8"
+hex = "0.4"
+futures = { version = "0.3", optional = true }
+alloy-json-rpc = { version = "1.1.2", optional = true }
+tracing = { version = "0.1", optional = true }
+once_cell = "1.19"
+
+[features]
+default = []
+ws = ["circles-rpc/ws", "futures", "alloy-json-rpc", "tokio", "tracing"]
+
+[dev-dependencies]
+futures = "0.3"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

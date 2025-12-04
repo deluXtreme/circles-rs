@@ -28,15 +28,20 @@ pub struct GeoLocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AvatarInfo {
     /// The block number of the event
+    #[serde(default, rename = "blockNumber")]
     pub block_number: u64,
     /// The timestamp of the last change to the avatar
     /// Note: May be undefined for some avatars
+    #[serde(default)]
     pub timestamp: Option<u64>,
     /// The transaction index
+    #[serde(default, rename = "transactionIndex")]
     pub transaction_index: u32,
     /// The log index
+    #[serde(default, rename = "logIndex")]
     pub log_index: u32,
     /// The hash of the transaction that last changed the avatar
+    #[serde(default, rename = "transactionHash")]
     pub transaction_hash: TxHash,
     /// If the avatar is currently active in version 1 or 2
     /// Note: An avatar that's active in v2 can still have a v1 token. See `has_v1` and `v1_token`.
@@ -49,19 +54,26 @@ pub struct AvatarInfo {
     /// The personal or group token address (v1) or tokenId (v2)
     /// Note: v1 tokens are erc20 and have a token address. v2 tokens are erc1155 and have a tokenId.
     ///       The v2 tokenId is always an encoded version of the avatar address.
+    #[serde(rename = "tokenId")]
     pub token_id: Option<U256>,
     /// If the avatar is signed up at v1
+    #[serde(rename = "hasV1")]
     pub has_v1: bool,
     /// If the avatar has a v1 token, this is the token address
+    #[serde(rename = "v1Token")]
     pub v1_token: Option<Address>,
     /// The bytes of the avatar's metadata cidv0
+    #[serde(rename = "cidV0Digest")]
     pub cid_v0_digest: Option<String>,
     /// The CIDv0 of the avatar's metadata (profile)
+    #[serde(rename = "cidV0")]
     pub cid_v0: Option<String>,
     /// If the avatar is stopped in v1
     /// Note: This is only set during Avatar initialization.
+    #[serde(rename = "v1Stopped")]
     pub v1_stopped: Option<bool>,
     /// Indicates whether the entity is a human
+    #[serde(rename = "isHuman")]
     pub is_human: bool,
     /// Groups have a name
     pub name: Option<String>,
@@ -71,6 +83,7 @@ pub struct AvatarInfo {
 
 /// Profile information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub name: String,
     pub description: Option<String>,
@@ -87,4 +100,31 @@ pub struct GroupProfile {
     #[serde(flatten)]
     pub profile: Profile,
     pub symbol: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Profile;
+
+    #[test]
+    fn profile_deserializes_camel_case() {
+        let json = r#"{
+            "name": "franco",
+            "previewImageUrl": "data:image/jpeg;base64,abc",
+            "imageUrl": "https://example.com/full.jpg",
+            "location": "Berlin"
+        }"#;
+
+        let profile: Profile = serde_json::from_str(json).expect("should deserialize");
+        assert_eq!(profile.name, "franco");
+        assert_eq!(
+            profile.preview_image_url.as_deref(),
+            Some("data:image/jpeg;base64,abc")
+        );
+        assert_eq!(
+            profile.image_url.as_deref(),
+            Some("https://example.com/full.jpg")
+        );
+        assert_eq!(profile.location.as_deref(), Some("Berlin"));
+    }
 }
