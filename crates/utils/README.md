@@ -3,7 +3,6 @@
 Shared Circles utility functions, currently focused on demurrage/inflation conversions ported from the TypeScript `CirclesConverter`.
 
 ## Usage
-
 ```rust
 use circles_utils::converter::{
     atto_circles_to_atto_static_circles,
@@ -20,7 +19,6 @@ let day = day_from_timestamp(1_602_720_000); // 0 (day zero)
 ```
 
 ## Notes
-
 - Pure, synchronous math; no IO or async dependencies.
-- Constants mirror the TS SDK: Gamma/Beta 64.64 factors, Circles day zero, 1e18 atto factor.
-- Downstream crates (pathfinder, transfers) can reuse these converters for wrapper/token handling.***
+- Constants mirror the TS SDK: Gamma/Beta 64.64 factors, Circles day zero, 1e18 atto factor; tests tolerate tiny floating drift to match TS fixtures.
+- Downstream crates (pathfinder, transfers) reuse these converters for wrapper/token handling.

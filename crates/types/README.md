@@ -1,59 +1,61 @@
-# Circles Types
+# circles-types
 
-Complete type definitions for the Circles protocol ecosystem in Rust.
+Shared types for the Circles protocol: RPC models, events, pathfinding structures, flow matrix types, contract bindings, and configuration. Used across all crates in this workspace.
 
-This crate provides comprehensive data structures for all aspects of the Circles protocol, including avatar management, trust relations, token operations, pathfinding, event handling, RPC communication, and contract interactions.
+## Highlights
+- Alloy-backed primitives re-exported as `Address`, `TxHash`, `U256`, `U192`, etc.
+- RPC/query models: `JsonRpcRequest/Response`, `QueryParams`, `PagedQueryParams`, `FilterPredicate`, `CirclesQueryResponse`.
+- Pathfinding + flow: `FindPathParams`, `PathfindingResult`, `FlowMatrix`, `TransferStep`, `SimulatedBalance`.
+- Events: `CirclesEvent`, `CirclesEventType` (25+ variants) with unknown-event fallback.
+- Config: `CirclesConfig` shared across SDK/RPC/pathfinder/transfers.
+- Profiles/trust/tokens/groups: `AvatarInfo`, `Profile`, `TrustRelation`, `TokenInfo`, `GroupRow`, and friends.
 
-## Overview
-
-The `circles-types` crate serves as the foundation for all Circles protocol operations, providing type-safe representations of the entire protocol ecosystem. It includes over 60 types organized into logical modules covering every aspect of the Circles network.
-
-## Features
-
-- **Complete Protocol Coverage**: Types for avatars, trust, tokens, groups, events, and more
-- **Alloy Integration**: Built on `alloy-primitives` for seamless Ethereum compatibility
-- **API Compatible**: Matches TypeScript Circles SDK structure exactly
-- **Type Safety**: Leverages Rust's type system while maintaining flexibility
-- **Serialization Support**: Full `serde` support for JSON serialization/deserialization
-- **Async Ready**: Traits for contract runners and batch operations
-- **Query DSL**: Complete query builder for `circles_query` RPC method
-
-## Installation
-
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-circles-types = "0.3.0"
-```
-
-## Quick Start
-
+## Quickstart
 ```rust
 use circles_types::{
-    // Core types
-    Address, U256, TxHash,
-    // Avatar and profile types
-    AvatarInfo, Profile, AvatarType,
-    // Trust relations
-    TrustRelation, TrustRelationType,
-    // Pathfinding
-    FindPathParams, PathfindingResult,
-    // Configuration
-    CirclesConfig,
+    Address, AvatarInfo, AvatarType, CirclesConfig, FindPathParams, U256,
 };
 
-// Create avatar information
+let config = CirclesConfig {
+    circles_rpc_url: "https://rpc.aboutcircles.com/".into(),
+    pathfinder_url: "https://pathfinder.aboutcircles.com/".into(),
+    profile_service_url: "https://rpc.aboutcircles.com/profiles".into(),
+    v1_hub_address: Address::ZERO,
+    v2_hub_address: Address::ZERO,
+    name_registry_address: Address::ZERO,
+    base_group_mint_policy: Address::ZERO,
+    standard_treasury: Address::ZERO,
+    core_members_group_deployer: Address::ZERO,
+    base_group_factory_address: Address::ZERO,
+    lift_erc20_address: Address::ZERO,
+    invitation_escrow_address: Address::ZERO,
+    invitation_farm_address: Address::ZERO,
+    referrals_module_address: Address::ZERO,
+};
+
+let params = FindPathParams {
+    from: "0xabc...".parse()?,
+    to: "0xdef...".parse()?,
+    target_flow: U256::from(1_000_000_000_000_000_000u64), // 1 CRC
+    use_wrapped_balances: Some(true),
+    from_tokens: None,
+    to_tokens: None,
+    exclude_from_tokens: None,
+    exclude_to_tokens: None,
+    simulated_balances: None,
+    max_transfers: None,
+};
+
 let avatar = AvatarInfo {
-    block_number: 12345,
-    timestamp: Some(1234567890),
-    transaction_index: 1,
+    block_number: 0,
+    timestamp: None,
+    transaction_index: 0,
     log_index: 0,
-    transaction_hash: "0xabc123...".parse()?,
+    transaction_hash: Default::default(),
     version: 2,
     avatar_type: AvatarType::CrcV2RegisterHuman,
     avatar: "0x123...".parse()?,
-    token_id: Some(U256::from(1)),
+    token_id: None,
     has_v1: false,
     v1_token: None,
     cid_v0_digest: None,
@@ -63,201 +65,14 @@ let avatar = AvatarInfo {
     name: None,
     symbol: None,
 };
-
-// Create pathfinding parameters
-let params = FindPathParams {
-    from: "0xabc...".parse()?,
-    to: "0xdef...".parse()?,
-    target_flow: U256::from(1000u64),
-    use_wrapped_balances: Some(true),
-    from_tokens: None,
-    to_tokens: None,
-    exclude_from_tokens: None,
-    exclude_to_tokens: None,
-    simulated_balances: None,
-    max_transfers: Some(10),
-};
-
-// Serialize to JSON
-let json = serde_json::to_string(&avatar)?;
 ```
 
-## Type Categories
-
-### Core Blockchain Types
-- `Address` - Ethereum addresses (re-exported from alloy-primitives)
-- `TxHash`, `BlockHash` - Transaction and block hashes
-- `U256`, `U192` - Large unsigned integers
-- `TransactionRequest` - Transaction request data
-
-### Avatar & Profile Management
-- `AvatarInfo` - Complete avatar information and metadata
-- `Profile` - User profile with name, description, images
-- `GroupProfile` - Group profile extending Profile with symbol
-- `AvatarType` - Registration event types (Human, Group, Organization)
-
-### Trust & Social Graph
-- `TrustRelation` - Individual trust relationship
-- `AggregatedTrustRelation` - Processed trust relationships
-- `TrustRelationType` - Trust relationship types
-
-### Token Operations
-- `TokenBalance` - Token balance with metadata
-- `TokenInfo` - Token creation and type information
-- `TokenHolder` - Account token holdings
-- `Balance` - Flexible balance type (raw or formatted)
-
-### Group Management
-- `GroupRow` - Group registration and metadata
-- `GroupMembershipRow` - Group membership records
-- `GroupQueryParams` - Parameters for group queries
-
-### Pathfinding & Transfers
-- `FindPathParams` - Parameters for path computation
-- `PathfindingResult` - Computed transfer path
-- `TransferStep` - Individual transfer in a path
-- `FlowMatrix` - Complete flow representation for contracts
-- `SimulatedBalance` - Balance simulation for pathfinding
-
-### Event System
-- `CirclesEvent` - Universal event structure
-- `CirclesEventType` - All supported event types (25+ variants)
-- `CirclesBaseEvent` - Common event metadata
-
-### RPC & Communication
-- `JsonRpcRequest`, `JsonRpcResponse` - Standard JSON-RPC types
-- `CirclesQueryResponse` - Response format for queries
-- `TokenBalanceResponse` - Token balance from RPC calls
-
-### Query System
-- `QueryParams` - Parameters for `circles_query` RPC method
-- `FilterPredicate`, `Conjunction` - Query filtering DSL
-- `PagedResult` - Paginated query results
-- `SortOrder`, `OrderBy` - Result sorting
-
-### Contract Execution
-- `ContractRunner` - Async trait for contract interactions
-- `BatchRun` - Trait for batched transaction execution
-- `RunnerConfig` - Configuration for contract runners
-
-## Usage Examples
-
-### Working with Balances
-
-```rust
-use circles_types::{Balance, U256};
-
-let balance = Balance::Raw(U256::from(1000000000000000000u64)); // 1 token
-match balance {
-    Balance::Raw(amount) => println!("Raw balance: {} wei", amount),
-    Balance::TimeCircles(amount) => println!("TimeCircles: {:.6}", amount),
-}
-```
-
-### Query Building
-
-```rust
-use circles_types::{QueryParams, FilterPredicate, FilterType, OrderBy, SortOrder};
-
-let query = QueryParams::new(
-    "CrcV2".to_string(),
-    "Avatars".to_string(),
-    vec!["avatar".to_string(), "version".to_string()],
-)
-.with_filter(vec![
-    FilterPredicate::equals("version".to_string(), 2).into()
-])
-.with_order(vec![
-    OrderBy::desc("block_number".to_string())
-])
-.with_limit(100);
-```
-
-### Event Handling
-
-```rust
-use circles_types::{CirclesEvent, CirclesEventType};
-
-// Parse events from RPC
-let event: CirclesEvent = serde_json::from_str(&json_data)?;
-match event.event_type {
-    CirclesEventType::CrcV2RegisterHuman => {
-        println!("New human registered!");
-    }
-    CirclesEventType::CrcV2Trust => {
-        println!("Trust relationship established");
-    }
-    _ => println!("Other event type"),
-}
-```
-
-## Flow Matrix Operations
-
-```rust
-use circles_types::{FlowMatrix, FlowEdge, Stream, TransferStep, Address, U192};
-
-// Create transfer step
-let transfer = TransferStep {
-    from_address: "0x123...".parse()?,
-    to_address: "0x456...".parse()?,
-    token_owner: "0x789...".parse()?,
-    value: U192::from(1000u64),
-};
-
-// Create flow edge
-let edge = FlowEdge {
-    stream_sink_id: 1,
-    amount: U192::from(1000u64),
-};
-
-// Create stream
-let stream = Stream {
-    source_coordinate: 0,
-    flow_edge_ids: vec![0],
-    data: vec![],
-};
-
-// Assemble flow matrix
-let matrix = FlowMatrix {
-    flow_vertices: vec!["0x123...".parse()?, "0x456...".parse()?],
-    flow_edges: vec![edge],
-    streams: vec![stream],
-    packed_coordinates: vec![0, 1, 2, 3],
-    source_coordinate: 0,
-};
-```
-
-## Compatibility
-
-This crate is designed to work seamlessly with:
-
-- **Alloy Ecosystem**: Full compatibility with alloy-primitives and alloy-rpc-types
-- **Circles RPC**: Direct serialization support for all RPC methods
-- **Smart Contracts**: Types match Solidity struct layouts
-- **TypeScript SDK**: API-compatible with the TypeScript Circles SDK
-- **Async Runtimes**: Works with tokio, async-std, and other runtimes
-
-## Contributing
-
-Contributions are welcome! Please ensure that:
-
-- All public types implement appropriate traits (`Clone`, `Debug`, `Serialize`, `Deserialize`)
-- New types include comprehensive documentation with examples
-- API compatibility with TypeScript SDK is maintained
-- Changes include appropriate tests
-- Follow Rust naming conventions (snake_case)
-
-## License
-
-Licensed under either of
-
-- MIT license ([LICENSE-MIT](../../LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+## Usage notes
+- Designed for `serde` round-trips against Circles RPC responses and contract bindings generated in `crates/abis`.
+- Unknown event types are preserved via `CrcUnknownEvent` to keep WS/HTTP parsing resilient.
+- `FindPathParams.target_flow` is `U256` (RPC contract), but downstream helpers cap to `U192` for flow matrix safety.
 
 ## Links
-
-- [Workspace Documentation](../../README.md)
-- [Circles Protocol](https://aboutcircles.com/)
-- [TypeScript SDK](https://github.com/aboutcircles/circles-sdk)
-- [Alloy Documentation](https://alloy-rs.github.io/alloy/)
+- Workspace overview: [`../../README.md`](../../README.md)
+- TypeScript reference: https://github.com/aboutcircles/circles-sdk
+- Alloy docs: https://alloy-rs.github.io/alloy/
