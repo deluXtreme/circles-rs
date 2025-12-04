@@ -71,8 +71,8 @@ fn convert_step(step: &PathfindingTransferStep) -> Result<TransferStep, Pathfind
 ///
 /// # Errors
 ///
-/// - [`PathfinderError::Rpc`] - Network or HTTP errors
-/// - [`PathfinderError::JsonRpc`] - Invalid RPC response or protocol errors
+/// - [`PathfinderError::Transport`] - Network/HTTP or underlying client errors
+/// - [`PathfinderError::RpcResponse`] - Invalid RPC response or protocol errors
 pub async fn find_path(
     rpc_url: &str,
     from: Address,

@@ -7,6 +7,9 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 /// Build a map of token info for all token owners the current avatar sends from in the path.
+///
+/// Normalizes wrapper token types so non-inflationary wrappers are coerced to
+/// `CrcV2_ERC20WrapperDeployed_Demurraged` for downstream logic.
 pub async fn token_info_map_from_path(
     current_avatar: Address,
     rpc: &CirclesRpc,
@@ -40,6 +43,9 @@ pub async fn token_info_map_from_path(
 }
 
 /// Accumulate totals for wrapped tokens present in a path.
+///
+/// Returns per-wrapper totals and the wrapper's token_type so callers can
+/// distinguish inflationary vs demurraged when unwrapping.
 pub fn wrapped_totals_from_path(
     path: &PathfindingResult,
     token_info_map: &HashMap<Address, TokenInfo>,
@@ -60,7 +66,9 @@ pub fn wrapped_totals_from_path(
 }
 
 /// Convert wrapped totals to their underlying avatar/token totals.
-/// Demurrage conversion is best-effort and currently treated as identity.
+///
+/// Inflationary wrappers are converted back to attoCircles using the converter
+/// and the token's timestamp hint; demurraged wrappers are currently identity.
 pub fn expected_unwrapped_totals(
     wrapped_totals: &HashMap<Address, (U256, String)>,
     token_info_map: &HashMap<Address, TokenInfo>,
@@ -85,6 +93,9 @@ pub fn expected_unwrapped_totals(
 }
 
 /// Replace wrapped token addresses in a path with their underlying avatar tokens.
+///
+/// Produces a new path suitable for flow matrix construction where token_owner
+/// is always the underlying avatar (not the wrapper contract).
 pub fn replace_wrapped_tokens(
     path: &PathfindingResult,
     unwrapped: &HashMap<Address, (U256, Address)>,
@@ -116,6 +127,9 @@ pub fn replace_wrapped_tokens(
 }
 
 /// Scale down all transfer values by retain_bps (1e12 basis).
+///
+/// Useful for netting checks: shrink a path to match a reduced payment amount
+/// while preserving proportions.
 pub fn shrink_path_values(
     path: &PathfindingResult,
     sink: Address,
@@ -162,6 +176,9 @@ pub fn compute_netted_flow(path: &PathfindingResult) -> HashMap<Address, I256> {
 }
 
 /// Assert that source/sink/intermediate balances match expected netting rules.
+///
+/// - Source must be net negative, sink net positive, intermediates balanced.
+/// - If source == sink, all vertices must net to zero.
 pub fn assert_no_netted_flow_mismatch(
     path: &PathfindingResult,
     override_source: Option<Address>,

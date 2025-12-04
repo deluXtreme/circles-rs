@@ -67,11 +67,11 @@
 //!
 //! ## Modules
 //!
-//! - [`hub`] - Circles Hub contract types and conversions
-//! - [`rpc`] - RPC communication and pathfinding
-//! - [`flow`] - Flow matrix calculation
-//! - [`packing`] - Coordinate packing utilities
-//! - [`convenience`] - High-level convenience functions
+//! - `hub` - Circles Hub contract types and conversions
+//! - `rpc` - RPC communication and pathfinding
+//! - `flow` - Flow matrix calculation
+//! - `packing` - Coordinate packing utilities
+//! - `convenience` - High-level convenience functions
 //!
 //! ## Features
 //!
