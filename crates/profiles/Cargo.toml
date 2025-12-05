@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 description = "Circles profile service client"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/deluXtreme/circles-rs"
+homepage = "https://circles-rs-book.vercel.app/"
+documentation = "https://docs.rs/circles-profiles"
 
 [dependencies]
 circles-types = { workspace = true }

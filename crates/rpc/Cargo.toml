@@ -2,6 +2,11 @@
 name = "circles-rpc"
 version = "0.1.0"
 edition = "2024"
+description = "Circles JSON-RPC client (HTTP + WS)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/deluXtreme/circles-rs"
+homepage = "https://circles-rs-book.vercel.app/"
+documentation = "https://docs.rs/circles-rpc"
 
 [dependencies]
 alloy-json-rpc = { workspace = true }

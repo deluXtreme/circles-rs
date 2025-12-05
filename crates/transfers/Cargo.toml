@@ -6,6 +6,8 @@ description = "Transfer transaction builder for Circles protocol"
 authors = ["franco <0xpantera@proton.me>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/deluXtreme/circles-rs"
+homepage = "https://circles-rs-book.vercel.app/"
+documentation = "https://docs.rs/circles-transfers"
 
 [dependencies]
 alloy-primitives = { workspace = true }

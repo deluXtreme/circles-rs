@@ -6,6 +6,8 @@ description = "Core type definitions for the Circles protocol"
 repository = "https://github.com/deluXtreme/circles-rs"
 license = "MIT"
 keywords = ["circles", "types", "gnosis", "defi"]
+homepage = "https://circles-rs-book.vercel.app/"
+documentation = "https://docs.rs/circles-types"
 
 [dependencies]
 alloy-json-abi = "1.4.1"
