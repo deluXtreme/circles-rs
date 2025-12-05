@@ -18,8 +18,8 @@ alloy-primitives = { workspace = true }                                         
 alloy-provider = { workspace = true }
 alloy-sol-types = { workspace = true }                     # sol! macro
 circles-types = { workspace = true }
-circles-rpc = { path = "../rpc" }
-circles-utils = { path = "../utils" }
+circles-rpc = { path = "../rpc", version = "0.1.0" }
+circles-utils = { path = "../utils", version = "0.1.0" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

@@ -1,8 +1,8 @@
-use abis::{
+use alloy_provider::{Identity, ProviderBuilder, RootProvider};
+use circles_abis::{
     BaseGroup, BaseGroupFactory, DemurrageCircles, HubV2, InflationaryCircles, InvitationEscrow,
     InvitationFarm, LiftERC20, NameRegistry, ReferralsModule,
 };
-use alloy_provider::{Identity, ProviderBuilder, RootProvider};
 use circles_types::CirclesConfig;
 
 /// Core contract bundle for the Circles SDK.

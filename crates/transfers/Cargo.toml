@@ -13,11 +13,11 @@ documentation = "https://docs.rs/circles-transfers"
 alloy-primitives = { workspace = true }
 alloy-provider = { workspace = true }
 alloy-sol-types = { workspace = true }
-circles-abis = { path = "../abis" }
-circles-rpc = { path = "../rpc" }
-circles-pathfinder = { path = "../pathfinder" }
+circles-abis = { path = "../abis", version = "0.1.0" }
+circles-rpc = { path = "../rpc", version = "0.1.0" }
+circles-pathfinder = { path = "../pathfinder", version = "0.5.0" }
 circles-types = { workspace = true }
-circles-utils = { path = "../utils" }
+circles-utils = { path = "../utils", version = "0.1.0" }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

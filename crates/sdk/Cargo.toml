@@ -11,11 +11,11 @@ documentation = "https://docs.rs/circles-sdk"
 [dependencies]
 alloy-primitives = { workspace = true }
 async-trait = { workspace = true }
-circles-profiles = { path = "../profiles" }
-circles-rpc = { path = "../rpc" }
+circles-profiles = { path = "../profiles", version = "0.1.0" }
+circles-rpc = { path = "../rpc", version = "0.1.0" }
 circles-types = { workspace = true }
-circles-transfers = { path = "../transfers" }
-circles-abis = { path = "../abis" }
+circles-transfers = { path = "../transfers", version = "0.1.0" }
+circles-abis = { path = "../abis", version = "0.1.0" }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 alloy-provider = { workspace = true }

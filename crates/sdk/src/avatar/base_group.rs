@@ -3,8 +3,8 @@ use crate::cid_v0_to_digest::cid_v0_to_digest;
 use crate::{
     ContractRunner, Core, PreparedTransaction, Profile, SdkError, SubmittedTx, call_to_tx,
 };
-use abis::BaseGroup;
 use alloy_primitives::{Address, U256, aliases::U96};
+use circles_abis::BaseGroup;
 use circles_profiles::Profiles;
 use circles_rpc::CirclesRpc;
 #[cfg(feature = "ws")]
@@ -49,7 +49,7 @@ impl BaseGroupAvatar {
     pub async fn update_profile(&self, profile: &Profile) -> Result<Vec<SubmittedTx>, SdkError> {
         let cid = self.common.pin_profile(profile).await?;
         let digest = cid_v0_to_digest(&cid)?;
-        let call = abis::BaseGroup::updateMetadataDigestCall {
+        let call = circles_abis::BaseGroup::updateMetadataDigestCall {
             _metadataDigest: digest,
         };
         let tx = call_to_tx(self.address, call, None);

@@ -6,7 +6,7 @@ This crate provides type-safe Rust bindings for all Circles smart contracts usin
 
 ## Overview
 
-The `abis` crate serves as the contract interface layer for the Circles protocol, providing:
+The `circles-abis` crate serves as the contract interface layer for the Circles protocol, providing:
 
 - Type-safe contract bindings generated from JSON ABIs
 - Complete coverage of all Circles protocol contracts
@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-abis = "0.1.0"
+circles_abis = "0.1.0"
 ```
 
 ## Available Contracts
@@ -40,7 +40,7 @@ This crate includes ABI definitions for:
 ## Usage
 
 ```rust
-use abis::{HubV2, BaseGroup, NameRegistry};
+use circles_abis::{HubV2, BaseGroup, NameRegistry};
 use alloy_primitives::Address;
 
 // Use with alloy providers
@@ -63,7 +63,7 @@ All contracts are generated using `alloy-sol-types` and provide:
 ### Example: Checking if an address is human
 
 ```rust
-use abis::HubV2;
+use circles_abis::HubV2;
 use alloy_primitives::Address;
 use alloy_provider::Provider;
 
@@ -81,7 +81,7 @@ async fn check_human(
 ### Example: Listening to events
 
 ```rust
-use abis::HubV2;
+use circles_abis::HubV2;
 use alloy_primitives::Address;
 
 // Listen for trust events
@@ -135,7 +135,7 @@ Refer to the [Circles documentation](https://docs.aboutcircles.com/) for current
 Contract calls can fail for various reasons. The generated contracts provide typed errors:
 
 ```rust
-use abis::HubV2;
+use circles_abis::HubV2;
 
 match hub.trust(trustee, expiry_time).call().await {
     Ok(result) => println!("Trust established successfully"),
