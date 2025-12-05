@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 alloy-primitives = { workspace = true }
-async-trait = "0.1"
+async-trait = { workspace = true }
 circles-profiles = { path = "../profiles" }
 circles-rpc = { path = "../rpc" }
 circles-types = { workspace = true }
@@ -15,15 +15,15 @@ circles-transfers = { path = "../transfers" }
 abis = { path = "../abis" }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
-alloy-provider = { version = "1.1.2", features = ["reqwest"] }
-alloy-sol-types = "1.4.1"
+alloy-provider = { workspace = true }
+alloy-sol-types = { workspace = true }
 bs58 = "0.5"
-serde_json = "1.0"
+serde_json = { workspace = true }
 rand = "0.8"
 hex = "0.4"
-futures = { version = "0.3", optional = true }
-alloy-json-rpc = { version = "1.1.2", optional = true }
-tracing = { version = "0.1", optional = true }
+futures = { workspace = true, optional = true }
+alloy-json-rpc = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
 once_cell = "1.19"
 
 [features]
@@ -31,5 +31,5 @@ default = []
 ws = ["circles-rpc/ws", "futures", "alloy-json-rpc", "tokio", "tracing"]
 
 [dev-dependencies]
-futures = "0.3"
+futures = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

@@ -9,8 +9,8 @@ repository = "https://github.com/deluXtreme/circles-rs"
 
 [dependencies]
 alloy-primitives = { workspace = true }
-alloy-provider = { version = "1.1.2", features = ["reqwest"] }
-alloy-sol-types = "1.4.1"
+alloy-provider = { workspace = true }
+alloy-sol-types = { workspace = true }
 abis = { path = "../abis" }
 circles-rpc = { path = "../rpc" }
 circles-pathfinder = { path = "../pathfinder" }
@@ -18,9 +18,9 @@ circles-types = { workspace = true }
 circles-utils = { path = "../utils" }
 thiserror = { workspace = true }
 serde = { workspace = true }
-serde_json = "1.0"
+serde_json = { workspace = true }
 tokio = { workspace = true, optional = true }
-futures = "0.3"
+futures = { workspace = true }
 bytes = "1.6"
 
 [features]
