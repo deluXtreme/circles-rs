@@ -3,14 +3,6 @@
 version = 4
 
 [[package]]
-name = "abis"
-version = "0.1.0"
-dependencies = [
- "alloy-contract",
- "alloy-sol-types",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1093,6 +1085,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "circles-abis"
+version = "0.1.0"
+dependencies = [
+ "alloy-contract",
+ "alloy-sol-types",
+]
+
+[[package]]
 name = "circles-pathfinder"
 version = "0.5.0"
 dependencies = [
@@ -1146,13 +1146,13 @@ dependencies = [
 name = "circles-sdk"
 version = "0.1.0"
 dependencies = [
- "abis",
  "alloy-json-rpc",
  "alloy-primitives",
  "alloy-provider",
  "alloy-sol-types",
  "async-trait",
  "bs58",
+ "circles-abis",
  "circles-profiles",
  "circles-rpc",
  "circles-transfers",
@@ -1171,11 +1171,11 @@ dependencies = [
 name = "circles-transfers"
 version = "0.1.0"
 dependencies = [
- "abis",
  "alloy-primitives",
  "alloy-provider",
  "alloy-sol-types",
  "bytes",
+ "circles-abis",
  "circles-pathfinder",
  "circles-rpc",
  "circles-types",

@@ -15,7 +15,7 @@ circles-profiles = { path = "../profiles" }
 circles-rpc = { path = "../rpc" }
 circles-types = { workspace = true }
 circles-transfers = { path = "../transfers" }
-abis = { path = "../abis" }
+circles-abis = { path = "../abis" }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 alloy-provider = { workspace = true }
