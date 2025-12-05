@@ -6,6 +6,29 @@ For detailed changes, see individual crate changelogs:
 - [circles-types](crates/types/CHANGELOG.md) - Core type definitions
 - [circles-pathfinder](crates/pathfinder/CHANGELOG.md) - Pathfinding and flow matrix calculation
 
+## [0.3.0] - 2025-12-05
+
+### Coordinated Changes
+## [0.4.0] - 2025-12-05
+
+### Coordinated Changes
+- **circles-types v0.3.0**: Expanded Circles protocol types (invitations, referrals, WS events) aligned with SDK/transfers.
+- **circles-pathfinder v0.5.0**: Wrapper-aware helpers (demurraged/inflationary), netted-flow checks, `u256_to_u192`, refreshed docs/examples.
+- **circles-rpc v0.1.0**: HTTP + WS client with pagination helper and heartbeat/batch-tolerant subscriptions.
+- **circles-utils v0.1.0**: Demurrage/inflation converters (attoCircles ↔ attoStaticCircles) and Circles epoch day index.
+- **circles-transfers v0.1.0**: Transfer planning over pathfinder, wrapper resolution, approvals, unwrap/rewrap flows, fixture-backed tests.
+- **circles-profiles v0.1.0**: Profiles service client consumed by SDK avatars.
+- **circles-sdk v0.1.0**: Read-focused SDK wiring RPC/pathfinder/transfers/profiles with avatars, invitation/referral flows, and WS subscribe/retry/catch-up helpers.
+- **circles-abis v0.1.0**: Published contract bindings shared across crates.
+
+### Workspace Improvements
+- Shared Gnosis mainnet config reused by examples and live test harness.
+- Examples for pathfinder, RPC pagination + WS, SDK basic read/invite generation/WS subscribe.
+- Env-gated live tests for RPC/pathfinder/transfer planning coverage.
+
+### Documentation
+- Alpha docs and rustdoc polish across crates (wrapper guidance, WS notes, SDK usage).
+
 ## [0.3.0] - 2025-07-17
 
 ### Coordinated Changes
@@ -88,5 +111,9 @@ When releasing breaking changes in `circles-types`:
 3. Test integration across workspace
 4. Publish dependent crates with appropriate version bumps
 
-[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/workspace-v0.1.0...HEAD
+[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/workspace-v0.4.0...HEAD
+[0.4.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.4.0
+[0.3.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.3.0
+[0.2.1]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.2.1
+[0.2.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.2.0
 [0.1.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.1.0
