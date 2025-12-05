@@ -1,8 +1,13 @@
 [package]
-name = "abis"
+name = "circles-abis"
 version = "0.1.0"
 edition = "2024"
+description = "Circles contract ABIs and bindings"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/deluXtreme/circles-rs"
+homepage = "https://circles-rs-book.vercel.app/"
+documentation = "https://docs.rs/circles-abis"
 
 [dependencies]
-alloy-contract = "1.1.2"
-alloy-sol-types = { version = "1.4.1", features = ["json"] }
+alloy-contract = { workspace = true }
+alloy-sol-types = { workspace = true }

@@ -1,17 +1,19 @@
 [package]
 name = "circles-types"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 description = "Core type definitions for the Circles protocol"
 repository = "https://github.com/deluXtreme/circles-rs"
 license = "MIT"
 keywords = ["circles", "types", "gnosis", "defi"]
+homepage = "https://circles-rs-book.vercel.app/"
+documentation = "https://docs.rs/circles-types"
 
 [dependencies]
 alloy-json-abi = "1.4.1"
 alloy-primitives = { workspace = true }
-alloy-provider = "1.1.2"
+alloy-provider = { workspace = true }
 alloy-rpc-types = "1.1.2"
-async-trait = "0.1.89"
+async-trait = { workspace = true }
 serde = { workspace = true }
-serde_json = "1.0.145"
+serde_json = { workspace = true }

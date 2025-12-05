@@ -1,7 +1,7 @@
 use crate::error::{TransferError, TransfersErrorSource};
-use abis::{DemurrageCircles, HubV2, InflationaryCircles, LiftERC20};
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolCall;
+use circles_abis::{DemurrageCircles, HubV2, InflationaryCircles, LiftERC20};
 use circles_pathfinder::{
     create_flow_matrix, expected_unwrapped_totals, replace_wrapped_tokens,
     token_info_map_from_path, wrapped_totals_from_path,

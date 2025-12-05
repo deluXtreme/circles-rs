@@ -1,5 +1,7 @@
 # Circles Rust Workspace
 
+> **Alpha release:** The API surface is still in flux; expect breaking changes between releases.
+
 Rust implementation of the Circles SDK: JSON-RPC client, pathfinding/flow matrix tooling, transfer planning, utilities, and a higher-level `circles-sdk` orchestrator. The workspace mirrors the TypeScript SDK shape while leaning on Alloy for Ethereum primitives and transports.
 
 ## Crates at a glance

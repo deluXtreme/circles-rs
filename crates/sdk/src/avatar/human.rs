@@ -4,9 +4,9 @@ use crate::runner::{PreparedTransaction as RunnerTx, SubmittedTx as RunnerSubmit
 use crate::{
     ContractRunner, Core, PreparedTransaction, Profile, SdkError, SubmittedTx, call_to_tx,
 };
-use abis::{HubV2, InvitationFarm, ReferralsModule};
 use alloy_primitives::{Address, U256, aliases::U96};
 use alloy_sol_types::{SolCall, SolValue, sol};
+use circles_abis::{HubV2, InvitationFarm, ReferralsModule};
 use circles_profiles::Profiles;
 use circles_rpc::CirclesRpc;
 #[cfg(feature = "ws")]
@@ -69,7 +69,7 @@ impl HumanAvatar {
     pub async fn update_profile(&self, profile: &Profile) -> Result<Vec<SubmittedTx>, SdkError> {
         let cid = self.common.pin_profile(profile).await?;
         let digest = cid_v0_to_digest(&cid)?;
-        let call = abis::NameRegistry::updateMetadataDigestCall {
+        let call = circles_abis::NameRegistry::updateMetadataDigestCall {
             _metadataDigest: digest,
         };
         let tx = call_to_tx(self.core.config.name_registry_address, call, None);
@@ -293,7 +293,7 @@ impl HumanAvatar {
 
     /// Redeem an invitation from an inviter (requires runner).
     pub async fn redeem_invitation(&self, inviter: Address) -> Result<Vec<SubmittedTx>, SdkError> {
-        let call = abis::InvitationEscrow::redeemInvitationCall { inviter };
+        let call = circles_abis::InvitationEscrow::redeemInvitationCall { inviter };
         let tx = call_to_tx(
             self.common.core.config.invitation_escrow_address,
             call,
@@ -304,7 +304,7 @@ impl HumanAvatar {
 
     /// Revoke a specific invitation (requires runner).
     pub async fn revoke_invitation(&self, invitee: Address) -> Result<Vec<SubmittedTx>, SdkError> {
-        let call = abis::InvitationEscrow::revokeInvitationCall { invitee };
+        let call = circles_abis::InvitationEscrow::revokeInvitationCall { invitee };
         let tx = call_to_tx(
             self.common.core.config.invitation_escrow_address,
             call,
@@ -315,7 +315,7 @@ impl HumanAvatar {
 
     /// Revoke all invitations sent by this avatar (requires runner).
     pub async fn revoke_all_invitations(&self) -> Result<Vec<SubmittedTx>, SdkError> {
-        let call = abis::InvitationEscrow::revokeAllInvitationsCall {};
+        let call = circles_abis::InvitationEscrow::revokeAllInvitationsCall {};
         let tx = call_to_tx(
             self.common.core.config.invitation_escrow_address,
             call,

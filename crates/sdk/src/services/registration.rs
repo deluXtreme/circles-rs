@@ -1,8 +1,8 @@
 use crate::avatar::{BaseGroupAvatar, HumanAvatar, OrganisationAvatar};
 use crate::cid_v0_to_digest::cid_v0_to_digest;
 use crate::{RegistrationResult, Sdk, SdkError, call_to_tx};
-use abis::{BaseGroupFactory, HubV2};
 use alloy_primitives::{Address, U256};
+use circles_abis::{BaseGroupFactory, HubV2};
 use circles_profiles::Profile;
 use circles_types::AvatarInfo;
 
@@ -33,7 +33,7 @@ pub async fn register_human(
 
     let mut txs = Vec::new();
     if let Some(first_inviter) = inviters.first() {
-        let redeem = abis::InvitationEscrow::redeemInvitationCall {
+        let redeem = circles_abis::InvitationEscrow::redeemInvitationCall {
             inviter: *first_inviter,
         };
         txs.push(call_to_tx(
