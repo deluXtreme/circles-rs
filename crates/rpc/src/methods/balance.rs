@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::{Address, Balance};
 
-/// Methods for aggregate balance queries.
+/// Methods for aggregate balance queries (`circles_getTotalBalance` / `circlesV2_getTotalBalance`).
 #[derive(Clone, Debug)]
 pub struct BalanceMethods {
     client: RpcClient,

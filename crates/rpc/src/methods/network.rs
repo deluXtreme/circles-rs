@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::NetworkSnapshot;
 
-/// Methods for fetching network snapshots.
+/// Methods for fetching network snapshots (`circles_getNetworkSnapshot`).
 #[derive(Clone, Debug)]
 pub struct NetworkMethods {
     client: RpcClient,

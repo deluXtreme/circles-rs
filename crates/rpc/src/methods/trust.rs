@@ -3,6 +3,8 @@ use crate::error::Result;
 use circles_types::{Address, TrustRelation, TrustRelationType};
 
 /// Methods for trust relation queries.
+///
+/// Wraps `circles_getTrustRelations` and `circles_getCommonTrust`.
 #[derive(Clone, Debug)]
 pub struct TrustMethods {
     client: RpcClient,

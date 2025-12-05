@@ -5,6 +5,9 @@ use circles_types::{Address, TokenBalanceResponse, TokenHolder};
 use std::str::FromStr;
 
 /// Methods for token balance and holder lookups.
+///
+/// `get_token_balances` selects v1/v2 via `use_v2`; holders come back as
+/// demurraged totals and are normalized to `U256`.
 #[derive(Clone, Debug)]
 pub struct TokenMethods {
     client: RpcClient,

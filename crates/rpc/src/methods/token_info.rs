@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::{Address, TokenInfo};
 
-/// Methods for retrieving token metadata.
+/// Methods for retrieving token metadata (`circles_getTokenInfo` + batch).
 #[derive(Clone, Debug)]
 pub struct TokenInfoMethods {
     client: RpcClient,

@@ -7,6 +7,9 @@ use circles_types::{CirclesEvent, RpcSubscriptionEvent};
 use futures::StreamExt;
 
 /// Methods for fetching Circles events over HTTP or websocket.
+///
+/// WS helpers subscribe to `eth_subscribe("circles", filter)`, drop heartbeat
+/// frames (`[]`), flatten batches, and parse into `CirclesEvent` when desired.
 #[derive(Clone, Debug)]
 pub struct EventsMethods {
     client: RpcClient,

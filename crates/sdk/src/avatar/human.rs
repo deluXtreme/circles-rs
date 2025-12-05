@@ -65,8 +65,7 @@ impl HumanAvatar {
         self.common.profile(self.info.cid_v0.as_deref()).await
     }
 
-    /// Update profile via profiles service and store CID through NameRegistry.
-    /// Requires runner.
+    /// Update profile via profiles service and store CID through NameRegistry (requires runner).
     pub async fn update_profile(&self, profile: &Profile) -> Result<Vec<SubmittedTx>, SdkError> {
         let cid = self.common.pin_profile(profile).await?;
         let digest = cid_v0_to_digest(&cid)?;
@@ -78,7 +77,7 @@ impl HumanAvatar {
         Ok(sent)
     }
 
-    /// Trust one or more avatars via HubV2::trust. Requires runner.
+    /// Trust one or more avatars via HubV2::trust (requires runner).
     pub async fn trust_add(
         &self,
         avatars: &[Address],
@@ -180,6 +179,8 @@ impl HumanAvatar {
     }
 
     /// Generate invitation secrets/signers and return prepared transactions (claim + batch transfer).
+    ///
+    /// Does not submit; pair with a runner to send. Each invite funds 96 CRC.
     pub async fn generate_invites(
         &self,
         number_of_invites: u64,

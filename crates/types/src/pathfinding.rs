@@ -1,7 +1,7 @@
 use alloy_primitives::{aliases::U192, Address, Bytes, U256};
 use serde::{Deserialize, Serialize};
 
-/// Simulated balance for path finding
+/// Simulated balance for path finding.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimulatedBalance {
     pub holder: Address,
@@ -11,7 +11,7 @@ pub struct SimulatedBalance {
     pub is_static: bool,
 }
 
-/// Path finding parameters for circlesV2_findPath
+/// Path finding parameters for `circlesV2_findPath`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FindPathParams {
     #[serde(rename = "Source")]
@@ -36,8 +36,8 @@ pub struct FindPathParams {
     pub max_transfers: Option<u32>,
 }
 
-/// A single transfer step in a pathfinding result
-/// This is the pathfinding version - different from the existing TransferStep in lib.rs
+/// A single transfer step in a pathfinding result.
+/// This is the pathfinding version; different from the contract-facing `TransferStep`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathfindingTransferStep {
@@ -47,7 +47,7 @@ pub struct PathfindingTransferStep {
     pub value: U256,
 }
 
-/// Result of pathfinding computation
+/// Result of pathfinding computation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathfindingResult {
@@ -55,8 +55,8 @@ pub struct PathfindingResult {
     pub transfers: Vec<PathfindingTransferStep>,
 }
 
-/// Flow edge structure for operateFlowMatrix
-/// Corresponds to TypeDefinitions.FlowEdge in the Hub V2 contract
+/// Flow edge structure for `operateFlowMatrix`.
+/// Corresponds to `TypeDefinitions.FlowEdge` in Hub V2.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlowEdgeStruct {
     #[serde(rename = "streamSinkId")]
@@ -64,8 +64,8 @@ pub struct FlowEdgeStruct {
     pub amount: U192, // uint192 in Solidity
 }
 
-/// Stream structure for operateFlowMatrix
-/// Corresponds to TypeDefinitions.Stream in the Hub V2 contract
+/// Stream structure for `operateFlowMatrix`.
+/// Corresponds to `TypeDefinitions.Stream` in Hub V2.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamStruct {
     #[serde(rename = "sourceCoordinate")]
@@ -75,9 +75,8 @@ pub struct StreamStruct {
     pub data: Bytes, // Handles both Uint8Array and Hex from TypeScript
 }
 
-/// Flow matrix for ABI encoding
-/// Used with the operateFlowMatrix function in Hub V2
-/// This is the pathfinding version - different from the existing FlowMatrix in lib.rs
+/// Flow matrix for ABI encoding, used with Hub V2 `operateFlowMatrix`.
+/// This is the pathfinding version; different from the contract-facing `FlowMatrix`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathfindingFlowMatrix {
     #[serde(rename = "flowVertices")]
@@ -91,8 +90,8 @@ pub struct PathfindingFlowMatrix {
     pub source_coordinate: u16, // Convenience field, not part of ABI
 }
 
-/// Advanced transfer options
-/// Extends FindPathParams to add transfer-specific options
+/// Advanced transfer options.
+/// Extends `FindPathParams` to add transfer-specific options.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdvancedTransferOptions {
     // All fields from FindPathParams except from, to, targetFlow
@@ -109,7 +108,7 @@ pub struct AdvancedTransferOptions {
 }
 
 impl AdvancedTransferOptions {
-    /// Convert to FindPathParams with the required from/to/targetFlow fields
+    /// Convert to `FindPathParams` with the required from/to/targetFlow fields.
     pub fn to_find_path_params(
         self,
         from: Address,
@@ -135,16 +134,16 @@ impl AdvancedTransferOptions {
 // Original Flow Types (moved from lib.rs)
 // ============================================================================
 
-/// Edge in the flow graph (sinkId 1 == final hop)
-/// This is the original version from lib.rs
+/// Edge in the flow graph (sinkId 1 == final hop).
+/// This is the original version from lib.rs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FlowEdge {
     pub stream_sink_id: u16,
     pub amount: U192,
 }
 
-/// Stream with byte data
-/// This is the original version from lib.rs
+/// Stream with byte data.
+/// This is the original version from lib.rs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Stream {
     pub source_coordinate: u16,
@@ -152,8 +151,8 @@ pub struct Stream {
     pub data: Vec<u8>,
 }
 
-/// Transfer step for internal flow calculations
-/// This is the original version from lib.rs - different from PathfindingTransferStep
+/// Transfer step for internal flow calculations.
+/// This is the original version from lib.rs—different from `PathfindingTransferStep`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransferStep {
     pub from_address: Address,
@@ -162,8 +161,8 @@ pub struct TransferStep {
     pub value: U192,
 }
 
-/// ABI-ready matrix returned by `create_flow_matrix`
-/// This is the original version from lib.rs - different from PathfindingFlowMatrix
+/// ABI-ready matrix returned by `create_flow_matrix`.
+/// This is the original version from lib.rs—different from `PathfindingFlowMatrix`.
 #[derive(Clone, Debug)]
 pub struct FlowMatrix {
     pub flow_vertices: Vec<Address>,

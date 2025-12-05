@@ -4,6 +4,9 @@ use circles_types::{FindPathParams, PathfindingResult, SimulatedBalance};
 use serde::Serialize;
 
 /// Methods for invoking the pathfinder (max-flow) RPC.
+///
+/// Mirrors `circlesV2_findPath` and accepts the full `FindPathParams`, including
+/// simulated balances and token overrides.
 #[derive(Clone, Debug)]
 pub struct PathfinderMethods {
     client: RpcClient,

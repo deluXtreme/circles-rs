@@ -13,7 +13,7 @@ use crate::packing::{pack_coordinates, transform_to_flow_vertices};
 
 /// Create a flow matrix from a sequence of transfer steps.
 ///
-/// This function takes a path discovered by [`find_path`] and converts it into
+/// This function takes a path discovered by [`crate::find_path`] and converts it into
 /// a flow matrix suitable for smart contract execution. The matrix includes
 /// vertex coordinates, flow edges, streams, and packed coordinate data.
 ///
@@ -57,8 +57,8 @@ use crate::packing::{pack_coordinates, transform_to_flow_vertices};
 ///
 /// # See Also
 ///
-/// - [`find_path`] - For discovering transfer paths
-/// - [`prepare_flow_for_contract`] - For one-step path finding + matrix creation
+/// - [`crate::find_path`] - For discovering transfer paths
+/// - [`crate::prepare_flow_for_contract`] - For one-step path finding + matrix creation
 pub fn create_flow_matrix(
     sender: Address,
     receiver: Address,

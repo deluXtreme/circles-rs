@@ -1,12 +1,12 @@
 # Circles Transfers
 
-Builder for Circles transfer transactions (port of the TS `@aboutcircles/sdk-transfers`).
+Builder for Circles transfer transactions (port of TS `@aboutcircles/sdk-transfers`). Produces the ordered tx list; execution is up to your runner.
 
 ## Status
-- Builds the ordered transaction list: approval → unwraps → operateFlowMatrix → re-wrap inflationary leftovers.
+- Builds approval → unwraps → `operateFlowMatrix` → inflationary re-wrap leftovers.
 - Handles demurraged and inflationary wrappers. Inflationary unwrap uses static amounts; leftover re-wrap uses `staticAttoCircles` from `circles_getTokenBalances`.
-- Always includes a safety `setApprovalForAll` (skip-check TODO).
-- Does not execute transactions; you submit the txs.
+- Self-transfer fast-path resolves wrapper type via LiftERC20; approval inclusion is configurable.
+- Fixtures cover demurraged-only, mixed wrappers (with rewrap), and a no-leftover inflationary case (static balance forced to zero for now).
 
 ## Usage
 ```rust
@@ -48,13 +48,8 @@ for tx in txs {
 # }
 ```
 
-## Notes
+## Notes / TODO
+- Approval skip-check is configurable but still defaults to including `setApprovalForAll`.
+- Inflationary no-leftover fixture can be made more realistic once timestamp/static balance data is available.
 - Requires a Circles RPC endpoint for pathfinding, token info, and balances; WS not required here.
-- Inflationary wrapper re-wrap needs `staticAttoCircles` in `circles_getTokenBalances` responses (TS SDK parity). If absent, re-wrap will not run.
-- Approval is always included; optional skip check is TODO.
-- Self-unwrap fast-path and full replenish flow are not implemented yet.
-
-## Caveats / TODO
-- Add approval skip when already approved.
-- Add self-transfer unwrap shortcut (from == to, single token pair) like TS.
-- Mocked RPC tests for full flow when fixtures are available.
+- Does not submit transactions; pair with a `ContractRunner` in the SDK to send them.

@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 use serde::{Deserialize, Serialize};
 
-/// Circles protocol configuration for a specific chain
+/// Circles protocol configuration for a specific chain.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CirclesConfig {
     /// RPC URL for Circles-specific endpoints

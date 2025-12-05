@@ -6,6 +6,14 @@ use alloy_primitives::{Address, U256};
 use circles_profiles::Profile;
 use circles_types::AvatarInfo;
 
+/// Register a human avatar.
+///
+/// Flow:
+/// - Uses runner/sender (errors if missing).
+/// - If pending invitations exist in InvitationEscrow, redeems the first; else
+///   checks inviter has ≥96 CRC and fails if not.
+/// - Pins profile via profiles service and calls `HubV2::registerHuman`.
+/// - Returns the created `HumanAvatar` and submitted txs.
 pub async fn register_human(
     sdk: &Sdk,
     inviter: Address,
@@ -80,6 +88,10 @@ pub async fn register_human(
     })
 }
 
+/// Register an organisation avatar.
+///
+/// Validates `name` non-empty, pins profile, calls `HubV2::registerOrganization`,
+/// and returns the created `OrganisationAvatar` (requires runner).
 pub async fn register_organisation(
     sdk: &Sdk,
     name: &str,
@@ -117,6 +129,10 @@ pub async fn register_organisation(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Register a base group via the factory (requires runner).
+///
+/// Validates name/symbol, pins profile, calls `BaseGroupFactory::createBaseGroup`,
+/// and predicts the deployed address to return a `BaseGroupAvatar` when possible.
 pub async fn register_group(
     sdk: &Sdk,
     owner: Address,

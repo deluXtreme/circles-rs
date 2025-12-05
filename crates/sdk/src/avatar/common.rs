@@ -17,6 +17,9 @@ use serde_json::json;
 use std::sync::Arc;
 
 /// Shared avatar context and read helpers.
+///
+/// Most methods are read-only; ones that submit transactions require a runner
+/// and return `SdkError::MissingRunner` if absent.
 pub struct CommonAvatar {
     pub address: Address,
     pub core: Arc<Core>,
@@ -84,6 +87,9 @@ impl CommonAvatar {
     }
 
     /// Plan a transfer using the transfer builder (no submit). Returns ordered prepared txs.
+    ///
+    /// Wrapper handling matches the TS SDK: unwrap inflationary/demurraged as
+    /// needed and include re-wrap when static balances are present.
     pub async fn plan_transfer(
         &self,
         to: Address,
