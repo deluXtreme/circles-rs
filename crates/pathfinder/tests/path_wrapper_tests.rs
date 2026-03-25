@@ -1,4 +1,5 @@
 use alloy_primitives::address;
+use circles_rpc::CirclesRpc;
 use circles_types::{PathfindingResult, PathfindingTransferStep};
 
 mod common;
@@ -347,4 +348,59 @@ fn shrink_path_values_scales_and_drops_subunit_edges() {
         shrunk.transfers[0].value,
         alloy_primitives::U256::from(2u64)
     );
+}
+
+#[tokio::test]
+async fn token_info_map_from_path_via_rpc_returns_transport_error_for_invalid_target() {
+    let current = address!("0xb00000000000000000000000000000000000000b");
+    let receiver = address!("0xc00000000000000000000000000000000000000c");
+    let wrapper = address!("0xd00000000000000000000000000000000000000d");
+    let rpc = CirclesRpc::try_from_http("http://invalid-rpc-url.com").unwrap();
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(1u64),
+        transfers: vec![PathfindingTransferStep {
+            from: current,
+            to: receiver,
+            token_owner: format!("{wrapper:#x}"),
+            value: alloy_primitives::U256::from(1u64),
+        }],
+    };
+
+    let err = circles_pathfinder::token_info_map_from_path_via_rpc(current, &rpc, &path)
+        .await
+        .unwrap_err();
+
+    match err {
+        circles_pathfinder::PathfinderError::Transport(_) => {}
+        other => panic!("expected transport error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn token_info_map_from_path_with_url_returns_transport_error_for_invalid_target() {
+    let current = address!("0xe00000000000000000000000000000000000000e");
+    let receiver = address!("0xf00000000000000000000000000000000000000f");
+    let wrapper = address!("0x1111111111111111111111111111111111111112");
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(1u64),
+        transfers: vec![PathfindingTransferStep {
+            from: current,
+            to: receiver,
+            token_owner: format!("{wrapper:#x}"),
+            value: alloy_primitives::U256::from(1u64),
+        }],
+    };
+
+    let err = circles_pathfinder::token_info_map_from_path_with_url(
+        current,
+        "http://invalid-rpc-url.com",
+        &path,
+    )
+    .await
+    .unwrap_err();
+
+    match err {
+        circles_pathfinder::PathfinderError::Transport(_) => {}
+        other => panic!("expected transport error, got {other:?}"),
+    }
 }

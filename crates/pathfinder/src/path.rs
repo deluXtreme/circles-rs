@@ -10,7 +10,7 @@ use std::str::FromStr;
 ///
 /// Normalizes wrapper token types so non-inflationary wrappers are coerced to
 /// `CrcV2_ERC20WrapperDeployed_Demurraged` for downstream logic.
-pub async fn token_info_map_from_path(
+pub async fn token_info_map_from_path_via_rpc(
     current_avatar: Address,
     rpc: &CirclesRpc,
     path: &PathfindingResult,
@@ -40,6 +40,25 @@ pub async fn token_info_map_from_path(
         map.insert(info.token, info);
     }
     Ok(map)
+}
+
+/// Compatibility wrapper that preserves the existing Rust client-based entrypoint.
+pub async fn token_info_map_from_path(
+    current_avatar: Address,
+    rpc: &CirclesRpc,
+    path: &PathfindingResult,
+) -> Result<HashMap<Address, TokenInfo>, PathfinderError> {
+    token_info_map_from_path_via_rpc(current_avatar, rpc, path).await
+}
+
+/// Convenience wrapper for callers that only have an RPC URL.
+pub async fn token_info_map_from_path_with_url(
+    current_avatar: Address,
+    rpc_url: &str,
+    path: &PathfindingResult,
+) -> Result<HashMap<Address, TokenInfo>, PathfinderError> {
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    token_info_map_from_path_via_rpc(current_avatar, &rpc, path).await
 }
 
 /// Accumulate totals for wrapped tokens present in a path.

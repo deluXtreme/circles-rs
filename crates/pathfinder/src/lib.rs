@@ -113,7 +113,7 @@ pub use path::{
     assert_no_netted_flow_mismatch, compute_netted_flow, expected_unwrapped_totals,
     expected_unwrapped_totals_at, get_wrapped_tokens_from_path, replace_wrapped_tokens,
     replace_wrapped_tokens_with_avatars, shrink_path_values, token_info_map_from_path,
-    wrapped_totals_from_path,
+    token_info_map_from_path_via_rpc, token_info_map_from_path_with_url, wrapped_totals_from_path,
 };
 
 // Utility functions for advanced users
