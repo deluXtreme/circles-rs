@@ -69,7 +69,8 @@ fn converts_inflationary_wrapper_totals() {
     info.timestamp = 1_700_000_000;
     info_map.insert(wrapper, info);
 
-    let unwrapped = circles_pathfinder::path::expected_unwrapped_totals(&totals, &info_map);
+    let unwrapped =
+        circles_pathfinder::expected_unwrapped_totals_at(&totals, &info_map, Some(1_700_000_000));
     let (amount, owner) = unwrapped.get(&wrapper).unwrap();
 
     // We expect ~1e18 demurraged amount after conversion back from static for ts=1_700_000_000.

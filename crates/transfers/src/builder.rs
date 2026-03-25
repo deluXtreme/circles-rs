@@ -215,13 +215,9 @@ impl TransferBuilder {
                         value: U256::ZERO,
                     });
                 } else if info.token_type == "CrcV2_ERC20WrapperDeployed_Inflationary" {
-                    // Unwrap only the amount used in the path, converted to static
-                    let ts_hint = if info.timestamp > 0 {
-                        Some(info.timestamp)
-                    } else {
-                        None
-                    };
-                    let static_amt = atto_circles_to_atto_static_circles(*amount_dem, ts_hint);
+                    // Unwrap only the amount used in the path, converted with
+                    // current-time semantics to match the TS TransferBuilder.
+                    let static_amt = atto_circles_to_atto_static_circles(*amount_dem, None);
                     let call = InflationaryCircles::unwrapCall {
                         _amount: static_amt,
                     };

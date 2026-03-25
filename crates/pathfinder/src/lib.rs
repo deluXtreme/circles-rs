@@ -110,8 +110,8 @@ pub use convenience::{
 
 pub use path::{
     assert_no_netted_flow_mismatch, compute_netted_flow, expected_unwrapped_totals,
-    replace_wrapped_tokens, replace_wrapped_tokens_with_avatars, shrink_path_values,
-    token_info_map_from_path, wrapped_totals_from_path,
+    expected_unwrapped_totals_at, replace_wrapped_tokens, replace_wrapped_tokens_with_avatars,
+    shrink_path_values, token_info_map_from_path, wrapped_totals_from_path,
 };
 
 // Utility functions for advanced users

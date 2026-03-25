@@ -65,24 +65,31 @@ pub fn wrapped_totals_from_path(
     out
 }
 
-/// Convert wrapped totals to their underlying avatar/token totals.
+/// Convert wrapped totals to their underlying avatar/token totals using the current time.
 ///
-/// Inflationary wrappers are converted back to attoCircles using the converter
-/// and the token's timestamp hint; demurraged wrappers are currently identity.
+/// This mirrors the TypeScript pathfinder helper, which calls the converter
+/// with its default "now" semantics for inflationary wrappers.
 pub fn expected_unwrapped_totals(
     wrapped_totals: &HashMap<Address, (U256, String)>,
     token_info_map: &HashMap<Address, TokenInfo>,
 ) -> HashMap<Address, (U256, Address)> {
+    expected_unwrapped_totals_at(wrapped_totals, token_info_map, None)
+}
+
+/// Convert wrapped totals to their underlying avatar/token totals at an explicit timestamp.
+///
+/// Use this when you need deterministic conversion behavior instead of the
+/// TypeScript-compatible default "now" semantics.
+pub fn expected_unwrapped_totals_at(
+    wrapped_totals: &HashMap<Address, (U256, String)>,
+    token_info_map: &HashMap<Address, TokenInfo>,
+    now_unix_seconds: Option<u64>,
+) -> HashMap<Address, (U256, Address)> {
     let mut out = HashMap::new();
     for (wrapper, (total, ty)) in wrapped_totals {
         if let Some(info) = token_info_map.get(wrapper) {
-            let ts_hint = if info.timestamp > 0 {
-                Some(info.timestamp)
-            } else {
-                None
-            };
             let amount = if ty == "CrcV2_ERC20WrapperDeployed_Inflationary" {
-                atto_static_circles_to_atto_circles(*total, ts_hint)
+                atto_static_circles_to_atto_circles(*total, now_unix_seconds)
             } else {
                 *total
             };
