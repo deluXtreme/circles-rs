@@ -162,9 +162,7 @@ impl TransferBuilder {
         let wrapped_totals = wrapped_totals_from_path(&path, &token_info_map);
         let has_wrapped = !wrapped_totals.is_empty();
 
-        if has_wrapped && opts.use_wrapped_balances.unwrap_or(false) {
-            return Err(TransferError::wrapped_tokens_required());
-        }
+        validate_wrapped_balance_usage(has_wrapped, opts.use_wrapped_balances)?;
 
         // Fetch balances once (for inflationary leftover wrap).
         let balance_map = if has_wrapped {
@@ -400,6 +398,16 @@ fn u256_to_u192_local(value: U256) -> alloy_primitives::aliases::U192 {
     }
 }
 
+fn validate_wrapped_balance_usage(
+    has_wrapped: bool,
+    use_wrapped_balances: Option<bool>,
+) -> Result<(), TransferError> {
+    if has_wrapped && !use_wrapped_balances.unwrap_or(false) {
+        return Err(TransferError::wrapped_tokens_required());
+    }
+    Ok(())
+}
+
 impl TransferBuilder {
     async fn needs_approval(&self, operator: Address) -> Option<bool> {
         let Ok(url) = self.config.circles_rpc_url.parse() else {
@@ -481,4 +489,24 @@ where
     Fut: std::future::Future<Output = Option<bool>>,
 {
     futures::executor::block_on(f())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_wrapped_balance_usage;
+    use crate::TransferError;
+
+    #[test]
+    fn wrapped_balance_guard_matches_ts_behavior() {
+        assert!(validate_wrapped_balance_usage(true, Some(true)).is_ok());
+        assert!(validate_wrapped_balance_usage(false, Some(false)).is_ok());
+        assert!(matches!(
+            validate_wrapped_balance_usage(true, Some(false)),
+            Err(TransferError::WrappedTokensRequired)
+        ));
+        assert!(matches!(
+            validate_wrapped_balance_usage(true, None),
+            Err(TransferError::WrappedTokensRequired)
+        ));
+    }
 }
