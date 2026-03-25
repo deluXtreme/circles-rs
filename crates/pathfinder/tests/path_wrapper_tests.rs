@@ -138,3 +138,89 @@ fn replaces_wrapped_tokens_with_avatar_addresses() {
     assert_eq!(rewritten.transfers[0].to, path.transfers[0].to);
     assert_eq!(rewritten.transfers[0].value, path.transfers[0].value);
 }
+
+#[test]
+fn get_wrapped_tokens_alias_matches_existing_helper() {
+    let current = address!("0xde374ece6fa50e781e81aac78e811b33d16912c7");
+    let receiver = address!("0x1111111111111111111111111111111111111111");
+    let wrapper = address!("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(1u64),
+        transfers: vec![PathfindingTransferStep {
+            from: current,
+            to: receiver,
+            token_owner: format!("{wrapper:#x}"),
+            value: alloy_primitives::U256::from(42u64),
+        }],
+    };
+
+    let mut info_map = std::collections::HashMap::new();
+    info_map.insert(
+        wrapper,
+        common::path_helpers::mock_token_info(
+            wrapper,
+            current,
+            "CrcV2_ERC20WrapperDeployed_Demurraged",
+        ),
+    );
+
+    let via_existing = circles_pathfinder::wrapped_totals_from_path(&path, &info_map);
+    let via_alias = circles_pathfinder::get_wrapped_tokens_from_path(&path, &info_map);
+
+    assert_eq!(via_alias, via_existing);
+}
+
+#[test]
+fn replace_wrapped_tokens_preserves_unmapped_owner_string() {
+    let current = address!("0xde374ece6fa50e781e81aac78e811b33d16912c7");
+    let receiver = address!("0x1111111111111111111111111111111111111111");
+    let original_owner = "NOT_A_VALID_ADDRESS".to_string();
+
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(1u64),
+        transfers: vec![PathfindingTransferStep {
+            from: current,
+            to: receiver,
+            token_owner: original_owner.clone(),
+            value: alloy_primitives::U256::from(1u64),
+        }],
+    };
+
+    let rewritten =
+        circles_pathfinder::replace_wrapped_tokens(&path, &std::collections::HashMap::new());
+
+    assert_eq!(rewritten.transfers[0].token_owner, original_owner);
+}
+
+#[test]
+fn expected_unwrapped_totals_ignore_unknown_wrapper_types() {
+    use alloy_primitives::U256;
+    use std::collections::HashMap;
+
+    let wrapper = address!("0xdddddddddddddddddddddddddddddddddddddddd");
+    let avatar = address!("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+
+    let mut totals: HashMap<_, (U256, String)> = HashMap::new();
+    totals.insert(
+        wrapper,
+        (
+            U256::from(1_000u64),
+            "CrcV2_ERC20WrapperDeployed_Experimental".into(),
+        ),
+    );
+
+    let mut info_map = HashMap::new();
+    info_map.insert(
+        wrapper,
+        common::path_helpers::mock_token_info(
+            wrapper,
+            avatar,
+            "CrcV2_ERC20WrapperDeployed_Experimental",
+        ),
+    );
+
+    let unwrapped = circles_pathfinder::expected_unwrapped_totals_at(&totals, &info_map, Some(1));
+
+    assert!(unwrapped.is_empty());
+}

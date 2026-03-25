@@ -65,6 +65,14 @@ pub fn wrapped_totals_from_path(
     out
 }
 
+/// Additive parity alias for the TypeScript `getWrappedTokensFromPath` helper.
+pub fn get_wrapped_tokens_from_path(
+    path: &PathfindingResult,
+    token_info_map: &HashMap<Address, TokenInfo>,
+) -> HashMap<Address, (U256, String)> {
+    wrapped_totals_from_path(path, token_info_map)
+}
+
 /// Convert wrapped totals to their underlying avatar/token totals using the current time.
 ///
 /// This mirrors the TypeScript pathfinder helper, which calls the converter
@@ -88,12 +96,16 @@ pub fn expected_unwrapped_totals_at(
     let mut out = HashMap::new();
     for (wrapper, (total, ty)) in wrapped_totals {
         if let Some(info) = token_info_map.get(wrapper) {
-            let amount = if ty == "CrcV2_ERC20WrapperDeployed_Inflationary" {
-                atto_static_circles_to_atto_circles(*total, now_unix_seconds)
-            } else {
-                *total
-            };
-            out.insert(*wrapper, (amount, info.token_owner));
+            match ty.as_str() {
+                "CrcV2_ERC20WrapperDeployed_Demurraged" => {
+                    out.insert(*wrapper, (*total, info.token_owner));
+                }
+                "CrcV2_ERC20WrapperDeployed_Inflationary" => {
+                    let amount = atto_static_circles_to_atto_circles(*total, now_unix_seconds);
+                    out.insert(*wrapper, (amount, info.token_owner));
+                }
+                _ => {}
+            }
         }
     }
     out
@@ -150,10 +162,10 @@ pub fn replace_wrapped_tokens(
         .map(|edge| {
             let token_owner = wrapper_to_avatar
                 .get(&edge.token_owner.to_lowercase())
-                .copied()
-                .unwrap_or_else(|| Address::from_str(&edge.token_owner).unwrap_or(Address::ZERO));
+                .map(|avatar| format!("{avatar:#x}"))
+                .unwrap_or_else(|| edge.token_owner.clone());
             circles_types::PathfindingTransferStep {
-                token_owner: format!("{token_owner:#x}"),
+                token_owner,
                 ..edge.clone()
             }
         })
