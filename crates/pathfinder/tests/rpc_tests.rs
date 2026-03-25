@@ -1,5 +1,8 @@
 use alloy_primitives::aliases::U192;
-use circles_pathfinder::{PathfinderError, find_path};
+use circles_pathfinder::{
+    FindPathParams, PathfinderError, find_path, find_path_via_rpc, find_path_with_params_via_rpc,
+};
+use circles_rpc::CirclesRpc;
 
 mod common;
 
@@ -42,6 +45,55 @@ async fn test_find_path_with_invalid_rpc() {
     // Check that it's the right kind of error
     match result.unwrap_err() {
         PathfinderError::Transport(_) => {} // Expected
+        other => panic!("Expected RPC error, got: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_find_path_via_rpc_with_invalid_rpc() {
+    let sender = common::addresses::sender();
+    let receiver = common::addresses::receiver();
+    let value = common::wei_from_str(common::ONE_ETH_WEI);
+    let rpc = CirclesRpc::try_from_http("http://invalid-rpc-url.com").unwrap();
+
+    let result = find_path_via_rpc(&rpc, sender, receiver, value, true).await;
+    assert!(
+        result.is_err(),
+        "Should return error for invalid RPC client"
+    );
+
+    match result.unwrap_err() {
+        PathfinderError::Transport(_) => {}
+        other => panic!("Expected RPC error, got: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_find_path_with_params_via_rpc_with_invalid_rpc() {
+    let sender = common::addresses::sender();
+    let receiver = common::addresses::receiver();
+    let rpc = CirclesRpc::try_from_http("http://invalid-rpc-url.com").unwrap();
+    let params = FindPathParams {
+        from: sender,
+        to: receiver,
+        target_flow: alloy_primitives::U256::from(common::wei_from_str(common::ONE_ETH_WEI)),
+        use_wrapped_balances: Some(true),
+        from_tokens: None,
+        to_tokens: None,
+        exclude_from_tokens: None,
+        exclude_to_tokens: None,
+        simulated_balances: None,
+        max_transfers: None,
+    };
+
+    let result = find_path_with_params_via_rpc(&rpc, params).await;
+    assert!(
+        result.is_err(),
+        "Should return error for invalid RPC client"
+    );
+
+    match result.unwrap_err() {
+        PathfinderError::Transport(_) => {}
         other => panic!("Expected RPC error, got: {other:?}"),
     }
 }

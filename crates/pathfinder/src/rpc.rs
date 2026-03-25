@@ -73,14 +73,13 @@ fn convert_step(step: &PathfindingTransferStep) -> Result<TransferStep, Pathfind
 ///
 /// - [`PathfinderError::Transport`] - Network/HTTP or underlying client errors
 /// - [`PathfinderError::RpcResponse`] - Invalid RPC response or protocol errors
-pub async fn find_path(
-    rpc_url: &str,
+pub async fn find_path_via_rpc(
+    rpc: &CirclesRpc,
     from: Address,
     to: Address,
     target_flow: U192,
     with_wrap: bool,
 ) -> Result<Vec<TransferStep>, PathfinderError> {
-    let rpc = CirclesRpc::try_from_http(rpc_url)?;
     let params = FindPathParams {
         from,
         to,
@@ -93,6 +92,26 @@ pub async fn find_path(
         simulated_balances: None,
         max_transfers: None,
     };
+    find_path_with_params_via_rpc(rpc, params).await
+}
+
+/// Find an optimal path between two addresses using an existing [`CirclesRpc`] client.
+pub async fn find_path(
+    rpc_url: &str,
+    from: Address,
+    to: Address,
+    target_flow: U192,
+    with_wrap: bool,
+) -> Result<Vec<TransferStep>, PathfinderError> {
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    find_path_via_rpc(&rpc, from, to, target_flow, with_wrap).await
+}
+
+/// Find a path using structured parameters and an existing [`CirclesRpc`] client.
+pub async fn find_path_with_params_via_rpc(
+    rpc: &CirclesRpc,
+    params: FindPathParams,
+) -> Result<Vec<TransferStep>, PathfinderError> {
     let result: PathfindingResult = rpc.pathfinder().find_path(params).await?;
     result
         .transfers
@@ -107,10 +126,5 @@ pub async fn find_path_with_params(
     params: FindPathParams,
 ) -> Result<Vec<TransferStep>, PathfinderError> {
     let rpc = CirclesRpc::try_from_http(rpc_url)?;
-    let result: PathfindingResult = rpc.pathfinder().find_path(params).await?;
-    result
-        .transfers
-        .iter()
-        .map(convert_step)
-        .collect::<Result<Vec<_>, _>>()
+    find_path_with_params_via_rpc(&rpc, params).await
 }

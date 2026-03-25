@@ -1,10 +1,11 @@
 use crate::PathfinderError;
 use crate::rpc::u256_to_u192;
 use crate::{FlowEdge, PathData, Stream};
-use crate::{FlowMatrix, find_path_with_params};
+use crate::{FlowMatrix, find_path_with_params_via_rpc};
 use alloy_primitives::Address;
 use alloy_primitives::aliases::{U192, U256};
 use alloy_sol_types::SolValue;
+use circles_rpc::CirclesRpc;
 use circles_types::FindPathParams;
 use circles_types::TransferStep;
 
@@ -48,16 +49,23 @@ use circles_types::TransferStep;
 /// # Ok(())
 /// # }
 /// ```
+pub async fn prepare_flow_for_contract_via_rpc(
+    rpc: &CirclesRpc,
+    params: FindPathParams,
+) -> Result<PathData, PathfinderError> {
+    let transfers = find_path_with_params_via_rpc(rpc, params.clone()).await?;
+    let target_flow = u256_to_u192(params.target_flow)?;
+
+    PathData::from_transfers(&transfers, params.from, params.to, target_flow)
+}
+
+/// High-level helper that performs pathfinding and flow-matrix preparation from an RPC URL.
 pub async fn prepare_flow_for_contract(
     rpc_url: &str,
     params: FindPathParams,
 ) -> Result<PathData, PathfinderError> {
-    // Step 1: Find the path
-    let transfers = find_path_with_params(rpc_url, params.clone()).await?;
-    let target_flow = u256_to_u192(params.target_flow)?;
-
-    // Step 2: Create PathData from transfers (handles flow calculation internally)
-    PathData::from_transfers(&transfers, params.from, params.to, target_flow)
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    prepare_flow_for_contract_via_rpc(&rpc, params).await
 }
 
 /// Prepare flow for contract using individual parameters (legacy compatibility)
@@ -96,11 +104,11 @@ pub async fn prepare_flow_for_contract_simple(
 /// # Returns
 /// A tuple of (available_flow, transfers) where available_flow is the actual
 /// amount that can be transferred.
-pub async fn get_available_flow(
-    rpc_url: &str,
+pub async fn get_available_flow_via_rpc(
+    rpc: &CirclesRpc,
     params: FindPathParams,
 ) -> Result<(U192, Vec<TransferStep>), PathfinderError> {
-    let transfers = find_path_with_params(rpc_url, params.clone()).await?;
+    let transfers = find_path_with_params_via_rpc(rpc, params.clone()).await?;
 
     let available_flow: U192 = transfers
         .iter()
@@ -109,6 +117,15 @@ pub async fn get_available_flow(
         .sum();
 
     Ok((available_flow, transfers))
+}
+
+/// Get the maximum available flow between two addresses from an RPC URL.
+pub async fn get_available_flow(
+    rpc_url: &str,
+    params: FindPathParams,
+) -> Result<(U192, Vec<TransferStep>), PathfinderError> {
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    get_available_flow_via_rpc(&rpc, params).await
 }
 
 pub fn encode_redeem_trusted_data(
@@ -161,6 +178,26 @@ mod tests {
         .await;
 
         // Should fail with RPC error, not panic
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_prepare_flow_for_contract_via_rpc() {
+        let rpc = CirclesRpc::try_from_http("http://invalid-rpc.com").unwrap();
+        let params = FindPathParams {
+            from: Address::ZERO,
+            to: Address::from([1u8; 20]),
+            target_flow: U256::from(1000u64),
+            use_wrapped_balances: Some(true),
+            from_tokens: None,
+            to_tokens: None,
+            exclude_from_tokens: None,
+            exclude_to_tokens: None,
+            simulated_balances: None,
+            max_transfers: None,
+        };
+
+        let result = prepare_flow_for_contract_via_rpc(&rpc, params).await;
         assert!(result.is_err());
     }
 

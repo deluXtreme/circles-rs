@@ -95,7 +95,7 @@ pub mod path;
 
 // RPC functionality
 pub use circles_types::FindPathParams;
-pub use rpc::{find_path, find_path_with_params};
+pub use rpc::{find_path, find_path_via_rpc, find_path_with_params, find_path_with_params_via_rpc};
 
 // Hub contract integration types and functions
 use alloy_primitives::Address;
@@ -105,7 +105,8 @@ pub use hub::PathData;
 // High-level convenience functions
 pub use convenience::{
     encode_redeem_flow_matrix, encode_redeem_trusted_data, get_available_flow,
-    prepare_flow_for_contract, prepare_flow_for_contract_simple,
+    get_available_flow_via_rpc, prepare_flow_for_contract, prepare_flow_for_contract_simple,
+    prepare_flow_for_contract_via_rpc,
 };
 
 pub use path::{
