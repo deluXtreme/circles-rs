@@ -8,7 +8,8 @@ use circles_pathfinder::{
 };
 use circles_rpc::CirclesRpc;
 use circles_types::{
-    AdvancedTransferOptions, CirclesConfig, FindPathParams, TokenBalanceResponse, TransferStep,
+    AdvancedTransferOptions, CirclesConfig, FindPathParams, PathfindingTransferStep,
+    TokenBalanceResponse, TransferStep,
 };
 use circles_utils::converter::atto_circles_to_atto_static_circles;
 use std::collections::HashMap;
@@ -80,6 +81,20 @@ impl TransferBuilder {
         amount: U256,
         options: Option<AdvancedTransferOptions>,
     ) -> Result<Vec<TransferTx>, TransferError> {
+        self.construct_advanced_transfer_with_aggregate(from, to, amount, options, false)
+            .await
+    }
+
+    /// Construct an advanced transfer and optionally append the TS-style
+    /// recipient aggregation self-transfer when a single `to_token` is selected.
+    pub async fn construct_advanced_transfer_with_aggregate(
+        &self,
+        from: Address,
+        to: Address,
+        amount: U256,
+        options: Option<AdvancedTransferOptions>,
+        aggregate: bool,
+    ) -> Result<Vec<TransferTx>, TransferError> {
         // Self-transfer fast-path for unwrap: if from == to and from/to tokens are provided and distinct.
         if from == to {
             if let Some(ref opts) = options {
@@ -148,6 +163,8 @@ impl TransferBuilder {
                 to,
             ));
         }
+
+        let path = maybe_add_aggregate_transfer(path, to, &opts, aggregate);
 
         // Token info + wrapper bookkeeping
         let token_info_map = token_info_map_from_path(from, &self.rpc, &path)
@@ -408,6 +425,28 @@ fn validate_wrapped_balance_usage(
     Ok(())
 }
 
+fn maybe_add_aggregate_transfer(
+    mut path: circles_types::PathfindingResult,
+    to: Address,
+    opts: &AdvancedTransferOptions,
+    aggregate: bool,
+) -> circles_types::PathfindingResult {
+    let Some(to_tokens) = opts.to_tokens.as_ref() else {
+        return path;
+    };
+
+    if aggregate && to_tokens.len() == 1 && path.max_flow > U256::ZERO {
+        path.transfers.push(PathfindingTransferStep {
+            from: to,
+            to,
+            token_owner: format!("{:#x}", to_tokens[0]),
+            value: path.max_flow,
+        });
+    }
+
+    path
+}
+
 impl TransferBuilder {
     async fn needs_approval(&self, operator: Address) -> Option<bool> {
         let Ok(url) = self.config.circles_rpc_url.parse() else {
@@ -493,8 +532,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::validate_wrapped_balance_usage;
+    use super::{maybe_add_aggregate_transfer, validate_wrapped_balance_usage};
     use crate::TransferError;
+    use alloy_primitives::{address, U256};
+    use circles_types::{AdvancedTransferOptions, PathfindingResult, PathfindingTransferStep};
 
     #[test]
     fn wrapped_balance_guard_matches_ts_behavior() {
@@ -508,5 +549,72 @@ mod tests {
             validate_wrapped_balance_usage(true, None),
             Err(TransferError::WrappedTokensRequired)
         ));
+    }
+
+    #[test]
+    fn aggregate_transfer_is_appended_for_single_to_token() {
+        let source = address!("0x1000000000000000000000000000000000000001");
+        let sink = address!("0x2000000000000000000000000000000000000002");
+        let aggregate_token = address!("0x3000000000000000000000000000000000000003");
+        let path = PathfindingResult {
+            max_flow: U256::from(5u64),
+            transfers: vec![PathfindingTransferStep {
+                from: source,
+                to: sink,
+                token_owner: format!("{source:#x}"),
+                value: U256::from(5u64),
+            }],
+        };
+        let opts = AdvancedTransferOptions {
+            use_wrapped_balances: Some(true),
+            from_tokens: None,
+            to_tokens: Some(vec![aggregate_token]),
+            exclude_from_tokens: None,
+            exclude_to_tokens: None,
+            simulated_balances: None,
+            max_transfers: None,
+            tx_data: None,
+        };
+
+        let aggregated = maybe_add_aggregate_transfer(path, sink, &opts, true);
+        let appended = aggregated.transfers.last().unwrap();
+
+        assert_eq!(aggregated.transfers.len(), 2);
+        assert_eq!(appended.from, sink);
+        assert_eq!(appended.to, sink);
+        assert_eq!(appended.token_owner, format!("{aggregate_token:#x}"));
+        assert_eq!(appended.value, U256::from(5u64));
+    }
+
+    #[test]
+    fn aggregate_transfer_is_not_appended_without_single_to_token() {
+        let source = address!("0x4000000000000000000000000000000000000004");
+        let sink = address!("0x5000000000000000000000000000000000000005");
+        let path = PathfindingResult {
+            max_flow: U256::from(5u64),
+            transfers: vec![PathfindingTransferStep {
+                from: source,
+                to: sink,
+                token_owner: format!("{source:#x}"),
+                value: U256::from(5u64),
+            }],
+        };
+        let opts = AdvancedTransferOptions {
+            use_wrapped_balances: Some(true),
+            from_tokens: None,
+            to_tokens: Some(vec![
+                address!("0x6000000000000000000000000000000000000006"),
+                address!("0x7000000000000000000000000000000000000007"),
+            ]),
+            exclude_from_tokens: None,
+            exclude_to_tokens: None,
+            simulated_balances: None,
+            max_transfers: None,
+            tx_data: None,
+        };
+
+        let unchanged = maybe_add_aggregate_transfer(path, sink, &opts, true);
+
+        assert_eq!(unchanged.transfers.len(), 1);
     }
 }
