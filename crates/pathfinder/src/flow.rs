@@ -8,8 +8,31 @@ use crate::{FlowEdge, FlowMatrix, PathfinderError, Stream};
 use alloy_primitives::aliases::{U192, U256};
 use alloy_primitives::{Address, Bytes};
 use circles_types::TransferStep;
+use std::collections::HashSet;
 
 use crate::packing::{pack_coordinates, transform_to_flow_vertices};
+
+fn detect_terminal_edges(transfers: &[TransferStep], receiver: Address) -> HashSet<usize> {
+    let mut terminal_edges = HashSet::new();
+    let mut edges_to_receiver = Vec::new();
+    let mut self_loop_index = None;
+
+    for (index, transfer) in transfers.iter().enumerate() {
+        if transfer.from_address == receiver && transfer.to_address == receiver {
+            self_loop_index = Some(index);
+        } else if transfer.to_address == receiver {
+            edges_to_receiver.push(index);
+        }
+    }
+
+    if let Some(index) = self_loop_index {
+        terminal_edges.insert(index);
+    } else {
+        terminal_edges.extend(edges_to_receiver);
+    }
+
+    terminal_edges
+}
 
 /// Create a flow matrix from a sequence of transfer steps.
 ///
@@ -75,23 +98,26 @@ pub fn create_flow_matrix(
     }
 
     let (flow_vertices, idx) = transform_to_flow_vertices(transfers, sender, receiver);
+    let terminal_edge_indices = detect_terminal_edges(transfers, receiver);
 
     // Build edges
-    let mut flow_edges: Vec<FlowEdge> = transfers
+    let flow_edges: Vec<FlowEdge> = transfers
         .iter()
-        .map(|t| FlowEdge {
-            streamSinkId: if t.to_address == receiver { 1 } else { 0 },
+        .enumerate()
+        .map(|(index, t)| FlowEdge {
+            streamSinkId: if terminal_edge_indices.contains(&index) {
+                1
+            } else {
+                0
+            },
             amount: t.value,
         })
         .collect();
 
-    // Ensure at least one terminal edge
-    if !flow_edges.iter().any(|e| e.streamSinkId == 1) {
-        let fallback = transfers
-            .iter()
-            .rposition(|t| t.to_address == receiver)
-            .unwrap_or(flow_edges.len() - 1);
-        flow_edges[fallback].streamSinkId = 1;
+    if terminal_edge_indices.is_empty() {
+        return Err(PathfinderError::RpcResponse(format!(
+            "No terminal edges detected. Flow must have at least one edge delivering to receiver {receiver:#x}"
+        )));
     }
 
     // Check terminal balance
@@ -108,11 +134,11 @@ pub fn create_flow_matrix(
     }
 
     // Build streams
-    let term_edge_ids: Vec<u16> = flow_edges
+    let mut term_edge_ids: Vec<u16> = terminal_edge_indices
         .iter()
-        .enumerate()
-        .filter_map(|(i, e)| (e.streamSinkId == 1).then_some(i as u16))
+        .map(|index| *index as u16)
         .collect();
+    term_edge_ids.sort_unstable();
 
     let streams = vec![Stream {
         sourceCoordinate: *idx.get(&sender).unwrap() as u16,
