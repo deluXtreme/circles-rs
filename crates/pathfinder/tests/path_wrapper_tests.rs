@@ -224,3 +224,127 @@ fn expected_unwrapped_totals_ignore_unknown_wrapper_types() {
 
     assert!(unwrapped.is_empty());
 }
+
+#[test]
+fn compute_netted_flow_matches_ts_balances() {
+    let source = address!("0x1000000000000000000000000000000000000001");
+    let intermediate = address!("0x2000000000000000000000000000000000000002");
+    let sink = address!("0x3000000000000000000000000000000000000003");
+
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(5u64),
+        transfers: vec![
+            PathfindingTransferStep {
+                from: source,
+                to: intermediate,
+                token_owner: format!("{source:#x}"),
+                value: alloy_primitives::U256::from(5u64),
+            },
+            PathfindingTransferStep {
+                from: intermediate,
+                to: sink,
+                token_owner: format!("{intermediate:#x}"),
+                value: alloy_primitives::U256::from(5u64),
+            },
+        ],
+    };
+
+    let net = circles_pathfinder::compute_netted_flow(&path);
+    let five = alloy_primitives::I256::from_raw(alloy_primitives::U256::from(5u64));
+
+    assert_eq!(net.get(&source), Some(&(-five)));
+    assert_eq!(net.get(&intermediate), Some(&alloy_primitives::I256::ZERO));
+    assert_eq!(net.get(&sink), Some(&five));
+}
+
+#[test]
+fn assert_no_netted_flow_mismatch_accepts_closed_loop_with_overrides() {
+    let avatar = address!("0x4000000000000000000000000000000000000004");
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(7u64),
+        transfers: vec![PathfindingTransferStep {
+            from: avatar,
+            to: avatar,
+            token_owner: format!("{avatar:#x}"),
+            value: alloy_primitives::U256::from(7u64),
+        }],
+    };
+
+    let result =
+        circles_pathfinder::assert_no_netted_flow_mismatch(&path, Some(avatar), Some(avatar));
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn assert_no_netted_flow_mismatch_uses_ts_source_order_on_malformed_paths() {
+    let first_source = address!("0x5000000000000000000000000000000000000005");
+    let second_source = address!("0x6000000000000000000000000000000000000006");
+    let sink = address!("0x7000000000000000000000000000000000000007");
+
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(8u64),
+        transfers: vec![
+            PathfindingTransferStep {
+                from: first_source,
+                to: sink,
+                token_owner: format!("{first_source:#x}"),
+                value: alloy_primitives::U256::from(5u64),
+            },
+            PathfindingTransferStep {
+                from: second_source,
+                to: sink,
+                token_owner: format!("{second_source:#x}"),
+                value: alloy_primitives::U256::from(3u64),
+            },
+        ],
+    };
+
+    let err = circles_pathfinder::assert_no_netted_flow_mismatch(&path, None, None).unwrap_err();
+
+    match err {
+        circles_pathfinder::PathfinderError::RpcResponse(message) => {
+            assert!(message.contains(&format!("{second_source:#x}")));
+        }
+        other => panic!("expected RpcResponse, got {other:?}"),
+    }
+}
+
+#[test]
+fn shrink_path_values_scales_and_drops_subunit_edges() {
+    let source = address!("0x8000000000000000000000000000000000000008");
+    let intermediate = address!("0x9000000000000000000000000000000000000009");
+    let sink = address!("0xa00000000000000000000000000000000000000a");
+
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(5u64),
+        transfers: vec![
+            PathfindingTransferStep {
+                from: source,
+                to: sink,
+                token_owner: format!("{source:#x}"),
+                value: alloy_primitives::U256::from(4u64),
+            },
+            PathfindingTransferStep {
+                from: source,
+                to: intermediate,
+                token_owner: format!("{source:#x}"),
+                value: alloy_primitives::U256::from(1u64),
+            },
+        ],
+    };
+
+    let shrunk = circles_pathfinder::shrink_path_values(
+        &path,
+        sink,
+        alloy_primitives::U256::from(500_000_000_000u64),
+    );
+
+    assert_eq!(shrunk.max_flow, alloy_primitives::U256::from(2u64));
+    assert_eq!(shrunk.transfers.len(), 1);
+    assert_eq!(shrunk.transfers[0].to, sink);
+    assert_eq!(
+        shrunk.transfers[0].value,
+        alloy_primitives::U256::from(2u64)
+    );
+}

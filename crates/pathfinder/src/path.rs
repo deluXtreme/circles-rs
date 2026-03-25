@@ -276,17 +276,29 @@ fn get_source_and_sink(
     override_sink: Option<Address>,
 ) -> Result<(Address, Address), PathfinderError> {
     use std::collections::HashSet;
-    let senders: HashSet<Address> = path.transfers.iter().map(|t| t.from).collect();
-    let receivers: HashSet<Address> = path.transfers.iter().map(|t| t.to).collect();
+
+    let mut senders = Vec::new();
+    let mut receivers = Vec::new();
+    let mut sender_set = HashSet::new();
+    let mut receiver_set = HashSet::new();
+
+    for transfer in &path.transfers {
+        if sender_set.insert(transfer.from) {
+            senders.push(transfer.from);
+        }
+        if receiver_set.insert(transfer.to) {
+            receivers.push(transfer.to);
+        }
+    }
 
     let source = senders
         .iter()
-        .find(|a| !receivers.contains(*a))
+        .find(|a| !receiver_set.contains(*a))
         .copied()
         .or(override_source);
     let sink = receivers
         .iter()
-        .find(|a| !senders.contains(*a))
+        .find(|a| !sender_set.contains(*a))
         .copied()
         .or(override_sink);
 
