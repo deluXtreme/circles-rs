@@ -1,3 +1,8 @@
+//! WebSocket helpers for SDK event subscriptions.
+//!
+//! These functions sit on top of `circles-rpc` and provide the light retry/catch-up
+//! behavior used by the SDK public API.
+
 use crate::SdkError;
 use circles_rpc::{CirclesRpc, events::subscription::CirclesSubscription};
 use circles_types::{CirclesEvent, Filter};
@@ -47,7 +52,10 @@ pub async fn subscribe_with_retries(
     }
 }
 
-/// Fetch historical events (HTTP) then subscribe live (WS).
+/// Fetch historical events over HTTP and then start a live WebSocket subscription.
+///
+/// If `catch_up_from_block` is `None`, the returned event list is empty and only the
+/// live subscription is started.
 pub async fn subscribe_with_catchup(
     rpc: &CirclesRpc,
     ws_url: &str,
@@ -68,7 +76,10 @@ pub async fn subscribe_with_catchup(
     Ok((catch_up_events, sub))
 }
 
-/// Spawn a handler over a subscription; errors are logged via tracing at warn.
+/// Spawn a background handler for a live event subscription.
+///
+/// Stream errors are logged at `warn` and do not stop the task from receiving
+/// later items.
 pub fn spawn_event_handler<H>(
     mut sub: CirclesSubscription<CirclesEvent>,
     handler: H,

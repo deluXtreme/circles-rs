@@ -1,47 +1,75 @@
 # Circles SDK (Rust)
 
-Rust port of the Circles TypeScript SDK, orchestrating Circles RPC, profiles, pathfinding, transfers, and optional contract runners. Read flows work without a runner; write paths are gated and return `MissingRunner` until you provide one.
+Rust port of the TypeScript Circles SDK. `circles-sdk` is the high-level crate that wires together `circles-rpc`, `circles-profiles`, `circles-pathfinder`, `circles-transfers`, and the generated contract bindings.
 
-## Features
-- Avatar helpers (human/org/group) for balances, trust, profiles, and registration flows.
-- Invitation/referral helpers (generate invites, escrow/redeem checks, send/revoke/list/redeem).
+The usage model is intentionally simple:
+
+- Construct `Sdk` with `None` for read-only flows.
+- Use `get_avatar` when you want a typed wrapper (`HumanAvatar`, `OrganisationAvatar`, `BaseGroupAvatar`).
+- Provide a `ContractRunner` only when you need write paths such as registration, trust updates, or transfer submission.
+
+## Capabilities
+
+- Typed avatar helpers for balances, trust, profiles, pathfinding, transfer planning, and registration flows.
+- Invitation and referral helpers for human avatars.
 - Transfer planning and replenish/max-flow helpers via `circles-transfers` and `circles-pathfinder`.
-- Websocket subscriptions with retry/backoff + optional HTTP catch-up (feature `ws`).
-- Shared config: `config::gnosis_mainnet()` and a `GNOSIS_MAINNET` lazy static.
+- Optional WebSocket subscriptions with retry/backoff and HTTP catch-up through the `ws` feature.
+- Shared mainnet config through `config::gnosis_mainnet()` and `GNOSIS_MAINNET`.
 
-## Quickstart (read-only)
+## Quickstart
 ```rust
-use circles_sdk::{config, Sdk};
 use alloy_primitives::address;
+use circles_sdk::{Avatar, Sdk, config};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Gnosis chain (100) mainnet config
-    let sdk = Sdk::new(config::gnosis_mainnet(), None)?; // runner None => read-only
+    let sdk = Sdk::new(config::gnosis_mainnet(), None)?;
     let avatar = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-    let info = sdk.avatar_info(avatar).await?;
-    println!("avatar type: {:?}", info.avatar_type);
+
+    match sdk.get_avatar(avatar).await? {
+        Avatar::Human(human) => {
+            let balances = human.balances(false, true).await?;
+            println!("human balances: {}", balances.len());
+        }
+        Avatar::Organisation(org) => {
+            let trust = org.trust_relations().await?;
+            println!("org trust edges: {}", trust.len());
+        }
+        Avatar::Group(group) => {
+            let info = group.profile().await?;
+            println!("group profile loaded: {}", info.is_some());
+        }
+    }
+
     Ok(())
 }
 ```
 
+## Runner Model
+
+All write-capable methods return `SdkError::MissingRunner` until a `ContractRunner` is provided. The SDK keeps read logic separate from transaction submission so Safe, EOAs, or other runner backends can be added without changing the public read API.
+
 ## Examples
-- `basic_read.rs`: fetch avatar info/balances/trust and run a pathfind.
-- `invite_generate.rs`: build invitation secrets/signers and inspect txs.
-- `ws_subscribe.rs` (feature `ws`): subscribe with retries + catch-up.
+
+- `basic_read.rs`: avatar info, balances, trust, and pathfinding.
+- `invite_generate.rs`: invitation secrets/signers plus prepared transactions.
+- `ws_subscribe.rs` with `--features ws`: live events with retries and optional catch-up.
 
 ## Runners
-- Implement `ContractRunner` to enable write paths (registrations, trust ops, transfers). The SDK stays read-only without one and returns `SdkError::MissingRunner`.
-- Runner wiring mirrors the TS SDK; Safe support is deferred for now.
+
+- Implement `ContractRunner` to enable write paths.
+- `PreparedTransaction` is the SDK’s handoff format: target address, calldata, and optional value.
+- Safe-specific support is still deferred; the current API is intentionally generic.
 
 ## Tests
+
 - Unit tests: `cargo test -p circles-sdk`
-- WS helpers: `cargo test -p circles-sdk --features ws`
-- Optional live checks (ignored by default):  
-  `RUN_LIVE=1 LIVE_AVATAR=0x... cargo test -p circles-sdk -- --ignored`  
-  Override endpoints with `CIRCLES_RPC_URL`, `CIRCLES_PATHFINDER_URL`, `CIRCLES_PROFILE_URL`.
+- WS-enabled unit tests: `cargo test -p circles-sdk --features ws`
+- Optional live checks: `RUN_LIVE=1 LIVE_AVATAR=0x... cargo test -p circles-sdk -- --ignored`
+- Override live endpoints with `CIRCLES_RPC_URL`, `CIRCLES_PATHFINDER_URL`, and `CIRCLES_PROFILE_URL`.
 
 ## Notes
-- WS helpers tolerate heartbeats/batches and expose retry/catch-up utilities; reconnect/backoff is handled in `ws` module.
-- Transfer/pathfinding helpers default to using wrapped balances; tune `AdvancedTransferOptions` if you need exclusions or simulated balances.
-- Docs: `cargo doc -p circles-sdk --all-features` for rustdoc output.
+
+- WS helpers tolerate heartbeats and batched frames; unknown event types still surface as regular events from `circles-rpc`.
+- Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances.
+- Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

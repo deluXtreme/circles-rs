@@ -22,19 +22,28 @@ use std::sync::Arc;
 
 /// Top-level avatar enum variant: human.
 pub struct HumanAvatar {
+    /// Avatar address on-chain.
     pub address: Address,
+    /// RPC-derived avatar metadata.
     pub info: AvatarInfo,
+    /// Shared contract bundle and configuration.
     pub core: Arc<Core>,
+    /// Optional runner used for write-capable flows.
     pub runner: Option<Arc<dyn ContractRunner>>,
+    /// Shared read/write helper implementation.
     pub common: CommonAvatar,
 }
 
 /// Invitation generation result (secrets + signers + prepared txs).
 #[derive(Debug, Clone)]
 pub struct GeneratedInvites {
+    /// Generated invitation secrets in hex form.
     pub secrets: Vec<String>,
+    /// Derived signer addresses associated with the generated secrets.
     pub signers: Vec<Address>,
+    /// Prepared transactions required to mint/fund the invites.
     pub txs: Vec<RunnerTx>,
+    /// Submitted transactions when invite generation was executed through a runner.
     pub submitted: Option<Vec<RunnerSubmitted>>,
 }
 
@@ -161,6 +170,7 @@ impl HumanAvatar {
         self.common.transfer(to, amount, options).await
     }
 
+    /// Find a path from this avatar to `to` for the requested target flow.
     pub async fn find_path(
         &self,
         to: Address,
@@ -170,6 +180,7 @@ impl HumanAvatar {
         self.common.find_path(to, target_flow, options).await
     }
 
+    /// Compute the maximum available flow from this avatar to `to`.
     pub async fn max_flow_to(
         &self,
         to: Address,

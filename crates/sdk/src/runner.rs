@@ -1,3 +1,9 @@
+//! Runner abstractions for write-capable SDK flows.
+//!
+//! The SDK prepares transactions as ABI-encoded calls and delegates submission to
+//! an implementation of [`ContractRunner`]. This keeps the read path independent
+//! from any wallet, Safe, or signer transport.
+
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
@@ -7,8 +13,11 @@ use thiserror::Error;
 /// we can swap to richer contract-specific types as we wire more flows.
 #[derive(Debug, Clone)]
 pub struct PreparedTransaction {
+    /// Contract address to call.
     pub to: Address,
+    /// ABI-encoded calldata.
     pub data: Bytes,
+    /// Optional native value to send alongside the call.
     pub value: Option<U256>,
 }
 
@@ -24,6 +33,7 @@ pub fn call_to_tx<C: SolCall>(to: Address, call: C, value: Option<U256>) -> Prep
 /// Result stub for submitted transactions. Will be expanded when wiring a Safe runner.
 #[derive(Debug, Clone)]
 pub struct SubmittedTx {
+    /// Runner-reported transaction hash bytes.
     pub tx_hash: Bytes,
 }
 

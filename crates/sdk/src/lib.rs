@@ -1,6 +1,56 @@
-//! Circles SDK (Rust) — orchestrates RPC, profiles, and contract interactions.
-//! Minimal scaffold mirroring the TypeScript SDK shape with read-only flows first
-//! and write paths gated behind a `ContractRunner`.
+//! Circles SDK orchestrating RPC, profile service access, pathfinding, transfers,
+//! and optional contract execution.
+//!
+//! This crate mirrors the high-level TypeScript SDK shape while keeping the Rust
+//! implementation read-first: most reads work with `Sdk::new(config, None)`, and
+//! write paths are gated behind a [`ContractRunner`].
+//!
+//! ## Quick Start
+//!
+//! ```rust,no_run
+//! use alloy_primitives::address;
+//! use circles_sdk::{Sdk, config};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let sdk = Sdk::new(config::gnosis_mainnet(), None)?;
+//! let avatar = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+//! let info = sdk.avatar_info(avatar).await?;
+//! println!("avatar type: {:?}", info.avatar_type);
+//!
+//! let typed = sdk.get_avatar(avatar).await?;
+//! match typed {
+//!     circles_sdk::Avatar::Human(human) => {
+//!         let balances = human.balances(false, true).await?;
+//!         println!("balances: {}", balances.len());
+//!     }
+//!     circles_sdk::Avatar::Organisation(_) | circles_sdk::Avatar::Group(_) => {}
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Usage Model
+//!
+//! - [`Sdk`] wires together RPC, profile lookups, pathfinding, transfers, and contract bindings.
+//! - [`Avatar`] gives you a typed wrapper after runtime avatar detection.
+//! - [`ContractRunner`] is only required for write paths such as registrations, trust changes,
+//!   and transfer submission.
+//! - The optional `ws` feature enables WebSocket subscriptions with retry/backoff and HTTP catch-up helpers.
+//!
+//! ## Recommended Entry Points
+//!
+//! - [`config::gnosis_mainnet`] for the shared mainnet configuration.
+//! - [`Sdk::avatar_info`] for a fast read-only probe.
+//! - [`Sdk::get_avatar`] when you want a typed avatar wrapper.
+//! - [`HumanAvatar::plan_transfer`], [`OrganisationAvatar::plan_transfer`], and
+//!   [`BaseGroupAvatar::plan_transfer`] for transaction planning before submission.
+//!
+//! ## Validation
+//!
+//! - Unit tests: `cargo test -p circles-sdk`
+//! - WS helpers: `cargo test -p circles-sdk --features ws`
+//! - Live checks (ignored by default): `RUN_LIVE=1 LIVE_AVATAR=0x... cargo test -p circles-sdk -- --ignored`
 
 mod avatar;
 mod cid_v0_to_digest;
@@ -34,7 +84,9 @@ use thiserror::Error;
 ///
 /// Registration helpers may return prepared txs without sending if no runner is provided.
 pub struct RegistrationResult<T> {
+    /// Best-effort typed avatar returned after registration succeeds.
     pub avatar: Option<T>,
+    /// Submitted transactions returned by the runner.
     pub txs: Vec<SubmittedTx>,
 }
 
@@ -64,6 +116,8 @@ pub enum SdkError {
 }
 
 /// Top-level SDK orchestrator.
+///
+/// Construct this once per config/runner pair and reuse it across read and write flows.
 pub struct Sdk {
     pub(crate) config: CirclesConfig,
     pub(crate) rpc: Arc<CirclesRpc>,
@@ -123,7 +177,9 @@ impl Sdk {
         self.sender_address
     }
 
-    /// Create and pin a profile via the profile service (runner not required).
+    /// Create and pin a profile via the profile service.
+    ///
+    /// This only talks to the profile service and does not submit any on-chain transaction.
     pub async fn create_profile(&self, profile: &Profile) -> Result<String, SdkError> {
         Ok(self.profiles.create(profile).await?)
     }
@@ -133,15 +189,20 @@ impl Sdk {
         Ok(self.profiles.get(cid).await?)
     }
 
-    /// Basic data helpers (read-only).
+    /// Read avatar metadata directly from the RPC service.
     pub async fn data_avatar(&self, avatar: Address) -> Result<AvatarInfo, SdkError> {
         Ok(self.rpc.avatar().get_avatar_info(avatar).await?)
     }
 
+    /// Read trust relations for an avatar directly from the RPC service.
     pub async fn data_trust(&self, avatar: Address) -> Result<Vec<TrustRelation>, SdkError> {
         Ok(self.rpc.trust().get_trust_relations(avatar).await?)
     }
 
+    /// Read token balances for an avatar directly from the RPC service.
+    ///
+    /// Set `as_time_circles` to request balances in time-Circles units and `use_v2`
+    /// to scope the query to v2 balances.
     pub async fn data_balances(
         &self,
         avatar: Address,
@@ -160,7 +221,7 @@ impl Sdk {
         Ok(self.rpc.avatar().get_avatar_info(avatar).await?)
     }
 
-    /// Subscribe to Circles events over websocket with a custom filter.
+    /// Subscribe to Circles events over WebSocket with a custom JSON-RPC filter payload.
     #[cfg(feature = "ws")]
     pub async fn subscribe_events_ws<F>(
         &self,
@@ -178,7 +239,7 @@ impl Sdk {
             .await
     }
 
-    /// Subscribe with retry/backoff on websocket disconnects.
+    /// Subscribe with retry/backoff on WebSocket connection or subscription failure.
     #[cfg(feature = "ws")]
     pub async fn subscribe_events_ws_with_retries(
         &self,
@@ -189,7 +250,7 @@ impl Sdk {
         ws::subscribe_with_retries(ws_url, filter, max_attempts).await
     }
 
-    /// Subscribe with retry/backoff and optional HTTP catch-up.
+    /// Subscribe with retry/backoff and optionally fetch historical events first over HTTP.
     #[cfg(feature = "ws")]
     pub async fn subscribe_events_ws_with_catchup(
         &self,
@@ -211,7 +272,10 @@ impl Sdk {
         .await
     }
 
-    /// Fetch avatar info and return a typed avatar wrapper.
+    /// Fetch avatar info and return the matching typed avatar wrapper.
+    ///
+    /// Unknown or personal avatar types are treated as [`Avatar::Human`] to match the
+    /// current SDK behavior.
     pub async fn get_avatar(&self, avatar: Address) -> Result<Avatar, SdkError> {
         let info = self.rpc.avatar().get_avatar_info(avatar).await?;
         Ok(match info.avatar_type {
@@ -288,7 +352,10 @@ impl Sdk {
 
 /// Top-level avatar enum (human, organisation, group).
 pub enum Avatar {
+    /// Human or personal avatar wrapper.
     Human(HumanAvatar),
+    /// Organisation avatar wrapper.
     Organisation(OrganisationAvatar),
+    /// Base group avatar wrapper.
     Group(BaseGroupAvatar),
 }
