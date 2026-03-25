@@ -90,7 +90,7 @@ mod rpc;
 use alloy_primitives::{U256, aliases::U192};
 
 // Core public API - the main functions users need
-pub use flow::create_flow_matrix;
+pub use flow::{create_flow_matrix, prepare_flow_matrix_streams};
 pub mod path;
 
 // RPC functionality

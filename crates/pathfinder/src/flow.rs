@@ -163,3 +163,20 @@ pub fn create_flow_matrix(
         source_coordinate: U256::from(*idx.get(&sender).unwrap()),
     })
 }
+
+/// Clone flow-matrix streams and optionally attach transaction data to the first stream.
+///
+/// This mirrors the TypeScript helper used before contract submission, but keeps
+/// the Rust contract-facing `Bytes` representation instead of hex strings.
+pub fn prepare_flow_matrix_streams(
+    flow_matrix: &FlowMatrix,
+    tx_data: Option<Bytes>,
+) -> Vec<Stream> {
+    let mut streams = flow_matrix.streams.clone();
+    if let Some(tx_data) = tx_data
+        && let Some(first) = streams.first_mut()
+    {
+        first.data = tx_data;
+    }
+    streams
+}

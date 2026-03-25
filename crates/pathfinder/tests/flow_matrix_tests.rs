@@ -1,5 +1,7 @@
-use alloy_primitives::{U256, aliases::U192};
-use circles_pathfinder::{PathfinderError, create_flow_matrix};
+use alloy_primitives::{Bytes, U256, aliases::U192};
+use circles_pathfinder::{
+    PathfinderError, Stream, create_flow_matrix, prepare_flow_matrix_streams,
+};
 
 mod common;
 
@@ -242,4 +244,50 @@ fn test_create_flow_matrix_source_coordinate() {
         .expect("Sender should be in vertices");
 
     assert_eq!(matrix.source_coordinate, U256::from(sender_index));
+}
+
+#[test]
+fn test_prepare_flow_matrix_streams_without_tx_data() {
+    let matrix = circles_pathfinder::FlowMatrix {
+        flow_vertices: vec![],
+        flow_edges: vec![],
+        streams: vec![Stream {
+            sourceCoordinate: 0,
+            flowEdgeIds: vec![1, 2],
+            data: Bytes::from(vec![0x01, 0x02]),
+        }],
+        packed_coordinates: vec![],
+        source_coordinate: U256::ZERO,
+    };
+
+    let streams = prepare_flow_matrix_streams(&matrix, None);
+    assert_eq!(streams.len(), 1);
+    assert_eq!(streams[0].data, Bytes::from(vec![0x01, 0x02]));
+}
+
+#[test]
+fn test_prepare_flow_matrix_streams_with_tx_data() {
+    let matrix = circles_pathfinder::FlowMatrix {
+        flow_vertices: vec![],
+        flow_edges: vec![],
+        streams: vec![
+            Stream {
+                sourceCoordinate: 0,
+                flowEdgeIds: vec![1, 2],
+                data: Bytes::from(vec![0x01]),
+            },
+            Stream {
+                sourceCoordinate: 1,
+                flowEdgeIds: vec![3],
+                data: Bytes::from(vec![0x02]),
+            },
+        ],
+        packed_coordinates: vec![],
+        source_coordinate: U256::ZERO,
+    };
+
+    let streams = prepare_flow_matrix_streams(&matrix, Some(Bytes::from(vec![0xaa, 0xbb])));
+    assert_eq!(streams.len(), 2);
+    assert_eq!(streams[0].data, Bytes::from(vec![0xaa, 0xbb]));
+    assert_eq!(streams[1].data, Bytes::from(vec![0x02]));
 }
