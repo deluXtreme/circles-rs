@@ -82,3 +82,58 @@ fn converts_inflationary_wrapper_totals() {
     assert!(diff < U256::from(1_000u64));
     assert_eq!(*owner, avatar);
 }
+
+#[test]
+fn replaces_wrapped_tokens_with_avatar_addresses() {
+    let current = address!("0xde374ece6fa50e781e81aac78e811b33d16912c7");
+    let receiver = address!("0x1111111111111111111111111111111111111111");
+    let wrapper = address!("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let wrapped_owner = address!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let plain_owner = address!("0xcccccccccccccccccccccccccccccccccccccccc");
+
+    let path = PathfindingResult {
+        max_flow: alloy_primitives::U256::from(2u64),
+        transfers: vec![
+            PathfindingTransferStep {
+                from: current,
+                to: receiver,
+                token_owner: format!("{wrapper:#x}"),
+                value: alloy_primitives::U256::from(1u64),
+            },
+            PathfindingTransferStep {
+                from: current,
+                to: receiver,
+                token_owner: format!("{plain_owner:#x}"),
+                value: alloy_primitives::U256::from(1u64),
+            },
+        ],
+    };
+
+    let mut info_map = std::collections::HashMap::new();
+    info_map.insert(
+        wrapper,
+        common::path_helpers::mock_token_info(
+            wrapper,
+            wrapped_owner,
+            "CrcV2_ERC20WrapperDeployed_Demurraged",
+        ),
+    );
+    info_map.insert(
+        plain_owner,
+        common::path_helpers::mock_token_info(plain_owner, plain_owner, "CrcV2_CRC20"),
+    );
+
+    let rewritten = circles_pathfinder::replace_wrapped_tokens_with_avatars(&path, &info_map);
+
+    assert_eq!(
+        rewritten.transfers[0].token_owner,
+        format!("{wrapped_owner:#x}")
+    );
+    assert_eq!(
+        rewritten.transfers[1].token_owner,
+        format!("{plain_owner:#x}")
+    );
+    assert_eq!(rewritten.transfers[0].from, path.transfers[0].from);
+    assert_eq!(rewritten.transfers[0].to, path.transfers[0].to);
+    assert_eq!(rewritten.transfers[0].value, path.transfers[0].value);
+}

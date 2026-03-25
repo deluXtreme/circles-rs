@@ -96,6 +96,38 @@ pub fn expected_unwrapped_totals(
 ///
 /// Produces a new path suitable for flow matrix construction where token_owner
 /// is always the underlying avatar (not the wrapper contract).
+pub fn replace_wrapped_tokens_with_avatars(
+    path: &PathfindingResult,
+    token_info_map: &HashMap<Address, TokenInfo>,
+) -> PathfindingResult {
+    let transfers = path
+        .transfers
+        .iter()
+        .map(|edge| {
+            let token_owner = Address::from_str(&edge.token_owner)
+                .ok()
+                .and_then(|owner| token_info_map.get(&owner))
+                .filter(|info| info.token_type.starts_with("CrcV2_ERC20WrapperDeployed"))
+                .map(|info| format!("{:#x}", info.token_owner))
+                .unwrap_or_else(|| edge.token_owner.clone());
+
+            circles_types::PathfindingTransferStep {
+                token_owner,
+                ..edge.clone()
+            }
+        })
+        .collect();
+
+    PathfindingResult {
+        max_flow: path.max_flow,
+        transfers,
+    }
+}
+
+/// Replace wrapped token addresses in a path with their underlying avatar tokens.
+///
+/// Produces a new path suitable for flow matrix construction where token_owner
+/// is always the underlying avatar (not the wrapper contract).
 pub fn replace_wrapped_tokens(
     path: &PathfindingResult,
     unwrapped: &HashMap<Address, (U256, Address)>,
