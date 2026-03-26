@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "circles-pathfinder"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "alloy-contract",
  "alloy-primitives",
@@ -1504,7 +1504,7 @@ dependencies = [
 
 [[package]]
 name = "circles-rpc"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alloy-json-rpc",
  "alloy-primitives",
@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "circles-sdk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alloy-contract",
  "alloy-json-rpc",
@@ -1556,7 +1556,7 @@ dependencies = [
 
 [[package]]
 name = "circles-transfers"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alloy-primitives",
  "alloy-provider",
@@ -1576,7 +1576,7 @@ dependencies = [
 
 [[package]]
 name = "circles-types"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
@@ -1589,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "circles-utils"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alloy-primitives",
  "num-bigint",

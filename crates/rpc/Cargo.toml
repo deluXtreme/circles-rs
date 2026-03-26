@@ -1,6 +1,6 @@
 [package]
 name = "circles-rpc"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Circles JSON-RPC client (HTTP + WS)"
 license = "MIT OR Apache-2.0"
