@@ -6,14 +6,14 @@ use crate::{
 use alloy_primitives::{Address, U256, aliases::U96};
 use circles_abis::BaseGroup;
 use circles_profiles::Profiles;
-use circles_rpc::CirclesRpc;
 #[cfg(feature = "ws")]
 use circles_rpc::events::subscription::CirclesSubscription;
+use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
     AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, PathfindingResult,
-    TokenBalanceResponse, TrustRelation,
+    SortOrder, TokenBalanceResponse, TransactionHistoryRow, TrustRelation,
 };
 use std::sync::Arc;
 
@@ -157,6 +157,15 @@ impl BaseGroupAvatar {
     /// Fetch profile (cached by CID in memory).
     pub async fn profile(&self) -> Result<Option<Profile>, SdkError> {
         self.common.profile(self.info.cid_v0.as_deref()).await
+    }
+
+    /// Get transaction history for this avatar using cursor-based pagination.
+    pub fn transaction_history(
+        &self,
+        limit: u32,
+        sort_order: SortOrder,
+    ) -> PagedQuery<TransactionHistoryRow> {
+        self.common.transaction_history(limit, sort_order)
     }
 
     /// Update profile metadata digest on the base group (requires runner).

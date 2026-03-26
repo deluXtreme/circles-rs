@@ -3,13 +3,13 @@ use crate::ws;
 use crate::{ContractRunner, Core, PreparedTransaction, Profile, SdkError};
 use alloy_primitives::{Address, U256};
 use circles_profiles::Profiles;
-use circles_rpc::CirclesRpc;
 #[cfg(feature = "ws")]
 use circles_rpc::events::subscription::CirclesSubscription;
+use circles_rpc::{CirclesRpc, PagedQuery};
 use circles_transfers::TransferBuilder;
 use circles_types::{
-    AdvancedTransferOptions, AggregatedTrustRelation, Balance, PathfindingResult,
-    TokenBalanceResponse, TrustRelation, TrustRelationType,
+    AdvancedTransferOptions, AggregatedTrustRelation, Balance, PathfindingResult, SortOrder,
+    TokenBalanceResponse, TransactionHistoryRow, TrustRelation, TrustRelationType,
 };
 #[cfg(feature = "ws")]
 use circles_types::{CirclesEvent, Filter};
@@ -140,6 +140,17 @@ impl CommonAvatar {
         } else {
             Ok(None)
         }
+    }
+
+    /// Get transaction history for this avatar using the shared RPC paged query.
+    pub fn transaction_history(
+        &self,
+        limit: u32,
+        sort_order: SortOrder,
+    ) -> PagedQuery<TransactionHistoryRow> {
+        self.rpc
+            .transaction()
+            .get_transaction_history(self.address, limit, sort_order)
     }
 
     /// Upload profile to the profile service, returning the new CID.
