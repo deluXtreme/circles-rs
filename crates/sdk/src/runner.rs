@@ -238,11 +238,21 @@ mod tests {
     use alloy_primitives::address;
     use alloy_provider::Provider;
     use safe_rs::{Call, EoaTxResult, SimulationResult};
+    use std::process::{Command, Stdio};
 
     const ANVIL_FIRST_PRIVATE_KEY: &str =
         "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const ANVIL_FIRST_ADDRESS: Address = address!("f39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
     const ANVIL_SECOND_ADDRESS: Address = address!("70997970C51812dc3A010C7d01b50e0d17dc79C8");
+
+    fn anvil_binary_available() -> bool {
+        Command::new("anvil")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok()
+    }
 
     #[derive(Default)]
     struct StubBuilder {
@@ -358,6 +368,11 @@ mod tests {
 
     #[tokio::test]
     async fn eoa_runner_executes_value_transfer_on_anvil() {
+        if !anvil_binary_available() {
+            eprintln!("skipping anvil-backed test because `anvil` is not installed");
+            return;
+        }
+
         let anvil = Anvil::new().spawn();
         let provider = build_read_provider(anvil.endpoint_url());
         let before = provider
@@ -390,6 +405,11 @@ mod tests {
 
     #[tokio::test]
     async fn safe_runner_rejects_non_safe_address_on_plain_anvil() {
+        if !anvil_binary_available() {
+            eprintln!("skipping anvil-backed test because `anvil` is not installed");
+            return;
+        }
+
         let anvil = Anvil::new().spawn();
         let result = SafeContractRunner::connect(
             &anvil.endpoint(),
