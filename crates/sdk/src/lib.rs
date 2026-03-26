@@ -72,7 +72,10 @@ use circles_rpc::CirclesRpc;
 use circles_rpc::events::subscription::CirclesSubscription;
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
-use circles_types::{AvatarInfo, AvatarType, CirclesConfig, TokenBalanceResponse, TrustRelation};
+use circles_types::{
+    AggregatedTrustRelation, AvatarInfo, AvatarType, CirclesConfig, TokenBalanceResponse,
+    TrustRelation,
+};
 use core::Core;
 pub use runner::{ContractRunner, PreparedTransaction, RunnerError, SubmittedTx, call_to_tx};
 #[cfg(feature = "ws")]
@@ -103,6 +106,10 @@ pub enum SdkError {
     Runner(#[from] RunnerError),
     #[error("cid error: {0}")]
     Cid(#[from] cid_v0_to_digest::CidError),
+    #[error("contract call error: {0}")]
+    Contract(String),
+    #[error("operation failed: {0}")]
+    OperationFailed(String),
     #[error("contract runner is required for this operation")]
     MissingRunner,
     #[error("sender address is required for this operation")]
@@ -197,6 +204,18 @@ impl Sdk {
     /// Read trust relations for an avatar directly from the RPC service.
     pub async fn data_trust(&self, avatar: Address) -> Result<Vec<TrustRelation>, SdkError> {
         Ok(self.rpc.trust().get_trust_relations(avatar).await?)
+    }
+
+    /// Read aggregated trust relations for an avatar directly from the RPC service.
+    pub async fn data_trust_aggregated(
+        &self,
+        avatar: Address,
+    ) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        Ok(self
+            .rpc
+            .trust()
+            .get_aggregated_trust_relations(avatar)
+            .await?)
     }
 
     /// Read token balances for an avatar directly from the RPC service.

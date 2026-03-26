@@ -10,8 +10,10 @@ The usage model is intentionally simple:
 
 ## Capabilities
 
-- Typed avatar helpers for balances, trust, profiles, pathfinding, transfer planning, and registration flows.
+- Typed avatar helpers for balances, aggregated trust, profiles, pathfinding, transfer planning, replenish planning, and registration flows.
 - Invitation and referral helpers for human avatars.
+- Profile metadata / short-name write helpers plus personal minting for human avatars.
+- Base-group trust/property write helpers (`trust_add_batch_with_conditions`, `set_owner`, `set_service`, `set_fee_collection`, `set_membership_condition`).
 - Transfer planning and replenish/max-flow helpers via `circles-transfers` and `circles-pathfinder`.
 - Optional WebSocket subscriptions with retry/backoff and HTTP catch-up through the `ws` feature.
 - Shared mainnet config through `config::gnosis_mainnet()` and `GNOSIS_MAINNET`.
@@ -32,8 +34,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("human balances: {}", balances.len());
         }
         Avatar::Organisation(org) => {
-            let trust = org.trust_relations().await?;
-            println!("org trust edges: {}", trust.len());
+            let trust = org.aggregated_trust_relations().await?;
+            println!("org trust counterparts: {}", trust.len());
         }
         Avatar::Group(group) => {
             let info = group.profile().await?;
@@ -72,5 +74,6 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 
 - WS helpers tolerate heartbeats and batched frames; unknown event types still surface as regular events from `circles-rpc`.
 - Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances/trust edges.
-- Avatar wrappers expose `plan_replenish` / `replenish` alongside the existing transfer helpers.
+- Avatar wrappers expose `total_balance`, aggregated trust helpers, and `plan_replenish` / `replenish`; human and organisation avatars also expose `max_replenishable` plus `plan_replenish_max` / `replenish_max`.
+- The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

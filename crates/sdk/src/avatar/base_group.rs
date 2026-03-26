@@ -12,7 +12,8 @@ use circles_rpc::events::subscription::CirclesSubscription;
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AdvancedTransferOptions, AvatarInfo, PathfindingResult, TokenBalanceResponse, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, PathfindingResult,
+    TokenBalanceResponse, TrustRelation,
 };
 use std::sync::Arc;
 
@@ -40,9 +41,50 @@ impl BaseGroupAvatar {
         self.common.balances(as_time_circles, use_v2).await
     }
 
+    /// Get aggregate balance (v1/v2 selectable).
+    pub async fn total_balance(
+        &self,
+        as_time_circles: bool,
+        use_v2: bool,
+    ) -> Result<Balance, SdkError> {
+        self.common.total_balance(as_time_circles, use_v2).await
+    }
+
     /// Get trust relations.
     pub async fn trust_relations(&self) -> Result<Vec<TrustRelation>, SdkError> {
         self.common.trust_relations().await
+    }
+
+    /// Get aggregated trust relations.
+    pub async fn aggregated_trust_relations(
+        &self,
+    ) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.aggregated_trust_relations().await
+    }
+
+    /// Get outgoing trust relations only.
+    pub async fn trusts(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.trusts().await
+    }
+
+    /// Get incoming trust relations only.
+    pub async fn trusted_by(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.trusted_by().await
+    }
+
+    /// Get mutual trust relations only.
+    pub async fn mutual_trusts(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.mutual_trusts().await
+    }
+
+    /// Check whether this avatar trusts `other_avatar`.
+    pub async fn is_trusting(&self, other_avatar: Address) -> Result<bool, SdkError> {
+        self.common.is_trusting(other_avatar).await
+    }
+
+    /// Check whether `other_avatar` trusts this avatar.
+    pub async fn is_trusted_by(&self, other_avatar: Address) -> Result<bool, SdkError> {
+        self.common.is_trusted_by(other_avatar).await
     }
 
     /// Fetch profile (cached by CID in memory).
@@ -53,9 +95,23 @@ impl BaseGroupAvatar {
     /// Update profile metadata digest on the base group (requires runner).
     pub async fn update_profile(&self, profile: &Profile) -> Result<Vec<SubmittedTx>, SdkError> {
         let cid = self.common.pin_profile(profile).await?;
-        let digest = cid_v0_to_digest(&cid)?;
+        self.update_profile_metadata(&cid).await
+    }
+
+    /// Update the on-chain profile CID pointer through the BaseGroup contract (requires runner).
+    pub async fn update_profile_metadata(&self, cid: &str) -> Result<Vec<SubmittedTx>, SdkError> {
+        let digest = cid_v0_to_digest(cid)?;
         let call = circles_abis::BaseGroup::updateMetadataDigestCall {
             _metadataDigest: digest,
+        };
+        let tx = call_to_tx(self.address, call, None);
+        self.common.send(vec![tx]).await
+    }
+
+    /// Register a short name using a specific nonce (requires runner).
+    pub async fn register_short_name(&self, nonce: u64) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = circles_abis::BaseGroup::registerShortNameWithNonceCall {
+            _nonce: U256::from(nonce),
         };
         let tx = call_to_tx(self.address, call, None);
         self.common.send(vec![tx]).await
@@ -82,6 +138,60 @@ impl BaseGroupAvatar {
     /// Remove trust (sets expiry to 0). Requires runner.
     pub async fn trust_remove(&self, avatars: &[Address]) -> Result<Vec<SubmittedTx>, SdkError> {
         self.trust_add(avatars, 0).await
+    }
+
+    /// Trust a batch of members with membership condition checks (requires runner).
+    pub async fn trust_add_batch_with_conditions(
+        &self,
+        avatars: &[Address],
+        expiry: u128,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = BaseGroup::trustBatchWithConditionsCall {
+            _members: avatars.to_vec(),
+            _expiry: U96::from(expiry),
+        };
+        let tx = call_to_tx(self.address, call, None);
+        self.common.send(vec![tx]).await
+    }
+
+    /// Set a new owner for the group (requires runner).
+    pub async fn set_owner(&self, owner: Address) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = BaseGroup::setOwnerCall { _owner: owner };
+        let tx = call_to_tx(self.address, call, None);
+        self.common.send(vec![tx]).await
+    }
+
+    /// Set a new service address for the group (requires runner).
+    pub async fn set_service(&self, service: Address) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = BaseGroup::setServiceCall { _service: service };
+        let tx = call_to_tx(self.address, call, None);
+        self.common.send(vec![tx]).await
+    }
+
+    /// Set a new fee collection address for the group (requires runner).
+    pub async fn set_fee_collection(
+        &self,
+        fee_collection: Address,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = BaseGroup::setFeeCollectionCall {
+            _feeCollection: fee_collection,
+        };
+        let tx = call_to_tx(self.address, call, None);
+        self.common.send(vec![tx]).await
+    }
+
+    /// Enable or disable a membership condition (requires runner).
+    pub async fn set_membership_condition(
+        &self,
+        condition: Address,
+        enabled: bool,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = BaseGroup::setMembershipConditionCall {
+            _condition: condition,
+            _enabled: enabled,
+        };
+        let tx = call_to_tx(self.address, call, None);
+        self.common.send(vec![tx]).await
     }
 
     #[cfg(feature = "ws")]
@@ -181,5 +291,186 @@ impl BaseGroupAvatar {
             runner,
             common,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::{Bytes, TxHash};
+    use alloy_sol_types::SolCall;
+    use async_trait::async_trait;
+    use circles_profiles::Profiles;
+    use circles_types::{AvatarType, CirclesConfig};
+    use std::sync::Mutex;
+
+    const TEST_CID: &str = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+
+    #[derive(Default)]
+    struct RecordingRunner {
+        sender: Address,
+        sent: Mutex<Vec<Vec<PreparedTransaction>>>,
+    }
+
+    #[async_trait]
+    impl ContractRunner for RecordingRunner {
+        fn sender_address(&self) -> Address {
+            self.sender
+        }
+
+        async fn send_transactions(
+            &self,
+            txs: Vec<PreparedTransaction>,
+        ) -> Result<Vec<crate::SubmittedTx>, crate::RunnerError> {
+            self.sent.lock().expect("lock").push(txs.clone());
+            Ok(txs
+                .into_iter()
+                .map(|_| crate::SubmittedTx {
+                    tx_hash: Bytes::from(TxHash::ZERO.as_slice().to_vec()),
+                })
+                .collect())
+        }
+    }
+
+    fn dummy_config() -> CirclesConfig {
+        CirclesConfig {
+            circles_rpc_url: "https://rpc.example.com".into(),
+            pathfinder_url: "https://pathfinder.example.com".into(),
+            profile_service_url: "https://profiles.example.com".into(),
+            v1_hub_address: Address::repeat_byte(0x01),
+            v2_hub_address: Address::repeat_byte(0x02),
+            name_registry_address: Address::repeat_byte(0x03),
+            base_group_mint_policy: Address::repeat_byte(0x04),
+            standard_treasury: Address::repeat_byte(0x05),
+            core_members_group_deployer: Address::repeat_byte(0x06),
+            base_group_factory_address: Address::repeat_byte(0x07),
+            lift_erc20_address: Address::repeat_byte(0x08),
+            invitation_escrow_address: Address::repeat_byte(0x09),
+            invitation_farm_address: Address::repeat_byte(0x0a),
+            referrals_module_address: Address::repeat_byte(0x0b),
+        }
+    }
+
+    fn dummy_avatar(address: Address) -> AvatarInfo {
+        AvatarInfo {
+            block_number: 0,
+            timestamp: None,
+            transaction_index: 0,
+            log_index: 0,
+            transaction_hash: TxHash::ZERO,
+            version: 2,
+            avatar_type: AvatarType::CrcV2RegisterGroup,
+            avatar: address,
+            token_id: None,
+            has_v1: false,
+            v1_token: None,
+            cid_v0_digest: None,
+            cid_v0: None,
+            v1_stopped: None,
+            is_human: false,
+            name: None,
+            symbol: None,
+        }
+    }
+
+    fn test_avatar() -> (BaseGroupAvatar, Arc<RecordingRunner>) {
+        let config = dummy_config();
+        let runner = Arc::new(RecordingRunner {
+            sender: Address::repeat_byte(0xcc),
+            sent: Mutex::new(Vec::new()),
+        });
+        let avatar = BaseGroupAvatar::new(
+            Address::repeat_byte(0xcc),
+            dummy_avatar(Address::repeat_byte(0xcc)),
+            Arc::new(Core::new(config.clone())),
+            Profiles::new(config.profile_service_url.clone()).expect("profiles"),
+            Arc::new(CirclesRpc::try_from_http(&config.circles_rpc_url).expect("rpc")),
+            Some(runner.clone()),
+        );
+        (avatar, runner)
+    }
+
+    #[tokio::test]
+    async fn base_group_write_helpers_encode_expected_calls() {
+        let (avatar, runner) = test_avatar();
+        let new_owner = Address::repeat_byte(0xdd);
+        let new_service = Address::repeat_byte(0xee);
+        let new_fee = Address::repeat_byte(0xff);
+        let condition = Address::repeat_byte(0x11);
+
+        avatar
+            .update_profile_metadata(TEST_CID)
+            .await
+            .expect("update metadata");
+        avatar
+            .register_short_name(5)
+            .await
+            .expect("register short name");
+        avatar
+            .trust_add_batch_with_conditions(&[new_owner, new_service], 42)
+            .await
+            .expect("trust batch");
+        avatar.set_owner(new_owner).await.expect("set owner");
+        avatar.set_service(new_service).await.expect("set service");
+        avatar
+            .set_fee_collection(new_fee)
+            .await
+            .expect("set fee collection");
+        avatar
+            .set_membership_condition(condition, true)
+            .await
+            .expect("set membership condition");
+
+        let sent = runner.sent.lock().expect("lock");
+        assert_eq!(sent.len(), 7);
+
+        assert_eq!(
+            &sent[0][0].data[..4],
+            &BaseGroup::updateMetadataDigestCall {
+                _metadataDigest: cid_v0_to_digest(TEST_CID).expect("cid"),
+            }
+            .abi_encode()[..4]
+        );
+        assert_eq!(
+            &sent[1][0].data[..4],
+            &BaseGroup::registerShortNameWithNonceCall {
+                _nonce: U256::from(5u64),
+            }
+            .abi_encode()[..4]
+        );
+        assert_eq!(
+            &sent[2][0].data[..4],
+            &BaseGroup::trustBatchWithConditionsCall {
+                _members: vec![new_owner, new_service],
+                _expiry: U96::from(42u128),
+            }
+            .abi_encode()[..4]
+        );
+        assert_eq!(
+            &sent[3][0].data[..4],
+            &BaseGroup::setOwnerCall { _owner: new_owner }.abi_encode()[..4]
+        );
+        assert_eq!(
+            &sent[4][0].data[..4],
+            &BaseGroup::setServiceCall {
+                _service: new_service,
+            }
+            .abi_encode()[..4]
+        );
+        assert_eq!(
+            &sent[5][0].data[..4],
+            &BaseGroup::setFeeCollectionCall {
+                _feeCollection: new_fee,
+            }
+            .abi_encode()[..4]
+        );
+        assert_eq!(
+            &sent[6][0].data[..4],
+            &BaseGroup::setMembershipConditionCall {
+                _condition: condition,
+                _enabled: true,
+            }
+            .abi_encode()[..4]
+        );
     }
 }

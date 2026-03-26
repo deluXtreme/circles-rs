@@ -8,7 +8,8 @@ use circles_rpc::CirclesRpc;
 use circles_rpc::events::subscription::CirclesSubscription;
 use circles_transfers::TransferBuilder;
 use circles_types::{
-    AdvancedTransferOptions, PathfindingResult, TokenBalanceResponse, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, Balance, PathfindingResult,
+    TokenBalanceResponse, TrustRelation, TrustRelationType,
 };
 #[cfg(feature = "ws")]
 use circles_types::{CirclesEvent, Filter};
@@ -58,9 +59,78 @@ impl CommonAvatar {
             .await?)
     }
 
+    /// Get aggregate balance (v1/v2 selectable).
+    pub async fn total_balance(
+        &self,
+        as_time_circles: bool,
+        use_v2: bool,
+    ) -> Result<Balance, SdkError> {
+        Ok(self
+            .rpc
+            .balance()
+            .get_total_balance(self.address, as_time_circles, use_v2)
+            .await?)
+    }
+
     /// Get trust relations.
     pub async fn trust_relations(&self) -> Result<Vec<TrustRelation>, SdkError> {
         Ok(self.rpc.trust().get_trust_relations(self.address).await?)
+    }
+
+    /// Get aggregated trust relations, matching the TS SDK convenience surface.
+    pub async fn aggregated_trust_relations(
+        &self,
+    ) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        Ok(self
+            .rpc
+            .trust()
+            .get_aggregated_trust_relations(self.address)
+            .await?)
+    }
+
+    /// Get outgoing trust relations only.
+    pub async fn trusts(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        Ok(self.rpc.trust().get_trusts(self.address).await?)
+    }
+
+    /// Get incoming trust relations only.
+    pub async fn trusted_by(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        Ok(self.rpc.trust().get_trusted_by(self.address).await?)
+    }
+
+    /// Get mutual trust relations only.
+    pub async fn mutual_trusts(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        Ok(self.rpc.trust().get_mutual_trusts(self.address).await?)
+    }
+
+    /// Check whether this avatar trusts `other_avatar`.
+    pub async fn is_trusting(&self, other_avatar: Address) -> Result<bool, SdkError> {
+        let rels = self
+            .rpc
+            .trust()
+            .get_common_trust(self.address, other_avatar)
+            .await?;
+        Ok(rels.iter().any(|rel| {
+            matches!(
+                rel,
+                TrustRelationType::Trusts | TrustRelationType::MutuallyTrusts
+            )
+        }))
+    }
+
+    /// Check whether `other_avatar` trusts this avatar.
+    pub async fn is_trusted_by(&self, other_avatar: Address) -> Result<bool, SdkError> {
+        let rels = self
+            .rpc
+            .trust()
+            .get_common_trust(self.address, other_avatar)
+            .await?;
+        Ok(rels.iter().any(|rel| {
+            matches!(
+                rel,
+                TrustRelationType::TrustedBy | TrustRelationType::MutuallyTrusts
+            )
+        }))
     }
 
     /// Fetch profile by CID if present.

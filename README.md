@@ -24,10 +24,10 @@ As of March 26, 2026, this workspace is closer to the TypeScript SDK, but it is 
 | `circles-rpc` | Good coverage | Core HTTP/query/event decoding is in place and is already used by the higher-level crates. |
 | `circles-pathfinder` | Close | Recent parity work aligned flow-matrix terminal edges, wrapped-token rewriting, token-info helpers, netted-flow helpers, and explicit RPC/client entrypoints. |
 | `circles-transfers` | Close | Advanced transfer planning, aggregate transfers, and the TS-style `constructReplenish` flow are present; remaining work is mostly higher-level parity polish and broader behavioral coverage. |
-| `circles-sdk` | Partial | Read flows and typed avatars are usable, and replenish planning/execution now rides the runner abstraction; higher-level convenience parity and wallet-backend parity are still incomplete. |
+| `circles-sdk` | Partial, improving | Read flows and typed avatars are usable, replenish planning/execution rides the runner abstraction, and the convenience surface now covers aggregated trust helpers, profile metadata / short-name writes, personal minting, max-replenish helpers, and base-group write helpers; direct-transfer/history/group-token facade parity and wallet-backend parity are still incomplete. |
 | `circles-profiles`, `circles-utils`, `circles-types`, `circles-abis` | Supporting / lower risk | These crates are in service for the current SDK flows and are not the main parity bottlenecks right now. |
 
-The biggest remaining parity work is no longer the replenish planner itself. The open gaps are broader SDK convenience coverage and execution-backend parity, especially for wallet-specific flows outside the generic runner abstraction.
+The biggest remaining parity work is no longer the replenish planner itself. The open gaps are the rest of the higher-level SDK facade and execution-backend parity, especially TS-style direct transfer/history/group-token helpers and wallet-specific flows outside the generic runner abstraction.
 
 ## Usage model
 
