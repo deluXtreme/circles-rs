@@ -44,7 +44,9 @@
 //! - [`Sdk::avatar_info`] for a fast read-only probe.
 //! - [`Sdk::get_avatar`] when you want a typed avatar wrapper.
 //! - [`HumanAvatar::plan_transfer`], [`OrganisationAvatar::plan_transfer`], and
-//!   [`BaseGroupAvatar::plan_transfer`] for transaction planning before submission.
+//!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
+//! - [`HumanAvatar::plan_direct_transfer`], [`OrganisationAvatar::plan_direct_transfer`], and
+//!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
 //!
 //! ## Validation
 //!

@@ -10,7 +10,7 @@ The usage model is intentionally simple:
 
 ## Capabilities
 
-- Typed avatar helpers for balances, aggregated trust, profiles, pathfinding, transfer planning, replenish planning, and registration flows.
+- Typed avatar helpers for balances, aggregated trust, profiles, direct-transfer planning/execution, pathfinding, replenish planning, and registration flows.
 - Invitation and referral helpers for human avatars.
 - Profile metadata / short-name write helpers plus personal minting for human avatars.
 - Transaction-history pagination for all typed avatars plus human group-membership/detail helpers.
@@ -76,7 +76,7 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 
 - WS helpers tolerate heartbeats and batched frames; unknown event types still surface as regular events from `circles-rpc`.
 - Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances/trust edges.
-- Avatar wrappers expose `total_balance`, aggregated trust helpers, and `plan_replenish` / `replenish`; human and organisation avatars also expose `max_replenishable` plus `plan_replenish_max` / `replenish_max`.
+- Avatar wrappers expose `total_balance`, aggregated trust helpers, `plan_direct_transfer` / `direct_transfer`, and `plan_replenish` / `replenish`; human and organisation avatars also expose `max_replenishable` plus `plan_replenish_max` / `replenish_max`.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
-- The main remaining facade gaps are direct-transfer helpers, fuller group-token redeem/member convenience, and the richer TS invitation surface.
+- The main remaining facade gaps are fuller group-token redeem/member convenience and the richer TS invitation surface.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.
