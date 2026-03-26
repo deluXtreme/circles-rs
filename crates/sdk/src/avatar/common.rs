@@ -121,6 +121,39 @@ impl CommonAvatar {
         self.send(txs).await
     }
 
+    /// Plan a replenish flow for `token_id`, optionally delivering the final
+    /// balance to `receiver` instead of keeping it on this avatar.
+    pub async fn plan_replenish(
+        &self,
+        token_id: Address,
+        amount: U256,
+        receiver: Option<Address>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        let builder = TransferBuilder::new(self.core.config.clone())?;
+        let txs = builder
+            .construct_replenish(self.address, token_id, amount, receiver)
+            .await?;
+        Ok(txs
+            .into_iter()
+            .map(|tx| PreparedTransaction {
+                to: tx.to,
+                data: tx.data,
+                value: Some(tx.value),
+            })
+            .collect())
+    }
+
+    /// Plan and execute a replenish flow using the runner (if present).
+    pub async fn replenish(
+        &self,
+        token_id: Address,
+        amount: U256,
+        receiver: Option<Address>,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self.plan_replenish(token_id, amount, receiver).await?;
+        self.send(txs).await
+    }
+
     /// Find a path between this avatar and `to` with a target flow (defaults use_wrapped_balances=true).
     pub async fn find_path(
         &self,
@@ -135,6 +168,7 @@ impl CommonAvatar {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
             tx_data: None,
         });

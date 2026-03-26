@@ -64,6 +64,7 @@
 //!     exclude_from_tokens: None,
 //!     exclude_to_tokens: None,
 //!     simulated_balances: None,
+//!     simulated_trusts: None,
 //!     max_transfers: Some(10),
 //! };
 //!
@@ -108,6 +109,7 @@
 //! - [`TransferStep`] - Individual transfer in a path
 //! - [`FlowMatrix`] - Complete flow representation for contracts
 //! - [`SimulatedBalance`] - Balance simulation for pathfinding
+//! - [`SimulatedTrust`] - Trust-edge simulation for pathfinding
 //!
 //! ### Event System
 //! - [`CirclesEvent`] - Universal event structure
@@ -218,6 +220,7 @@ pub use pathfinding::{
     PathfindingResult,
     PathfindingTransferStep,
     SimulatedBalance,
+    SimulatedTrust,
     Stream,
     StreamStruct,
     TransferStep,

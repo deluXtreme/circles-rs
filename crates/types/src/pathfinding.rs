@@ -11,6 +11,13 @@ pub struct SimulatedBalance {
     pub is_static: bool,
 }
 
+/// Simulated trust connection for path finding.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimulatedTrust {
+    pub truster: Address,
+    pub trustee: Address,
+}
+
 /// Path finding parameters for `circlesV2_findPath`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FindPathParams {
@@ -32,6 +39,8 @@ pub struct FindPathParams {
     pub exclude_to_tokens: Option<Vec<Address>>,
     #[serde(rename = "SimulatedBalances")]
     pub simulated_balances: Option<Vec<SimulatedBalance>>,
+    #[serde(rename = "SimulatedTrusts")]
+    pub simulated_trusts: Option<Vec<SimulatedTrust>>,
     #[serde(rename = "MaxTransfers")]
     pub max_transfers: Option<u32>,
 }
@@ -101,6 +110,7 @@ pub struct AdvancedTransferOptions {
     pub exclude_from_tokens: Option<Vec<Address>>,
     pub exclude_to_tokens: Option<Vec<Address>>,
     pub simulated_balances: Option<Vec<SimulatedBalance>>,
+    pub simulated_trusts: Option<Vec<SimulatedTrust>>,
     pub max_transfers: Option<u32>,
 
     /// Custom data to attach to the transfer (optional)
@@ -125,8 +135,46 @@ impl AdvancedTransferOptions {
             exclude_from_tokens: self.exclude_from_tokens,
             exclude_to_tokens: self.exclude_to_tokens,
             simulated_balances: self.simulated_balances,
+            simulated_trusts: self.simulated_trusts,
             max_transfers: self.max_transfers,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FindPathParams, SimulatedTrust};
+    use alloy_primitives::{Address, U256};
+    use serde_json::json;
+
+    #[test]
+    fn serializes_simulated_trusts_with_rpc_field_name() {
+        let params = FindPathParams {
+            from: Address::repeat_byte(0x11),
+            to: Address::repeat_byte(0x22),
+            target_flow: U256::from(42u64),
+            use_wrapped_balances: Some(true),
+            from_tokens: None,
+            to_tokens: None,
+            exclude_from_tokens: None,
+            exclude_to_tokens: None,
+            simulated_balances: None,
+            simulated_trusts: Some(vec![SimulatedTrust {
+                truster: Address::repeat_byte(0x33),
+                trustee: Address::repeat_byte(0x44),
+            }]),
+            max_transfers: Some(7),
+        };
+
+        let serialized = serde_json::to_value(params).expect("serialize path params");
+
+        assert_eq!(
+            serialized["SimulatedTrusts"],
+            json!([{
+                "truster": format!("{:#x}", Address::repeat_byte(0x33)),
+                "trustee": format!("{:#x}", Address::repeat_byte(0x44)),
+            }])
+        );
     }
 }
 

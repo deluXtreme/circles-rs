@@ -71,5 +71,6 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 ## Notes
 
 - WS helpers tolerate heartbeats and batched frames; unknown event types still surface as regular events from `circles-rpc`.
-- Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances.
+- Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances/trust edges.
+- Avatar wrappers expose `plan_replenish` / `replenish` alongside the existing transfer helpers.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

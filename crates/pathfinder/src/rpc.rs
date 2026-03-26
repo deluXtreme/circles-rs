@@ -90,6 +90,7 @@ pub async fn find_path_via_rpc(
         exclude_from_tokens: None,
         exclude_to_tokens: None,
         simulated_balances: None,
+        simulated_trusts: None,
         max_transfers: None,
     };
     find_path_with_params_via_rpc(rpc, params).await

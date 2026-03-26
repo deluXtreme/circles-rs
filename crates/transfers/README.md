@@ -7,6 +7,7 @@ Builder for Circles transfer transactions (port of TS `@aboutcircles/sdk-transfe
 - Handles demurraged and inflationary wrappers. Inflationary unwrap uses static amounts; leftover re-wrap uses `staticAttoCircles` from `circles_getTokenBalances`.
 - Self-transfer fast-path resolves wrapper type via LiftERC20; approval inclusion is configurable.
 - Includes an aggregate-capable entrypoint that mirrors the TS recipient self-transfer behavior when `to_tokens` selects exactly one token.
+- Includes the TS-style replenish planner: use existing unwrapped balance first, then local unwraps, then deficit pathfinding with temporary trust when needed.
 - Fixtures cover demurraged-only, mixed wrappers (with rewrap), and a no-leftover inflationary case (static balance forced to zero for now).
 
 ## Usage

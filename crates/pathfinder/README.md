@@ -3,7 +3,7 @@
 Pathfinding and flow matrix calculation for the Circles protocol. Uses `circles-rpc` to call `circlesV2_findPath` and produces contract-ready types for Hub interactions.
 
 ## Features
-- Path discovery through the trust network with optional wrapped-balance usage and simulated balances.
+- Path discovery through the trust network with optional wrapped-balance usage plus simulated balances/trust edges.
 - Flow matrix creation and packing for on-chain `operateFlowMatrix` / `redeemPayment`.
 - Wrapped token handling helpers: normalize wrappers, unwrap inflationary balances, and rewrite paths to underlying avatars.
 - Netted-flow checks: shrink path values, compute/validate netted flow, and cap `U256` inputs to `U192` for contract compatibility.
@@ -26,6 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         exclude_from_tokens: None,
         exclude_to_tokens: None,
         simulated_balances: None,
+        simulated_trusts: None,
         max_transfers: None,
     };
 

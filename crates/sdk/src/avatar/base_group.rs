@@ -125,6 +125,26 @@ impl BaseGroupAvatar {
         self.common.transfer(to, amount, options).await
     }
 
+    /// Plan a replenish flow without submitting.
+    pub async fn plan_replenish(
+        &self,
+        token_id: Address,
+        amount: U256,
+        receiver: Option<Address>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common.plan_replenish(token_id, amount, receiver).await
+    }
+
+    /// Execute a replenish flow using the runner (requires runner).
+    pub async fn replenish(
+        &self,
+        token_id: Address,
+        amount: U256,
+        receiver: Option<Address>,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.replenish(token_id, amount, receiver).await
+    }
+
     /// Find a path between this avatar and `to` with a target flow.
     pub async fn find_path(
         &self,

@@ -5,7 +5,7 @@ Shared types for the Circles protocol: RPC models, events, pathfinding structure
 ## Highlights
 - Alloy-backed primitives re-exported as `Address`, `TxHash`, `U256`, `U192`, etc.
 - RPC/query models: `JsonRpcRequest/Response`, `QueryParams`, `PagedQueryParams`, `FilterPredicate`, `CirclesQueryResponse`.
-- Pathfinding + flow: `FindPathParams`, `PathfindingResult`, `FlowMatrix`, `TransferStep`, `SimulatedBalance`.
+- Pathfinding + flow: `FindPathParams`, `PathfindingResult`, `FlowMatrix`, `TransferStep`, `SimulatedBalance`, `SimulatedTrust`.
 - Events: `CirclesEvent`, `CirclesEventType` (25+ variants) with unknown-event fallback.
 - Config: `CirclesConfig` shared across SDK/RPC/pathfinder/transfers.
 - Profiles/trust/tokens/groups: `AvatarInfo`, `Profile`, `TrustRelation`, `TokenInfo`, `GroupRow`, and friends.
@@ -43,6 +43,7 @@ let params = FindPathParams {
     exclude_from_tokens: None,
     exclude_to_tokens: None,
     simulated_balances: None,
+    simulated_trusts: None,
     max_transfers: None,
 };
 

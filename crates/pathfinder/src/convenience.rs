@@ -38,6 +38,7 @@ use circles_types::TransferStep;
 ///     exclude_from_tokens: None,
 ///     exclude_to_tokens: None,
 ///     simulated_balances: None,
+///     simulated_trusts: None,
 ///     max_transfers: None,
 /// };
 ///
@@ -89,6 +90,7 @@ pub async fn prepare_flow_for_contract_simple(
         exclude_from_tokens: None,
         exclude_to_tokens: None,
         simulated_balances: None,
+        simulated_trusts: None,
         max_transfers: None,
     };
 
@@ -194,6 +196,7 @@ mod tests {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
         };
 
@@ -213,6 +216,7 @@ mod tests {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
         };
 
