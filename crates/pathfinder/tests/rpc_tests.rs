@@ -83,6 +83,7 @@ async fn test_find_path_with_params_via_rpc_with_invalid_rpc() {
         exclude_from_tokens: None,
         exclude_to_tokens: None,
         simulated_balances: None,
+        simulated_trusts: None,
         max_transfers: None,
     };
 

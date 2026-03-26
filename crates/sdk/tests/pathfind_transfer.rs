@@ -11,6 +11,7 @@ fn advanced_options_to_find_path_params() {
         exclude_from_tokens: Some(vec![address!("3000000000000000000000000000000000000003")]),
         exclude_to_tokens: Some(vec![address!("4000000000000000000000000000000000000004")]),
         simulated_balances: None,
+        simulated_trusts: None,
         max_transfers: Some(5),
         tx_data: None,
     };

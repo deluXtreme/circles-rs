@@ -135,6 +135,7 @@ impl CommonAvatar {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
             tx_data: None,
         });

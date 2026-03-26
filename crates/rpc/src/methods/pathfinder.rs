@@ -1,12 +1,11 @@
 use crate::client::RpcClient;
 use crate::error::Result;
-use circles_types::{FindPathParams, PathfindingResult, SimulatedBalance};
-use serde::Serialize;
+use circles_types::{FindPathParams, PathfindingResult, SimulatedBalance, SimulatedTrust};
 
 /// Methods for invoking the pathfinder (max-flow) RPC.
 ///
 /// Mirrors `circlesV2_findPath` and accepts the full `FindPathParams`, including
-/// simulated balances and token overrides.
+/// simulated balances, simulated trusts, and token overrides.
 #[derive(Clone, Debug)]
 pub struct PathfinderMethods {
     client: RpcClient,
@@ -23,23 +22,19 @@ impl PathfinderMethods {
         self.client.call("circlesV2_findPath", (params,)).await
     }
 
-    /// Token swap variant: uses the same RPC but allows specifying tokens/simulated balances.
+    /// Compatibility variant that lets callers overlay simulated balance/trust inputs.
     pub async fn find_path_with_simulation(
         &self,
-        params: FindPathParams,
+        mut params: FindPathParams,
         simulated_balances: Option<Vec<SimulatedBalance>>,
+        simulated_trusts: Option<Vec<SimulatedTrust>>,
     ) -> Result<PathfindingResult> {
-        #[derive(Debug, Clone, Serialize)]
-        struct Payload {
-            #[serde(flatten)]
-            params: FindPathParams,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            simulated_balances: Option<Vec<SimulatedBalance>>,
+        if simulated_balances.is_some() {
+            params.simulated_balances = simulated_balances;
         }
-        let payload = Payload {
-            params,
-            simulated_balances,
-        };
-        self.client.call("circlesV2_findPath", (payload,)).await
+        if simulated_trusts.is_some() {
+            params.simulated_trusts = simulated_trusts;
+        }
+        self.find_path(params).await
     }
 }

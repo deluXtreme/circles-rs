@@ -123,6 +123,7 @@ impl TransferBuilder {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
             tx_data: None,
         });
@@ -141,6 +142,7 @@ impl TransferBuilder {
             exclude_from_tokens: opts_for_path.exclude_from_tokens,
             exclude_to_tokens: opts_for_path.exclude_to_tokens,
             simulated_balances: opts_for_path.simulated_balances,
+            simulated_trusts: opts_for_path.simulated_trusts,
             max_transfers: opts_for_path.max_transfers,
         };
 
@@ -572,6 +574,7 @@ mod tests {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
             tx_data: None,
         };
@@ -609,6 +612,7 @@ mod tests {
             exclude_from_tokens: None,
             exclude_to_tokens: None,
             simulated_balances: None,
+            simulated_trusts: None,
             max_transfers: None,
             tx_data: None,
         };
