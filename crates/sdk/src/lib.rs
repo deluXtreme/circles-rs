@@ -39,7 +39,7 @@
 //! - [`SafeContractRunner`] and [`EoaContractRunner`] are the built-in execution backends for
 //!   existing single-owner Safe wallets and direct EOA execution, and now expose buffered batch,
 //!   gas-estimation, and read-call helper surface on the runner itself.
-//! - [`SafeTransactionPreparer`] is the browser/external-signature foundation for Safe-backed
+//! - [`SafeExecutionBuilder`] is the browser/external-signature foundation for Safe-backed
 //!   flows: it prepares the canonical Safe payload/hash without requiring a local private key.
 //! - The optional `ws` feature enables WebSocket subscriptions with retry/backoff and HTTP catch-up helpers.
 //!
@@ -50,7 +50,7 @@
 //! - [`Sdk::get_avatar`] when you want a typed avatar wrapper.
 //! - [`EoaContractRunner::connect`] and [`SafeContractRunner::connect`] when you want built-in
 //!   execution backends for existing wallets.
-//! - [`SafeTransactionPreparer::connect`] when you need the TS-style Safe transaction-preparation
+//! - [`SafeExecutionBuilder::connect`] when you need the TS-style Safe transaction-preparation
 //!   seam before an external/browser signer submits the transaction.
 //! - [`HumanAvatar::plan_transfer`], [`OrganisationAvatar::plan_transfer`], and
 //!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
@@ -108,7 +108,7 @@ use circles_types::{
 use core::Core;
 pub use runner::{
     BatchRun, ContractRunner, EoaContractRunner, PreparedSafeExecution, PreparedTransaction,
-    RunnerError, SafeContractRunner, SafeTransactionPreparer, SubmittedTx, call_to_tx,
+    RunnerError, SafeContractRunner, SafeExecutionBuilder, SubmittedTx, call_to_tx,
 };
 #[cfg(feature = "ws")]
 use serde_json::to_value;

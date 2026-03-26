@@ -8,7 +8,7 @@ The usage model is intentionally simple:
 - Use `get_avatar` when you want a typed wrapper (`HumanAvatar`, `OrganisationAvatar`, `BaseGroupAvatar`).
 - Provide a `ContractRunner` only when you need write paths such as registration, trust updates, or transfer submission.
 - Use the built-in `EoaContractRunner` or `SafeContractRunner` when you want an SDK-managed execution backend instead of implementing the trait yourself.
-- Use `SafeTransactionPreparer` when you need the canonical Safe payload/hash for an external or browser signer but cannot execute through a local private key.
+- Use `SafeExecutionBuilder` when you need the canonical Safe payload/hash for an external or browser signer but cannot execute through a local private key.
 
 ## Capabilities
 
@@ -61,7 +61,7 @@ The crate now ships two built-in runner implementations plus a Safe preparation 
 
 - `EoaContractRunner::connect(rpc_url, private_key)` for direct EOA execution.
 - `SafeContractRunner::connect(rpc_url, private_key, safe_address)` for existing single-owner (1/1) Safes backed by `safe-rs`.
-- `SafeTransactionPreparer::connect(rpc_url, safe_address)` for fetching the current Safe nonce/chain id and building the exact Safe tx hash plus `execTransaction` payload inputs before external signing/submission.
+- `SafeExecutionBuilder::connect(rpc_url, safe_address)` for fetching the current Safe nonce/chain id and building the exact Safe tx hash plus `execTransaction` payload inputs before external signing/submission.
 - `ContractRunner` now also exposes buffered batch execution plus runner-level `estimate_gas`, `call`, and `resolve_name` hooks for the remaining non-browser parity surface.
 
 ## Examples
@@ -75,10 +75,10 @@ The crate now ships two built-in runner implementations plus a Safe preparation 
 - Implement `ContractRunner` to enable write paths.
 - `EoaContractRunner` executes prepared txs sequentially from the signer account.
 - `SafeContractRunner` executes prepared tx batches atomically through an existing Safe and currently targets single-owner Safes.
-- `SafeTransactionPreparer` mirrors the TypeScript Safe batch `getSafeTransaction()` seam for browser/external signing, but it does not submit transactions by itself.
+- `SafeExecutionBuilder` mirrors the TypeScript Safe batch `getSafeTransaction()` seam for browser/external signing, but it does not submit transactions by itself.
 - `BatchRun` is the buffered execution helper mirroring the TS batch-run concept.
 - `PreparedTransaction` is the SDK’s handoff format: target address, calldata, and optional value.
-- `PreparedSafeExecution` is the canonical Safe batch/single-call representation returned by `SafeTransactionPreparer` and `SafeContractRunner::prepare_transactions`.
+- `PreparedSafeExecution` is the canonical Safe batch/single-call representation returned by `SafeExecutionBuilder` and `SafeContractRunner::prepare_transactions`.
 - `SubmittedTx` now carries the tx hash plus backend success/index metadata where available.
 - The current API remains generic, so other wallet backends can still be layered in later.
 

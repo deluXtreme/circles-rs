@@ -106,18 +106,18 @@ impl PreparedSafeExecution {
     }
 }
 
-/// Read-only Safe transaction preparer for browser/external signing workflows.
+/// Read-only Safe execution builder for browser/external signing workflows.
 ///
 /// Unlike [`SafeContractRunner`], this does not require a local private key and
 /// does not execute transactions. It only fetches the current Safe nonce/chain id
 /// and produces the canonical Safe payload/hash a browser signer would need next.
-pub struct SafeTransactionPreparer {
+pub struct SafeExecutionBuilder {
     safe_address: Address,
     provider: AnyHttpProvider,
 }
 
-impl SafeTransactionPreparer {
-    /// Connect a Safe transaction preparer to the given RPC URL and Safe address.
+impl SafeExecutionBuilder {
+    /// Connect a Safe execution builder to the given RPC URL and Safe address.
     pub fn connect(rpc_url: &str, safe_address: Address) -> Result<Self, RunnerError> {
         let rpc_url = parse_rpc_url(rpc_url)?;
         let provider = build_read_provider(rpc_url);
@@ -127,7 +127,7 @@ impl SafeTransactionPreparer {
         })
     }
 
-    /// Safe address this preparer targets.
+    /// Safe address this builder targets.
     pub fn safe_address(&self) -> Address {
         self.safe_address
     }
@@ -896,8 +896,8 @@ mod tests {
     }
 
     #[test]
-    fn safe_transaction_preparer_rejects_invalid_rpc_url() {
-        let result = SafeTransactionPreparer::connect("not-a-url", Address::ZERO);
+    fn safe_execution_builder_rejects_invalid_rpc_url() {
+        let result = SafeExecutionBuilder::connect("not-a-url", Address::ZERO);
 
         assert!(matches!(result, Err(RunnerError::Rejected(_))));
     }
