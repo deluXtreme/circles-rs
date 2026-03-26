@@ -37,7 +37,8 @@
 //! - [`ContractRunner`] is only required for write paths such as registrations, trust changes,
 //!   and transfer submission.
 //! - [`SafeContractRunner`] and [`EoaContractRunner`] are the built-in execution backends for
-//!   existing single-owner Safe wallets and direct EOA execution.
+//!   existing single-owner Safe wallets and direct EOA execution, and now expose buffered batch,
+//!   gas-estimation, and read-call helper surface on the runner itself.
 //! - The optional `ws` feature enables WebSocket subscriptions with retry/backoff and HTTP catch-up helpers.
 //!
 //! ## Recommended Entry Points
@@ -102,8 +103,8 @@ use circles_types::{
 };
 use core::Core;
 pub use runner::{
-    ContractRunner, EoaContractRunner, PreparedTransaction, RunnerError, SafeContractRunner,
-    SubmittedTx, call_to_tx,
+    BatchRun, ContractRunner, EoaContractRunner, PreparedTransaction, RunnerError,
+    SafeContractRunner, SubmittedTx, call_to_tx,
 };
 #[cfg(feature = "ws")]
 use serde_json::to_value;

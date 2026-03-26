@@ -60,6 +60,7 @@ The crate now ships two built-in runner implementations:
 
 - `EoaContractRunner::connect(rpc_url, private_key)` for direct EOA execution.
 - `SafeContractRunner::connect(rpc_url, private_key, safe_address)` for existing single-owner (1/1) Safes backed by `safe-rs`.
+- `ContractRunner` now also exposes buffered batch execution plus runner-level `estimate_gas`, `call`, and `resolve_name` hooks for the remaining non-browser parity surface.
 
 ## Examples
 
@@ -72,7 +73,9 @@ The crate now ships two built-in runner implementations:
 - Implement `ContractRunner` to enable write paths.
 - `EoaContractRunner` executes prepared txs sequentially from the signer account.
 - `SafeContractRunner` executes prepared tx batches atomically through an existing Safe and currently targets single-owner Safes.
+- `BatchRun` is the buffered execution helper mirroring the TS batch-run concept.
 - `PreparedTransaction` is the SDK’s handoff format: target address, calldata, and optional value.
+- `SubmittedTx` now carries the tx hash plus backend success/index metadata where available.
 - The current API remains generic, so other wallet backends can still be layered in later.
 
 ## Tests
@@ -90,5 +93,5 @@ The crate now ships two built-in runner implementations:
 - `HumanAvatar` now also exposes `invitation_origin`, `invited_by`, `available_invitations`, `invitations_from`, `accepted_invitees`, `pending_invitees`, `invitation_fee`, `invitation_module`, `invitation_quota`, `proxy_inviters`, `find_invite_path`, `find_farm_invite_path`, `compute_referral_address`, `plan_invite`, `invite`, `plan_referral_code`, `get_referral_code`, `plan_generate_referrals`, `generate_referrals`, and `list_referrals`.
 - `Sdk::referrals()` returns the optional referrals backend client, which currently supports store/store-batch/retrieve/public-list flows plus authenticated `list_mine` when a bearer token is supplied explicitly.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
-- The main remaining facade gaps are the follow-up referrals service/auth polish plus broader wallet parity such as browser-backed Safe execution and richer result ergonomics.
+- The main remaining facade gaps are the follow-up referrals service/auth polish plus broader wallet parity such as browser-backed Safe execution.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

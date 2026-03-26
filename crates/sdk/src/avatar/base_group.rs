@@ -429,6 +429,8 @@ mod tests {
                 .into_iter()
                 .map(|_| crate::SubmittedTx {
                     tx_hash: Bytes::from(TxHash::ZERO.as_slice().to_vec()),
+                    success: true,
+                    index: None,
                 })
                 .collect())
         }
