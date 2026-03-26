@@ -7,7 +7,8 @@
 
 use alloy_network::AnyNetwork;
 use alloy_primitives::{Address, Bytes, U256, aliases::TxHash};
-use alloy_provider::{Identity, ProviderBuilder, RootProvider};
+use alloy_provider::{Identity, Provider, ProviderBuilder, RootProvider};
+use alloy_rpc_types::TransactionRequest;
 use alloy_signer_local::PrivateKeySigner;
 use alloy_sol_types::SolCall;
 use async_trait::async_trait;
@@ -24,7 +25,7 @@ type EoaWallet = Wallet<Eoa<AnyHttpProvider>>;
 
 /// Prepared transaction for a runner to submit. This is intentionally simple;
 /// we can swap to richer contract-specific types as we wire more flows.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedTransaction {
     /// Contract address to call.
     pub to: Address,
@@ -47,10 +48,53 @@ pub fn call_to_tx<C: SolCall>(to: Address, call: C, value: Option<U256>) -> Prep
 ///
 /// For Safe-backed execution this will usually contain a single item because the
 /// full batch is submitted atomically as one on-chain Safe transaction.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubmittedTx {
     /// Runner-reported transaction hash bytes.
     pub tx_hash: Bytes,
+    /// Whether the underlying backend reported this transaction as successful.
+    pub success: bool,
+    /// Position of the transaction inside a sequential batch, when meaningful.
+    pub index: Option<usize>,
+}
+
+/// Buffered batch helper mirroring the TypeScript `BatchRun` concept.
+#[async_trait]
+pub trait BatchRun: Send {
+    /// Add a transaction to the buffered batch.
+    fn add_transaction(&mut self, tx: PreparedTransaction);
+
+    /// Execute the buffered transactions via the underlying runner.
+    async fn run(&mut self) -> Result<Vec<SubmittedTx>, RunnerError>;
+}
+
+/// Default batch-run implementation for any [`ContractRunner`].
+pub struct BufferedBatchRun<'a, R: ContractRunner + ?Sized> {
+    runner: &'a R,
+    txs: Vec<PreparedTransaction>,
+}
+
+impl<'a, R: ContractRunner + ?Sized> BufferedBatchRun<'a, R> {
+    /// Create a buffered batch bound to the given runner.
+    pub fn new(runner: &'a R) -> Self {
+        Self {
+            runner,
+            txs: Vec::new(),
+        }
+    }
+}
+
+#[async_trait]
+impl<R: ContractRunner + ?Sized> BatchRun for BufferedBatchRun<'_, R> {
+    fn add_transaction(&mut self, tx: PreparedTransaction) {
+        self.txs.push(tx);
+    }
+
+    async fn run(&mut self) -> Result<Vec<SubmittedTx>, RunnerError> {
+        self.runner
+            .send_transactions(std::mem::take(&mut self.txs))
+            .await
+    }
 }
 
 /// Trait that allows the SDK to send transactions (e.g., via a Safe or EOA backend).
@@ -58,6 +102,38 @@ pub struct SubmittedTx {
 pub trait ContractRunner: Send + Sync {
     /// Address of the sender/safe/owner associated with this runner.
     fn sender_address(&self) -> Address;
+
+    /// Optional alias matching the TypeScript runner surface.
+    fn address(&self) -> Option<Address> {
+        Some(self.sender_address())
+    }
+
+    /// Estimate gas for a prepared transaction.
+    async fn estimate_gas(&self, _tx: PreparedTransaction) -> Result<u64, RunnerError> {
+        Err(RunnerError::Unsupported(
+            "gas estimation is not supported by this runner".to_string(),
+        ))
+    }
+
+    /// Execute a read-only call using the runner's backend/provider.
+    async fn call(&self, _tx: PreparedTransaction) -> Result<Bytes, RunnerError> {
+        Err(RunnerError::Unsupported(
+            "contract calls are not supported by this runner".to_string(),
+        ))
+    }
+
+    /// Resolve a name to an address when supported.
+    ///
+    /// Rust currently guarantees direct hex-address parsing here; richer ENS
+    /// integration remains a backend follow-up.
+    async fn resolve_name(&self, name: &str) -> Result<Option<Address>, RunnerError> {
+        Ok(name.parse().ok())
+    }
+
+    /// Create a buffered batch helper using this runner.
+    fn send_batch_transaction(&self) -> Box<dyn BatchRun + '_> {
+        Box::new(BufferedBatchRun::new(self))
+    }
 
     /// Submit one or more prepared transactions.
     async fn send_transactions(
@@ -73,15 +149,36 @@ pub enum RunnerError {
     Rejected(String),
     #[error("runner transport error: {0}")]
     Transport(String),
+    #[error("runner capability unsupported: {0}")]
+    Unsupported(String),
 }
 
 fn tx_hash_to_bytes(tx_hash: TxHash) -> Bytes {
     Bytes::copy_from_slice(tx_hash.as_slice())
 }
 
+fn prepared_to_request(from: Option<Address>, tx: PreparedTransaction) -> TransactionRequest {
+    let mut request = TransactionRequest::default()
+        .to(tx.to)
+        .input(tx.data.into())
+        .with_input_and_data();
+
+    if let Some(from) = from {
+        request = request.from(from);
+    }
+
+    if let Some(value) = tx.value {
+        request = request.value(value);
+    }
+
+    request
+}
+
 fn submitted_from_execution_result(result: ExecutionResult) -> Vec<SubmittedTx> {
     vec![SubmittedTx {
         tx_hash: tx_hash_to_bytes(result.tx_hash),
+        success: result.success,
+        index: None,
     }]
 }
 
@@ -91,6 +188,8 @@ fn submitted_from_eoa_result(result: EoaBatchResult) -> Vec<SubmittedTx> {
         .into_iter()
         .map(|tx| SubmittedTx {
             tx_hash: tx_hash_to_bytes(tx.tx_hash),
+            success: tx.success,
+            index: Some(tx.index),
         })
         .collect()
 }
@@ -135,6 +234,7 @@ where
 /// current capabilities of the underlying Safe crate used here.
 pub struct SafeContractRunner {
     wallet: SafeWallet,
+    provider: AnyHttpProvider,
 }
 
 impl SafeContractRunner {
@@ -148,7 +248,7 @@ impl SafeContractRunner {
         let rpc_url = parse_rpc_url(rpc_url)?;
         let signer = parse_private_key(private_key)?;
         let provider = build_read_provider(rpc_url);
-        let wallet = WalletBuilder::new(provider, signer)
+        let wallet = WalletBuilder::new(provider.clone(), signer)
             .connect(safe_address)
             .await
             .map_err(map_safe_error)?;
@@ -157,7 +257,7 @@ impl SafeContractRunner {
             .verify_single_owner()
             .await
             .map_err(map_safe_error)?;
-        Ok(Self { wallet })
+        Ok(Self { wallet, provider })
     }
 }
 
@@ -165,6 +265,20 @@ impl SafeContractRunner {
 impl ContractRunner for SafeContractRunner {
     fn sender_address(&self) -> Address {
         self.wallet.address()
+    }
+
+    async fn estimate_gas(&self, tx: PreparedTransaction) -> Result<u64, RunnerError> {
+        self.provider
+            .estimate_gas(prepared_to_request(self.address(), tx).into())
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))
+    }
+
+    async fn call(&self, tx: PreparedTransaction) -> Result<Bytes, RunnerError> {
+        self.provider
+            .call(prepared_to_request(self.address(), tx).into())
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))
     }
 
     async fn send_transactions(
@@ -191,6 +305,7 @@ impl ContractRunner for SafeContractRunner {
 /// and therefore are not atomic.
 pub struct EoaContractRunner {
     wallet: EoaWallet,
+    provider: AnyHttpProvider,
 }
 
 impl EoaContractRunner {
@@ -199,11 +314,11 @@ impl EoaContractRunner {
         let rpc_url = parse_rpc_url(rpc_url)?;
         let signer = parse_private_key(private_key)?;
         let provider = build_read_provider(rpc_url.clone());
-        let wallet = WalletBuilder::new(provider, signer)
+        let wallet = WalletBuilder::new(provider.clone(), signer)
             .connect_eoa(rpc_url)
             .await
             .map_err(map_safe_error)?;
-        Ok(Self { wallet })
+        Ok(Self { wallet, provider })
     }
 }
 
@@ -211,6 +326,20 @@ impl EoaContractRunner {
 impl ContractRunner for EoaContractRunner {
     fn sender_address(&self) -> Address {
         self.wallet.address()
+    }
+
+    async fn estimate_gas(&self, tx: PreparedTransaction) -> Result<u64, RunnerError> {
+        self.provider
+            .estimate_gas(prepared_to_request(self.address(), tx).into())
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))
+    }
+
+    async fn call(&self, tx: PreparedTransaction) -> Result<Bytes, RunnerError> {
+        self.provider
+            .call(prepared_to_request(self.address(), tx).into())
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))
     }
 
     async fn send_transactions(
@@ -235,10 +364,11 @@ impl ContractRunner for EoaContractRunner {
 mod tests {
     use super::*;
     use alloy_node_bindings::Anvil;
-    use alloy_primitives::address;
+    use alloy_primitives::{TxKind, address};
     use alloy_provider::Provider;
     use safe_rs::{Call, EoaTxResult, SimulationResult};
     use std::process::{Command, Stdio};
+    use std::sync::Mutex;
 
     const ANVIL_FIRST_PRIVATE_KEY: &str =
         "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -252,6 +382,39 @@ mod tests {
             .stderr(Stdio::null())
             .status()
             .is_ok()
+    }
+
+    struct RecordingRunner {
+        sender: Address,
+        sent: Mutex<Vec<Vec<PreparedTransaction>>>,
+    }
+
+    impl Default for RecordingRunner {
+        fn default() -> Self {
+            Self {
+                sender: Address::repeat_byte(0x55),
+                sent: Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl ContractRunner for RecordingRunner {
+        fn sender_address(&self) -> Address {
+            self.sender
+        }
+
+        async fn send_transactions(
+            &self,
+            txs: Vec<PreparedTransaction>,
+        ) -> Result<Vec<SubmittedTx>, RunnerError> {
+            self.sent.lock().expect("record sent txs").push(txs);
+            Ok(vec![SubmittedTx {
+                tx_hash: Bytes::copy_from_slice(&[0x77; 32]),
+                success: true,
+                index: None,
+            }])
+        }
     }
 
     #[derive(Default)]
@@ -320,6 +483,8 @@ mod tests {
 
         assert_eq!(submitted.len(), 1);
         assert_eq!(submitted[0].tx_hash, Bytes::copy_from_slice(&[0x44; 32]));
+        assert!(submitted[0].success);
+        assert_eq!(submitted[0].index, None);
     }
 
     #[test]
@@ -345,6 +510,82 @@ mod tests {
         assert_eq!(submitted.len(), 2);
         assert_eq!(submitted[0].tx_hash, Bytes::copy_from_slice(&[0x01; 32]));
         assert_eq!(submitted[1].tx_hash, Bytes::copy_from_slice(&[0x02; 32]));
+        assert!(submitted[0].success);
+        assert!(submitted[1].success);
+        assert_eq!(submitted[0].index, Some(0));
+        assert_eq!(submitted[1].index, Some(1));
+    }
+
+    #[test]
+    fn prepared_to_request_preserves_fields_and_duplicates_input_data() {
+        let tx = PreparedTransaction {
+            to: ANVIL_SECOND_ADDRESS,
+            data: Bytes::from_static(&[0xde, 0xad, 0xbe, 0xef]),
+            value: Some(U256::from(321u64)),
+        };
+
+        let request = prepared_to_request(Some(ANVIL_FIRST_ADDRESS), tx.clone());
+
+        assert_eq!(request.from, Some(ANVIL_FIRST_ADDRESS));
+        assert_eq!(request.to, Some(TxKind::Call(ANVIL_SECOND_ADDRESS)));
+        assert_eq!(request.value, Some(U256::from(321u64)));
+        assert_eq!(request.input.input(), Some(&tx.data));
+        assert_eq!(request.input.data.as_ref(), Some(&tx.data));
+    }
+
+    #[test]
+    fn contract_runner_address_defaults_to_sender_address() {
+        let runner = RecordingRunner::default();
+
+        assert_eq!(runner.address(), Some(runner.sender_address()));
+    }
+
+    #[tokio::test]
+    async fn batch_runner_buffers_and_forwards_transactions() {
+        let runner = RecordingRunner::default();
+        let mut batch = runner.send_batch_transaction();
+
+        batch.add_transaction(PreparedTransaction {
+            to: Address::repeat_byte(0x11),
+            data: Bytes::from_static(&[0xaa]),
+            value: None,
+        });
+        batch.add_transaction(PreparedTransaction {
+            to: Address::repeat_byte(0x22),
+            data: Bytes::from_static(&[0xbb, 0xcc]),
+            value: Some(U256::from(9u64)),
+        });
+
+        let submitted = batch.run().await.expect("batch run succeeds");
+        let sent = runner.sent.lock().expect("inspect recorded batch");
+
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].len(), 2);
+        assert_eq!(sent[0][0].to, Address::repeat_byte(0x11));
+        assert_eq!(sent[0][1].to, Address::repeat_byte(0x22));
+        assert_eq!(sent[0][1].value, Some(U256::from(9u64)));
+        assert_eq!(submitted[0].tx_hash, Bytes::copy_from_slice(&[0x77; 32]));
+        assert!(submitted[0].success);
+    }
+
+    #[tokio::test]
+    async fn default_resolve_name_parses_hex_address_strings() {
+        let runner = RecordingRunner::default();
+
+        assert_eq!(
+            runner
+                .resolve_name(&ANVIL_FIRST_ADDRESS.to_string())
+                .await
+                .expect("default resolver succeeds"),
+            Some(ANVIL_FIRST_ADDRESS)
+        );
+        assert_eq!(
+            runner
+                .resolve_name("alice.eth")
+                .await
+                .expect("default resolver succeeds"),
+            None
+        );
     }
 
     #[tokio::test]
@@ -401,6 +642,39 @@ mod tests {
             .await
             .expect("balance after transfer");
         assert_eq!(after - before, U256::from(123u64));
+    }
+
+    #[tokio::test]
+    async fn eoa_runner_exposes_estimate_and_call_helpers() {
+        if !anvil_binary_available() {
+            eprintln!("skipping anvil-backed test because `anvil` is not installed");
+            return;
+        }
+
+        let anvil = Anvil::new().spawn();
+        let runner = EoaContractRunner::connect(&anvil.endpoint(), ANVIL_FIRST_PRIVATE_KEY)
+            .await
+            .expect("connect EOA runner");
+
+        let gas = runner
+            .estimate_gas(PreparedTransaction {
+                to: ANVIL_SECOND_ADDRESS,
+                data: Bytes::new(),
+                value: Some(U256::from(1u64)),
+            })
+            .await
+            .expect("estimate gas");
+        assert!(gas > 0);
+
+        let call_output = runner
+            .call(PreparedTransaction {
+                to: ANVIL_SECOND_ADDRESS,
+                data: Bytes::new(),
+                value: None,
+            })
+            .await
+            .expect("eth_call succeeds");
+        assert_eq!(call_output, Bytes::new());
     }
 
     #[tokio::test]

@@ -1531,6 +1531,7 @@ dependencies = [
  "alloy-node-bindings",
  "alloy-primitives",
  "alloy-provider",
+ "alloy-rpc-types",
  "alloy-signer-local",
  "alloy-sol-types",
  "async-trait",
