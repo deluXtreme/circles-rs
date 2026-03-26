@@ -1,6 +1,6 @@
 use crate::client::RpcClient;
 use crate::error::Result;
-use circles_types::{Address, TrustRelation, TrustRelationType};
+use circles_types::{Address, AggregatedTrustRelation, TrustRelation, TrustRelationType};
 
 /// Methods for trust relation queries.
 ///
@@ -23,6 +23,16 @@ impl TrustMethods {
             .await
     }
 
+    /// circles_getAggregatedTrustRelations
+    pub async fn get_aggregated_trust_relations(
+        &self,
+        avatar: Address,
+    ) -> Result<Vec<AggregatedTrustRelation>> {
+        self.client
+            .call("circles_getAggregatedTrustRelations", (avatar,))
+            .await
+    }
+
     /// circles_getCommonTrust
     pub async fn get_common_trust(
         &self,
@@ -32,5 +42,32 @@ impl TrustMethods {
         self.client
             .call("circles_getCommonTrust", (avatar_a, avatar_b))
             .await
+    }
+
+    /// Filter aggregated relations to only the avatars that trust `avatar`.
+    pub async fn get_trusted_by(&self, avatar: Address) -> Result<Vec<AggregatedTrustRelation>> {
+        let relations = self.get_aggregated_trust_relations(avatar).await?;
+        Ok(relations
+            .into_iter()
+            .filter(|rel| matches!(rel.relation, TrustRelationType::TrustedBy))
+            .collect())
+    }
+
+    /// Filter aggregated relations to only the avatars trusted by `avatar`.
+    pub async fn get_trusts(&self, avatar: Address) -> Result<Vec<AggregatedTrustRelation>> {
+        let relations = self.get_aggregated_trust_relations(avatar).await?;
+        Ok(relations
+            .into_iter()
+            .filter(|rel| matches!(rel.relation, TrustRelationType::Trusts))
+            .collect())
+    }
+
+    /// Filter aggregated relations to mutual trust edges only.
+    pub async fn get_mutual_trusts(&self, avatar: Address) -> Result<Vec<AggregatedTrustRelation>> {
+        let relations = self.get_aggregated_trust_relations(avatar).await?;
+        Ok(relations
+            .into_iter()
+            .filter(|rel| matches!(rel.relation, TrustRelationType::MutuallyTrusts))
+            .collect())
     }
 }

@@ -14,7 +14,8 @@ use circles_rpc::events::subscription::CirclesSubscription;
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AdvancedTransferOptions, AvatarInfo, PathfindingResult, TokenBalanceResponse, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, PathfindingResult,
+    TokenBalanceResponse, TrustRelation,
 };
 use hex::encode as hex_encode;
 use rand::RngCore;
@@ -64,9 +65,50 @@ impl HumanAvatar {
         self.common.balances(as_time_circles, use_v2).await
     }
 
+    /// Get aggregate balance (v1/v2 selectable).
+    pub async fn total_balance(
+        &self,
+        as_time_circles: bool,
+        use_v2: bool,
+    ) -> Result<Balance, SdkError> {
+        self.common.total_balance(as_time_circles, use_v2).await
+    }
+
     /// Get trust relations.
     pub async fn trust_relations(&self) -> Result<Vec<TrustRelation>, SdkError> {
         self.common.trust_relations().await
+    }
+
+    /// Get aggregated trust relations.
+    pub async fn aggregated_trust_relations(
+        &self,
+    ) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.aggregated_trust_relations().await
+    }
+
+    /// Get outgoing trust relations only.
+    pub async fn trusts(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.trusts().await
+    }
+
+    /// Get incoming trust relations only.
+    pub async fn trusted_by(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.trusted_by().await
+    }
+
+    /// Get mutual trust relations only.
+    pub async fn mutual_trusts(&self) -> Result<Vec<AggregatedTrustRelation>, SdkError> {
+        self.common.mutual_trusts().await
+    }
+
+    /// Check whether this avatar trusts `other_avatar`.
+    pub async fn is_trusting(&self, other_avatar: Address) -> Result<bool, SdkError> {
+        self.common.is_trusting(other_avatar).await
+    }
+
+    /// Check whether `other_avatar` trusts this avatar.
+    pub async fn is_trusted_by(&self, other_avatar: Address) -> Result<bool, SdkError> {
+        self.common.is_trusted_by(other_avatar).await
     }
 
     /// Fetch profile (cached by CID in memory).
@@ -77,13 +119,26 @@ impl HumanAvatar {
     /// Update profile via profiles service and store CID through NameRegistry (requires runner).
     pub async fn update_profile(&self, profile: &Profile) -> Result<Vec<SubmittedTx>, SdkError> {
         let cid = self.common.pin_profile(profile).await?;
-        let digest = cid_v0_to_digest(&cid)?;
+        self.update_profile_metadata(&cid).await
+    }
+
+    /// Update the on-chain profile CID pointer through NameRegistry (requires runner).
+    pub async fn update_profile_metadata(&self, cid: &str) -> Result<Vec<SubmittedTx>, SdkError> {
+        let digest = cid_v0_to_digest(cid)?;
         let call = circles_abis::NameRegistry::updateMetadataDigestCall {
             _metadataDigest: digest,
         };
         let tx = call_to_tx(self.core.config.name_registry_address, call, None);
-        let sent = self.common.send(vec![tx]).await?;
-        Ok(sent)
+        self.common.send(vec![tx]).await
+    }
+
+    /// Register a short name using a specific nonce (requires runner).
+    pub async fn register_short_name(&self, nonce: u64) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = circles_abis::NameRegistry::registerShortNameWithNonceCall {
+            _nonce: U256::from(nonce),
+        };
+        let tx = call_to_tx(self.core.config.name_registry_address, call, None);
+        self.common.send(vec![tx]).await
     }
 
     /// Trust one or more avatars via HubV2::trust (requires runner).
@@ -190,6 +245,127 @@ impl HumanAvatar {
         self.common.replenish(token_id, amount, receiver).await
     }
 
+    /// Compute the maximum amount that can be replenished into this human's own token.
+    pub async fn max_replenishable(
+        &self,
+        options: Option<AdvancedTransferOptions>,
+    ) -> Result<U256, SdkError> {
+        let mut opts = options.unwrap_or(AdvancedTransferOptions {
+            use_wrapped_balances: None,
+            from_tokens: None,
+            to_tokens: None,
+            exclude_from_tokens: None,
+            exclude_to_tokens: None,
+            simulated_balances: None,
+            simulated_trusts: None,
+            max_transfers: None,
+            tx_data: None,
+        });
+        if opts.use_wrapped_balances.is_none() {
+            opts.use_wrapped_balances = Some(true);
+        }
+        if opts.to_tokens.is_none() {
+            opts.to_tokens = Some(vec![self.address]);
+        }
+        Ok(self
+            .common
+            .find_path(self.address, U256::MAX, Some(opts))
+            .await?
+            .max_flow)
+    }
+
+    /// Plan a replenish flow for the maximum currently replenishable amount.
+    pub async fn plan_replenish_max(
+        &self,
+        options: Option<AdvancedTransferOptions>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        let max_amount = self.max_replenishable(options).await?;
+        if max_amount.is_zero() {
+            return Err(SdkError::OperationFailed(
+                "no tokens available to replenish".to_string(),
+            ));
+        }
+        self.plan_replenish(self.address, max_amount, None).await
+    }
+
+    /// Execute a replenish flow for the maximum currently replenishable amount.
+    pub async fn replenish_max(
+        &self,
+        options: Option<AdvancedTransferOptions>,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        let txs = self.plan_replenish_max(options).await?;
+        self.common.send(txs).await
+    }
+
+    /// Plan a group-token mint by routing collateral to the group's mint handler.
+    pub async fn plan_group_token_mint(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        let mint_handler = self
+            .core
+            .base_group(group)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        self.plan_transfer(
+            mint_handler,
+            amount,
+            Some(AdvancedTransferOptions {
+                use_wrapped_balances: Some(true),
+                from_tokens: None,
+                to_tokens: None,
+                exclude_from_tokens: None,
+                exclude_to_tokens: None,
+                simulated_balances: None,
+                simulated_trusts: None,
+                max_transfers: None,
+                tx_data: None,
+            }),
+        )
+        .await
+    }
+
+    /// Execute a group-token mint by routing collateral to the group's mint handler.
+    pub async fn mint_group_token(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        let txs = self.plan_group_token_mint(group, amount).await?;
+        self.common.send(txs).await
+    }
+
+    /// Compute the maximum amount mintable for a group from this avatar.
+    pub async fn max_group_token_mintable(&self, group: Address) -> Result<U256, SdkError> {
+        let mint_handler = self
+            .core
+            .base_group(group)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        Ok(self
+            .max_flow_to(
+                mint_handler,
+                Some(AdvancedTransferOptions {
+                    use_wrapped_balances: Some(true),
+                    from_tokens: None,
+                    to_tokens: None,
+                    exclude_from_tokens: None,
+                    exclude_to_tokens: None,
+                    simulated_balances: None,
+                    simulated_trusts: None,
+                    max_transfers: None,
+                    tx_data: None,
+                }),
+            )
+            .await?
+            .max_flow)
+    }
+
     /// Find a path from this avatar to `to` for the requested target flow.
     pub async fn find_path(
         &self,
@@ -207,6 +383,83 @@ impl HumanAvatar {
         options: Option<AdvancedTransferOptions>,
     ) -> Result<PathfindingResult, SdkError> {
         self.common.max_flow_to(to, options).await
+    }
+
+    /// Get the owner address for a group.
+    pub async fn group_owner(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .owner()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the mint handler address for a group.
+    pub async fn group_mint_handler(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the treasury address for a group.
+    pub async fn group_treasury(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .BASE_TREASURY()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the service address for a group.
+    pub async fn group_service(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .service()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the fee collection address for a group.
+    pub async fn group_fee_collection(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .feeCollection()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get all membership conditions for a group.
+    pub async fn group_membership_conditions(
+        &self,
+        group: Address,
+    ) -> Result<Vec<Address>, SdkError> {
+        self.core
+            .base_group(group)
+            .getMembershipConditions()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Mint all currently claimable personal tokens (requires runner).
+    pub async fn personal_mint(&self) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = HubV2::personalMintCall {};
+        let tx = call_to_tx(self.core.config.v2_hub_address, call, None);
+        self.common.send(vec![tx]).await
+    }
+
+    /// Permanently stop personal token minting (requires runner).
+    pub async fn stop_mint(&self) -> Result<Vec<SubmittedTx>, SdkError> {
+        let call = HubV2::stopCall {};
+        let tx = call_to_tx(self.core.config.v2_hub_address, call, None);
+        self.common.send(vec![tx]).await
     }
 
     /// Generate invitation secrets/signers and return prepared transactions (claim + batch transfer).
@@ -377,7 +630,97 @@ impl HumanAvatar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::{Bytes, address};
+    use alloy_primitives::{Bytes, TxHash, address};
+    use async_trait::async_trait;
+    use circles_profiles::Profiles;
+    use circles_types::{AvatarType, CirclesConfig};
+    use std::sync::Mutex;
+
+    const TEST_CID: &str = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+
+    #[derive(Default)]
+    struct RecordingRunner {
+        sender: Address,
+        sent: Mutex<Vec<Vec<PreparedTransaction>>>,
+    }
+
+    #[async_trait]
+    impl ContractRunner for RecordingRunner {
+        fn sender_address(&self) -> Address {
+            self.sender
+        }
+
+        async fn send_transactions(
+            &self,
+            txs: Vec<PreparedTransaction>,
+        ) -> Result<Vec<crate::SubmittedTx>, crate::RunnerError> {
+            self.sent.lock().expect("lock").push(txs.clone());
+            Ok(txs
+                .into_iter()
+                .map(|_| crate::SubmittedTx {
+                    tx_hash: Bytes::from(TxHash::ZERO.as_slice().to_vec()),
+                })
+                .collect())
+        }
+    }
+
+    fn dummy_config() -> CirclesConfig {
+        CirclesConfig {
+            circles_rpc_url: "https://rpc.example.com".into(),
+            pathfinder_url: "https://pathfinder.example.com".into(),
+            profile_service_url: "https://profiles.example.com".into(),
+            v1_hub_address: Address::repeat_byte(0x01),
+            v2_hub_address: Address::repeat_byte(0x02),
+            name_registry_address: Address::repeat_byte(0x03),
+            base_group_mint_policy: Address::repeat_byte(0x04),
+            standard_treasury: Address::repeat_byte(0x05),
+            core_members_group_deployer: Address::repeat_byte(0x06),
+            base_group_factory_address: Address::repeat_byte(0x07),
+            lift_erc20_address: Address::repeat_byte(0x08),
+            invitation_escrow_address: Address::repeat_byte(0x09),
+            invitation_farm_address: Address::repeat_byte(0x0a),
+            referrals_module_address: Address::repeat_byte(0x0b),
+        }
+    }
+
+    fn dummy_avatar(address: Address) -> AvatarInfo {
+        AvatarInfo {
+            block_number: 0,
+            timestamp: None,
+            transaction_index: 0,
+            log_index: 0,
+            transaction_hash: TxHash::ZERO,
+            version: 2,
+            avatar_type: AvatarType::CrcV2RegisterHuman,
+            avatar: address,
+            token_id: None,
+            has_v1: false,
+            v1_token: None,
+            cid_v0_digest: None,
+            cid_v0: None,
+            v1_stopped: None,
+            is_human: true,
+            name: None,
+            symbol: None,
+        }
+    }
+
+    fn test_avatar() -> (HumanAvatar, Arc<RecordingRunner>, CirclesConfig) {
+        let config = dummy_config();
+        let runner = Arc::new(RecordingRunner {
+            sender: Address::repeat_byte(0xaa),
+            sent: Mutex::new(Vec::new()),
+        });
+        let avatar = HumanAvatar::new(
+            Address::repeat_byte(0xaa),
+            dummy_avatar(Address::repeat_byte(0xaa)),
+            Arc::new(Core::new(config.clone())),
+            Profiles::new(config.profile_service_url.clone()).expect("profiles"),
+            Arc::new(CirclesRpc::try_from_http(&config.circles_rpc_url).expect("rpc")),
+            Some(runner.clone()),
+        );
+        (avatar, runner, config)
+    }
 
     #[test]
     fn referral_payload_encodes() {
@@ -414,5 +757,51 @@ mod tests {
             batch_tx.to,
             address!("cccc000000000000000000000000000000000000")
         );
+    }
+
+    #[tokio::test]
+    async fn write_helpers_encode_expected_calls() {
+        let (avatar, runner, config) = test_avatar();
+
+        avatar
+            .update_profile_metadata(TEST_CID)
+            .await
+            .expect("update metadata");
+        avatar
+            .register_short_name(7)
+            .await
+            .expect("register short name");
+        avatar.personal_mint().await.expect("personal mint");
+        avatar.stop_mint().await.expect("stop mint");
+
+        let sent = runner.sent.lock().expect("lock");
+        assert_eq!(sent.len(), 4);
+
+        assert_eq!(sent[0][0].to, config.name_registry_address);
+        assert_eq!(
+            &sent[0][0].data[..4],
+            &circles_abis::NameRegistry::updateMetadataDigestCall {
+                _metadataDigest: cid_v0_to_digest(TEST_CID).expect("cid"),
+            }
+            .abi_encode()[..4]
+        );
+
+        assert_eq!(sent[1][0].to, config.name_registry_address);
+        assert_eq!(
+            &sent[1][0].data[..4],
+            &circles_abis::NameRegistry::registerShortNameWithNonceCall {
+                _nonce: U256::from(7u64),
+            }
+            .abi_encode()[..4]
+        );
+
+        assert_eq!(sent[2][0].to, config.v2_hub_address);
+        assert_eq!(
+            &sent[2][0].data[..4],
+            &HubV2::personalMintCall {}.abi_encode()[..4]
+        );
+
+        assert_eq!(sent[3][0].to, config.v2_hub_address);
+        assert_eq!(&sent[3][0].data[..4], &HubV2::stopCall {}.abi_encode()[..4]);
     }
 }
