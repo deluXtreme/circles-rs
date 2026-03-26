@@ -176,7 +176,7 @@ mod events;
 pub use events::{CirclesBaseEvent, CirclesEvent, CirclesEventType, RpcSubscriptionEvent};
 
 mod group;
-pub use group::{GroupMembershipRow, GroupQueryParams, GroupRow};
+pub use group::{GroupMembershipRow, GroupQueryParams, GroupRow, GroupTokenHolderRow};
 
 mod network;
 pub use network::{EventType, NetworkSnapshot};
@@ -204,8 +204,9 @@ pub use rpc::{
 
 mod query;
 pub use query::{
-    ColumnInfo, Conjunction, ConjunctionType, Cursor, EventRow, Filter, FilterPredicate,
-    FilterType, OrderBy, PagedQueryParams, PagedResult, QueryParams, SortOrder, TableInfo,
+    ColumnInfo, Conjunction, ConjunctionType, Cursor, CursorColumn, EventRow, Filter,
+    FilterPredicate, FilterType, OrderBy, PagedQueryParams, PagedResult, QueryParams, SortOrder,
+    TableInfo,
 };
 
 mod pathfinding;

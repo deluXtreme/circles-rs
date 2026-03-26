@@ -1,6 +1,8 @@
 use crate::client::RpcClient;
 use crate::error::{CirclesRpcError, Result};
-use circles_types::{CirclesQueryResponse, OrderBy, PagedQueryParams, PagedResult, QueryParams};
+use circles_types::{
+    CirclesQueryResponse, Cursor, CursorColumn, OrderBy, PagedQueryParams, PagedResult, QueryParams,
+};
 use serde_json::Value;
 
 /// Methods for issuing `circles_query` requests and decoding the tabular response.
@@ -47,17 +49,29 @@ impl QueryMethods {
             sort_order,
             columns,
             filter,
+            cursor_columns,
+            order_columns,
             limit,
         } = params.clone();
 
-        // Convert to QueryParams. If the caller supplied an order, we would add it here; for now
-        // we ensure stable ordering via block/tx/log and timestamp.
-        let mut order: Vec<OrderBy> = Vec::new();
-        let dir = sort_order.clone();
-        order.push(OrderBy::new("blockNumber".to_string(), dir.clone()));
-        order.push(OrderBy::new("transactionIndex".to_string(), dir.clone()));
-        order.push(OrderBy::new("logIndex".to_string(), dir.clone()));
-        order.push(OrderBy::new("timestamp".to_string(), dir));
+        let order: Vec<OrderBy> = if let Some(order_columns) = order_columns.clone() {
+            if order_columns.is_empty() {
+                params.resolved_order_columns()
+            } else {
+                order_columns
+            }
+        } else {
+            params.resolved_order_columns()
+        };
+        let cursor_columns = if let Some(cursor_columns) = cursor_columns {
+            if cursor_columns.is_empty() {
+                params.resolved_cursor_columns()
+            } else {
+                cursor_columns
+            }
+        } else {
+            params.resolved_cursor_columns()
+        };
 
         let query_params = QueryParams {
             namespace,
@@ -72,7 +86,7 @@ impl QueryMethods {
             self.client.call("circles_query", (query_params,)).await?;
 
         let rows = self.decode_rows::<TRow>(result.columns.clone(), result.rows.clone())?;
-        let cursors = self.extract_cursors(&result.columns, &result.rows);
+        let cursors = self.extract_cursors(&result.columns, &result.rows, &cursor_columns);
         let first_cursor = cursors.first().cloned();
         let last_cursor = cursors.last().cloned();
         let size = rows.len() as u32;
@@ -124,18 +138,26 @@ impl QueryMethods {
         &self,
         columns: &[String],
         rows: &[Vec<Value>],
-    ) -> Vec<circles_types::Cursor> {
+        cursor_columns: &[CursorColumn],
+    ) -> Vec<Cursor> {
         rows.iter()
-            .filter_map(|row| self.extract_cursor(columns, row))
+            .filter_map(|row| self.extract_cursor(columns, row, cursor_columns))
             .collect()
     }
 
-    fn extract_cursor(&self, columns: &[String], row: &[Value]) -> Option<circles_types::Cursor> {
+    fn extract_cursor(
+        &self,
+        columns: &[String],
+        row: &[Value],
+        cursor_columns: &[CursorColumn],
+    ) -> Option<Cursor> {
         let mut block_number: Option<u64> = None;
         let mut tx_index: Option<u32> = None;
         let mut log_index: Option<u32> = None;
         let mut batch_index: Option<u32> = None;
         let mut timestamp: Option<u64> = None;
+        let mut cursor = Cursor::default();
+        let mut has_cursor_values = false;
 
         for (col, val) in columns.iter().zip(row.iter()) {
             match col.as_str() {
@@ -146,18 +168,27 @@ impl QueryMethods {
                 "timestamp" => timestamp = Self::as_u64(val),
                 _ => {}
             }
+
+            if cursor_columns.iter().any(|column| column.name == *col) {
+                cursor.insert_value(col.clone(), val.clone());
+                has_cursor_values = true;
+            }
         }
 
-        match (block_number, tx_index, log_index) {
-            (Some(b), Some(tx), Some(log)) => Some(circles_types::Cursor {
-                block_number: b,
-                transaction_index: tx,
-                log_index: log,
-                batch_index,
-                timestamp,
-            }),
-            _ => None,
+        if let (Some(b), Some(tx), Some(log)) = (block_number, tx_index, log_index) {
+            cursor.block_number = b;
+            cursor.transaction_index = tx;
+            cursor.log_index = log;
+            cursor.batch_index = batch_index;
+            cursor.timestamp = timestamp;
+            return Some(cursor);
         }
+
+        if has_cursor_values {
+            return Some(cursor);
+        }
+
+        None
     }
 
     fn as_u64(val: &Value) -> Option<u64> {

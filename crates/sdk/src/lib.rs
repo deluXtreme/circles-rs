@@ -47,6 +47,8 @@
 //!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
 //! - [`HumanAvatar::plan_direct_transfer`], [`OrganisationAvatar::plan_direct_transfer`], and
 //!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
+//! - [`HumanAvatar::plan_group_token_redeem`] and
+//!   [`OrganisationAvatar::plan_group_token_redeem`] for automatic group-token redeem planning.
 //!
 //! ## Validation
 //!
@@ -69,14 +71,14 @@ use alloy_json_rpc::RpcSend;
 use alloy_primitives::Address;
 pub use avatar::{BaseGroupAvatar, HumanAvatar, OrganisationAvatar};
 use circles_profiles::{Profile, Profiles};
-use circles_rpc::CirclesRpc;
 #[cfg(feature = "ws")]
 use circles_rpc::events::subscription::CirclesSubscription;
+use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AggregatedTrustRelation, AvatarInfo, AvatarType, CirclesConfig, TokenBalanceResponse,
-    TrustRelation,
+    AggregatedTrustRelation, AvatarInfo, AvatarType, CirclesConfig, GroupMembershipRow,
+    GroupTokenHolderRow, SortOrder, TokenBalanceResponse, TrustRelation,
 };
 use core::Core;
 pub use runner::{ContractRunner, PreparedTransaction, RunnerError, SubmittedTx, call_to_tx};
@@ -235,6 +237,40 @@ impl Sdk {
             .token()
             .get_token_balances(avatar, as_time_circles, use_v2)
             .await?)
+    }
+
+    /// Get all members of a specific group via the shared paged query helper.
+    pub fn group_members(
+        &self,
+        group: Address,
+        limit: u32,
+        sort_order: SortOrder,
+    ) -> PagedQuery<GroupMembershipRow> {
+        self.rpc.group().get_group_members(group, limit, sort_order)
+    }
+
+    /// Get collateral balances held in a group's treasury.
+    pub async fn group_collateral(
+        &self,
+        group: Address,
+    ) -> Result<Vec<TokenBalanceResponse>, SdkError> {
+        let treasury = self
+            .core
+            .base_group(group)
+            .BASE_TREASURY()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        Ok(self
+            .rpc
+            .token()
+            .get_token_balances(treasury, false, true)
+            .await?)
+    }
+
+    /// Get holders of a group token ordered like the TypeScript helper.
+    pub fn group_holders(&self, group: Address, limit: u32) -> PagedQuery<GroupTokenHolderRow> {
+        self.rpc.group().get_group_holders(group, limit)
     }
 
     /// Convenience accessor for avatar info (read-only).

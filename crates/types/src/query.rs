@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// Filter types for query predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +125,7 @@ pub enum SortOrder {
 }
 
 /// Order by clause.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OrderBy {
     #[serde(rename = "Column")]
     pub column: String,
@@ -143,6 +144,27 @@ impl OrderBy {
 
     pub fn desc(column: String) -> Self {
         Self::new(column, SortOrder::DESC)
+    }
+}
+
+/// Cursor column configuration for flexible paged queries.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CursorColumn {
+    pub name: String,
+    pub sort_order: SortOrder,
+}
+
+impl CursorColumn {
+    pub fn new(name: String, sort_order: SortOrder) -> Self {
+        Self { name, sort_order }
+    }
+
+    pub fn asc(name: String) -> Self {
+        Self::new(name, SortOrder::ASC)
+    }
+
+    pub fn desc(name: String) -> Self {
+        Self::new(name, SortOrder::DESC)
     }
 }
 
@@ -224,7 +246,26 @@ pub struct EventRow {
 
 /// A cursor is a sortable unique identifier for a specific log entry.
 /// Used to paginate through query results efficiently.
-pub type Cursor = EventRow;
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Cursor {
+    pub block_number: u64,
+    pub transaction_index: u32,
+    pub log_index: u32,
+    pub batch_index: Option<u32>,
+    pub timestamp: Option<u64>,
+    #[serde(default)]
+    pub values: BTreeMap<String, serde_json::Value>,
+}
+
+impl Cursor {
+    pub fn value(&self, column: &str) -> Option<&serde_json::Value> {
+        self.values.get(column)
+    }
+
+    pub fn insert_value(&mut self, column: String, value: serde_json::Value) {
+        self.values.insert(column, value);
+    }
+}
 
 /// Result of a paginated query
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,6 +328,12 @@ pub struct PagedQueryParams {
     /// The filters to apply to the query
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter: Option<Vec<Filter>>,
+    /// Custom cursor columns for non-event tables.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor_columns: Option<Vec<CursorColumn>>,
+    /// Explicit order columns when they differ from the cursor columns.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order_columns: Option<Vec<OrderBy>>,
     /// The number of results to return per page
     pub limit: u32,
 }
@@ -305,6 +352,8 @@ impl PagedQueryParams {
             sort_order,
             columns,
             filter: None,
+            cursor_columns: None,
+            order_columns: None,
             limit,
         }
     }
@@ -312,5 +361,49 @@ impl PagedQueryParams {
     pub fn with_filter(mut self, filter: Vec<Filter>) -> Self {
         self.filter = Some(filter);
         self
+    }
+
+    pub fn with_cursor_columns(mut self, cursor_columns: Vec<CursorColumn>) -> Self {
+        self.cursor_columns = Some(cursor_columns);
+        self
+    }
+
+    pub fn with_order_columns(mut self, order_columns: Vec<OrderBy>) -> Self {
+        self.order_columns = Some(order_columns);
+        self
+    }
+
+    pub fn resolved_cursor_columns(&self) -> Vec<CursorColumn> {
+        if let Some(cursor_columns) = &self.cursor_columns {
+            if !cursor_columns.is_empty() {
+                return cursor_columns.clone();
+            }
+        }
+
+        let mut columns = vec![
+            CursorColumn::new("blockNumber".to_string(), self.sort_order.clone()),
+            CursorColumn::new("transactionIndex".to_string(), self.sort_order.clone()),
+            CursorColumn::new("logIndex".to_string(), self.sort_order.clone()),
+        ];
+        if self.table == "TransferBatch" {
+            columns.push(CursorColumn::new(
+                "batchIndex".to_string(),
+                self.sort_order.clone(),
+            ));
+        }
+        columns
+    }
+
+    pub fn resolved_order_columns(&self) -> Vec<OrderBy> {
+        if let Some(order_columns) = &self.order_columns {
+            if !order_columns.is_empty() {
+                return order_columns.clone();
+            }
+        }
+
+        self.resolved_cursor_columns()
+            .into_iter()
+            .map(|column| OrderBy::new(column.name, column.sort_order))
+            .collect()
     }
 }

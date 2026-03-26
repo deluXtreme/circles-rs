@@ -37,6 +37,8 @@ async fn main() -> Result<()> {
         sort_order: SortOrder::DESC,
         columns: vec!["avatar".into(), "timestamp".into()],
         filter: None,
+        cursor_columns: None,
+        order_columns: None,
         limit: 10,
     };
 

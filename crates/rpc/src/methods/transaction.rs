@@ -110,6 +110,8 @@ impl TransactionMethods {
                 ])
                 .into(),
             ]),
+            cursor_columns: None,
+            order_columns: None,
             limit,
         };
 

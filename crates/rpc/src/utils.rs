@@ -38,12 +38,29 @@ pub trait CursorLike {
 
 impl CursorLike for EventRow {
     fn to_cursor(&self) -> Cursor {
+        let mut values = std::collections::BTreeMap::new();
+        values.insert(
+            "blockNumber".to_string(),
+            serde_json::json!(self.block_number),
+        );
+        values.insert(
+            "transactionIndex".to_string(),
+            serde_json::json!(self.transaction_index),
+        );
+        values.insert("logIndex".to_string(), serde_json::json!(self.log_index));
+        if let Some(batch_index) = self.batch_index {
+            values.insert("batchIndex".to_string(), serde_json::json!(batch_index));
+        }
+        if let Some(timestamp) = self.timestamp {
+            values.insert("timestamp".to_string(), serde_json::json!(timestamp));
+        }
         Cursor {
             block_number: self.block_number,
             transaction_index: self.transaction_index,
             log_index: self.log_index,
             batch_index: self.batch_index,
             timestamp: self.timestamp,
+            values,
         }
     }
 }

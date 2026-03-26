@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
 
 /// Group row information
@@ -37,6 +37,17 @@ pub struct GroupMembershipRow {
     pub group: Address,
     pub member: Address,
     pub expiry_time: u64,
+}
+
+/// Group token holder row for `GroupTokenHoldersBalance`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupTokenHolderRow {
+    pub group: Address,
+    pub holder: Address,
+    pub total_balance: U256,
+    pub demurraged_total_balance: U256,
+    pub fraction_ownership: f64,
 }
 
 /// Group query parameters
