@@ -110,13 +110,9 @@ async fn test_pathfinding_with_different_values() {
             // If we get transfers, verify we can create a valid matrix
             let matrix_result = create_flow_matrix(sender, receiver, value, &transfers);
 
-            if matrix_result.is_ok() {
-                println!("✓ Value {value} works end-to-end");
-            } else {
-                println!(
-                    "✗ Value {value} failed matrix creation: {:?}",
-                    matrix_result.unwrap_err()
-                );
+            match matrix_result {
+                Ok(_) => println!("✓ Value {value} works end-to-end"),
+                Err(err) => println!("✗ Value {value} failed matrix creation: {err:?}"),
             }
         } else {
             println!(
@@ -191,10 +187,9 @@ async fn test_pathfinding_with_wrapping_variations() {
 
                 // Verify we can create a matrix from these transfers
                 let matrix_result = create_flow_matrix(sender, receiver, value, &transfers);
-                if matrix_result.is_ok() {
-                    println!("✓ Matrix creation also succeeded");
-                } else {
-                    println!("✗ Matrix creation failed: {:?}", matrix_result.unwrap_err());
+                match matrix_result {
+                    Ok(_) => println!("✓ Matrix creation also succeeded"),
+                    Err(err) => println!("✗ Matrix creation failed: {err:?}"),
                 }
             }
             Err(e) => {

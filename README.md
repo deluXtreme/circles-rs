@@ -4,6 +4,8 @@
 
 Rust implementation of the Circles SDK: JSON-RPC client, pathfinding/flow matrix tooling, transfer planning, utilities, and a higher-level `circles-sdk` orchestrator. The workspace mirrors the TypeScript SDK shape while leaning on Alloy for Ethereum primitives and transports.
 
+The recommended entrypoint for application code is `circles-sdk`. Lower-level crates remain available when you want direct RPC access, custom pathfinding, or transfer planning without the full orchestrator.
+
 ## Crates at a glance
 - [`circles-rpc`](crates/rpc/) — HTTP/WS JSON-RPC client with pagination helpers and event subscriptions.
 - [`circles-pathfinder`](crates/pathfinder/) — pathfinding + flow matrix utilities (wrapped token handling, netted-flow checks) ready for contract calls.
@@ -12,6 +14,27 @@ Rust implementation of the Circles SDK: JSON-RPC client, pathfinding/flow matrix
 - [`circles-types`](crates/types/) — shared types for RPC responses, events, pathfinding, contracts, and config.
 - [`circles-sdk`](crates/sdk/) — thin orchestrator wiring RPC, profiles, pathfinding, transfers, and optional contract runners; WS helpers with retry/catch-up.
 - [`crates/abis`](crates/abis/) — generated contract bindings.
+
+## TypeScript parity snapshot
+
+As of March 26, 2026, this workspace is closer to the TypeScript SDK, but it is not yet at full feature parity.
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| `circles-rpc` | Good coverage | Core HTTP/query/event decoding is in place and is already used by the higher-level crates. |
+| `circles-pathfinder` | Close | Recent parity work aligned flow-matrix terminal edges, wrapped-token rewriting, token-info helpers, netted-flow helpers, and explicit RPC/client entrypoints. |
+| `circles-transfers` | Partial | Advanced transfer planning is largely present, including wrapped-token handling and the aggregate transfer path, but the TS `constructReplenish` flow is still missing. |
+| `circles-sdk` | Partial | Read flows and typed avatars are usable; full parity still depends on remaining transfer/replenish coverage and some higher-level convenience surface. |
+| `circles-profiles`, `circles-utils`, `circles-types`, `circles-abis` | Supporting / lower risk | These crates are in service for the current SDK flows and are not the main parity bottlenecks right now. |
+
+The biggest known parity gap today is the replenish flow from the TS transfer builder. If you need exact TS-equivalent behavior for transfer acquisition/top-up flows, validate that path carefully before treating the Rust SDK as a drop-in replacement.
+
+## Usage model
+
+- Read-only flows work with `Sdk::new(config, None)`.
+- Typed avatar wrappers are discovered at runtime via `Sdk::get_avatar`.
+- Write paths are delegated to a `ContractRunner` implementation instead of being hard-wired to one wallet transport.
+- Lower-level crates can be used directly when you want narrower control over RPC, pathfinding, or transfer assembly.
 
 ## Quick start (read-only SDK)
 ```rust
@@ -28,10 +51,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## Docs and rustdoc
-- Generate docs: `cargo doc --workspace --all-features` (add `--open` to launch the browser).
-- Crate-level docs use inner `//!` comments; public APIs are documented with `///` per [rustdoc best practices](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html).
-- Browse per-crate READMEs for focused examples and feature notes.
+## Docs
+
+- Generate docs with `cargo doc --workspace --all-features --no-deps`.
+- `crates/sdk/README.md` is the best starting point for application integration.
+- Per-crate READMEs cover focused examples and feature notes.
 
 ## Examples
 - RPC pagination + WS:  
@@ -40,10 +64,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   `cargo run -p circles-pathfinder --example contract_integration`
 - SDK examples: `cargo run -p circles-sdk --example basic_read` (see `crates/sdk/examples/` for invite generation and WS subscribe demos).
 
-## Tests
-- `cargo test -p circles-rpc`
-- `cargo test -p circles-pathfinder`
-- `cargo test -p circles-sdk --features ws -- --ignored` (live RPC/WS, gated by `RUN_LIVE=1` and `LIVE_AVATAR=0x...`; override endpoints with `CIRCLES_RPC_URL`, `CIRCLES_PATHFINDER_URL`, `CIRCLES_PROFILE_URL`)
+## Validation
+
+- `cargo check`
+- `cargo clippy --workspace --all-targets`
+- `cargo test`
+- `cargo doc --workspace --all-features --no-deps`
+
+Live SDK checks remain opt-in:
+
+- `RUN_LIVE=1 LIVE_AVATAR=0x... cargo test -p circles-sdk -- --ignored`
+- Override endpoints with `CIRCLES_RPC_URL`, `CIRCLES_PATHFINDER_URL`, and `CIRCLES_PROFILE_URL`
 
 ## Development
 - Rust 1.75+ and Cargo are required.

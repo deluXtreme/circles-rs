@@ -90,12 +90,12 @@ mod rpc;
 use alloy_primitives::{U256, aliases::U192};
 
 // Core public API - the main functions users need
-pub use flow::create_flow_matrix;
+pub use flow::{create_flow_matrix, prepare_flow_matrix_streams};
 pub mod path;
 
 // RPC functionality
 pub use circles_types::FindPathParams;
-pub use rpc::{find_path, find_path_with_params};
+pub use rpc::{find_path, find_path_via_rpc, find_path_with_params, find_path_with_params_via_rpc};
 
 // Hub contract integration types and functions
 use alloy_primitives::Address;
@@ -105,12 +105,15 @@ pub use hub::PathData;
 // High-level convenience functions
 pub use convenience::{
     encode_redeem_flow_matrix, encode_redeem_trusted_data, get_available_flow,
-    prepare_flow_for_contract, prepare_flow_for_contract_simple,
+    get_available_flow_via_rpc, prepare_flow_for_contract, prepare_flow_for_contract_simple,
+    prepare_flow_for_contract_via_rpc,
 };
 
 pub use path::{
     assert_no_netted_flow_mismatch, compute_netted_flow, expected_unwrapped_totals,
-    replace_wrapped_tokens, shrink_path_values, token_info_map_from_path, wrapped_totals_from_path,
+    expected_unwrapped_totals_at, get_wrapped_tokens_from_path, replace_wrapped_tokens,
+    replace_wrapped_tokens_with_avatars, shrink_path_values, token_info_map_from_path,
+    token_info_map_from_path_via_rpc, token_info_map_from_path_with_url, wrapped_totals_from_path,
 };
 
 // Utility functions for advanced users

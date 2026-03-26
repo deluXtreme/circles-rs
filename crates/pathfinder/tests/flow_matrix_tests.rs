@@ -1,5 +1,7 @@
-use alloy_primitives::{U256, aliases::U192};
-use circles_pathfinder::{PathfinderError, create_flow_matrix};
+use alloy_primitives::{Bytes, U256, aliases::U192};
+use circles_pathfinder::{
+    PathfinderError, Stream, create_flow_matrix, prepare_flow_matrix_streams,
+};
 
 mod common;
 
@@ -141,17 +143,16 @@ fn test_create_flow_matrix_no_terminal_edges() {
 
     let result = create_flow_matrix(sender, receiver, value, &transfers);
 
-    // The function automatically makes the last edge terminal
-    // Since the transfer doesn't go to receiver but value matches, it should succeed
-    // with the last edge marked as terminal
     assert!(
-        result.is_ok(),
-        "Should succeed by making last edge terminal"
+        result.is_err(),
+        "Should fail when no edge reaches the receiver"
     );
-
-    let matrix = result.unwrap();
-    assert_eq!(matrix.flow_edges.len(), 1);
-    assert_eq!(matrix.flow_edges[0].streamSinkId, 1); // Should be terminal
+    match result.unwrap_err() {
+        PathfinderError::RpcResponse(message) => {
+            assert!(message.contains("No terminal edges detected"));
+        }
+        other => panic!("Expected RpcResponse error, got: {other:?}"),
+    }
 }
 
 #[test]
@@ -182,6 +183,31 @@ fn test_create_flow_matrix_multiple_terminal_edges() {
 
     // Stream should reference both terminal edges
     assert_eq!(matrix.streams[0].flowEdgeIds, vec![0, 1]);
+}
+
+#[test]
+fn test_create_flow_matrix_receiver_self_loop_is_only_terminal_edge() {
+    let sender = common::addresses::sender();
+    let receiver = common::addresses::receiver();
+    let value = common::wei_from_str(common::ONE_ETH_WEI);
+
+    let transfers = vec![
+        common::sample_transfer_step(sender, receiver, sender, value),
+        common::sample_transfer_step(receiver, receiver, receiver, value),
+    ];
+
+    let result = create_flow_matrix(sender, receiver, value, &transfers);
+    assert!(
+        result.is_ok(),
+        "Should succeed with receiver self-loop aggregation"
+    );
+
+    let matrix = result.unwrap();
+
+    assert_eq!(matrix.flow_edges.len(), 2);
+    assert_eq!(matrix.flow_edges[0].streamSinkId, 0);
+    assert_eq!(matrix.flow_edges[1].streamSinkId, 1);
+    assert_eq!(matrix.streams[0].flowEdgeIds, vec![1]);
 }
 
 #[test]
@@ -218,4 +244,50 @@ fn test_create_flow_matrix_source_coordinate() {
         .expect("Sender should be in vertices");
 
     assert_eq!(matrix.source_coordinate, U256::from(sender_index));
+}
+
+#[test]
+fn test_prepare_flow_matrix_streams_without_tx_data() {
+    let matrix = circles_pathfinder::FlowMatrix {
+        flow_vertices: vec![],
+        flow_edges: vec![],
+        streams: vec![Stream {
+            sourceCoordinate: 0,
+            flowEdgeIds: vec![1, 2],
+            data: Bytes::from(vec![0x01, 0x02]),
+        }],
+        packed_coordinates: vec![],
+        source_coordinate: U256::ZERO,
+    };
+
+    let streams = prepare_flow_matrix_streams(&matrix, None);
+    assert_eq!(streams.len(), 1);
+    assert_eq!(streams[0].data, Bytes::from(vec![0x01, 0x02]));
+}
+
+#[test]
+fn test_prepare_flow_matrix_streams_with_tx_data() {
+    let matrix = circles_pathfinder::FlowMatrix {
+        flow_vertices: vec![],
+        flow_edges: vec![],
+        streams: vec![
+            Stream {
+                sourceCoordinate: 0,
+                flowEdgeIds: vec![1, 2],
+                data: Bytes::from(vec![0x01]),
+            },
+            Stream {
+                sourceCoordinate: 1,
+                flowEdgeIds: vec![3],
+                data: Bytes::from(vec![0x02]),
+            },
+        ],
+        packed_coordinates: vec![],
+        source_coordinate: U256::ZERO,
+    };
+
+    let streams = prepare_flow_matrix_streams(&matrix, Some(Bytes::from(vec![0xaa, 0xbb])));
+    assert_eq!(streams.len(), 2);
+    assert_eq!(streams[0].data, Bytes::from(vec![0xaa, 0xbb]));
+    assert_eq!(streams[1].data, Bytes::from(vec![0x02]));
 }

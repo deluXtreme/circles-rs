@@ -18,10 +18,15 @@ use std::sync::Arc;
 
 /// Top-level avatar enum variant: organisation.
 pub struct OrganisationAvatar {
+    /// Avatar address on-chain.
     pub address: Address,
+    /// RPC-derived avatar metadata.
     pub info: AvatarInfo,
+    /// Shared contract bundle and configuration.
     pub core: Arc<Core>,
+    /// Optional runner used for write-capable flows.
     pub runner: Option<Arc<dyn ContractRunner>>,
+    /// Shared read/write helper implementation.
     pub common: CommonAvatar,
 }
 
@@ -127,6 +132,7 @@ impl OrganisationAvatar {
         self.common.max_flow_to(to, options).await
     }
 
+    /// Build a typed organisation avatar wrapper from already-fetched components.
     pub fn new(
         address: Address,
         info: AvatarInfo,

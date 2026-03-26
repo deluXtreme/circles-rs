@@ -10,7 +10,7 @@ use std::str::FromStr;
 ///
 /// Normalizes wrapper token types so non-inflationary wrappers are coerced to
 /// `CrcV2_ERC20WrapperDeployed_Demurraged` for downstream logic.
-pub async fn token_info_map_from_path(
+pub async fn token_info_map_from_path_via_rpc(
     current_avatar: Address,
     rpc: &CirclesRpc,
     path: &PathfindingResult,
@@ -42,6 +42,25 @@ pub async fn token_info_map_from_path(
     Ok(map)
 }
 
+/// Compatibility wrapper that preserves the existing Rust client-based entrypoint.
+pub async fn token_info_map_from_path(
+    current_avatar: Address,
+    rpc: &CirclesRpc,
+    path: &PathfindingResult,
+) -> Result<HashMap<Address, TokenInfo>, PathfinderError> {
+    token_info_map_from_path_via_rpc(current_avatar, rpc, path).await
+}
+
+/// Convenience wrapper for callers that only have an RPC URL.
+pub async fn token_info_map_from_path_with_url(
+    current_avatar: Address,
+    rpc_url: &str,
+    path: &PathfindingResult,
+) -> Result<HashMap<Address, TokenInfo>, PathfinderError> {
+    let rpc = CirclesRpc::try_from_http(rpc_url)?;
+    token_info_map_from_path_via_rpc(current_avatar, &rpc, path).await
+}
+
 /// Accumulate totals for wrapped tokens present in a path.
 ///
 /// Returns per-wrapper totals and the wrapper's token_type so callers can
@@ -65,31 +84,82 @@ pub fn wrapped_totals_from_path(
     out
 }
 
-/// Convert wrapped totals to their underlying avatar/token totals.
+/// Additive parity alias for the TypeScript `getWrappedTokensFromPath` helper.
+pub fn get_wrapped_tokens_from_path(
+    path: &PathfindingResult,
+    token_info_map: &HashMap<Address, TokenInfo>,
+) -> HashMap<Address, (U256, String)> {
+    wrapped_totals_from_path(path, token_info_map)
+}
+
+/// Convert wrapped totals to their underlying avatar/token totals using the current time.
 ///
-/// Inflationary wrappers are converted back to attoCircles using the converter
-/// and the token's timestamp hint; demurraged wrappers are currently identity.
+/// This mirrors the TypeScript pathfinder helper, which calls the converter
+/// with its default "now" semantics for inflationary wrappers.
 pub fn expected_unwrapped_totals(
     wrapped_totals: &HashMap<Address, (U256, String)>,
     token_info_map: &HashMap<Address, TokenInfo>,
 ) -> HashMap<Address, (U256, Address)> {
+    expected_unwrapped_totals_at(wrapped_totals, token_info_map, None)
+}
+
+/// Convert wrapped totals to their underlying avatar/token totals at an explicit timestamp.
+///
+/// Use this when you need deterministic conversion behavior instead of the
+/// TypeScript-compatible default "now" semantics.
+pub fn expected_unwrapped_totals_at(
+    wrapped_totals: &HashMap<Address, (U256, String)>,
+    token_info_map: &HashMap<Address, TokenInfo>,
+    now_unix_seconds: Option<u64>,
+) -> HashMap<Address, (U256, Address)> {
     let mut out = HashMap::new();
     for (wrapper, (total, ty)) in wrapped_totals {
         if let Some(info) = token_info_map.get(wrapper) {
-            let ts_hint = if info.timestamp > 0 {
-                Some(info.timestamp)
-            } else {
-                None
-            };
-            let amount = if ty == "CrcV2_ERC20WrapperDeployed_Inflationary" {
-                atto_static_circles_to_atto_circles(*total, ts_hint)
-            } else {
-                *total
-            };
-            out.insert(*wrapper, (amount, info.token_owner));
+            match ty.as_str() {
+                "CrcV2_ERC20WrapperDeployed_Demurraged" => {
+                    out.insert(*wrapper, (*total, info.token_owner));
+                }
+                "CrcV2_ERC20WrapperDeployed_Inflationary" => {
+                    let amount = atto_static_circles_to_atto_circles(*total, now_unix_seconds);
+                    out.insert(*wrapper, (amount, info.token_owner));
+                }
+                _ => {}
+            }
         }
     }
     out
+}
+
+/// Replace wrapped token addresses in a path with their underlying avatar tokens.
+///
+/// Produces a new path suitable for flow matrix construction where token_owner
+/// is always the underlying avatar (not the wrapper contract).
+pub fn replace_wrapped_tokens_with_avatars(
+    path: &PathfindingResult,
+    token_info_map: &HashMap<Address, TokenInfo>,
+) -> PathfindingResult {
+    let transfers = path
+        .transfers
+        .iter()
+        .map(|edge| {
+            let token_owner = Address::from_str(&edge.token_owner)
+                .ok()
+                .and_then(|owner| token_info_map.get(&owner))
+                .filter(|info| info.token_type.starts_with("CrcV2_ERC20WrapperDeployed"))
+                .map(|info| format!("{:#x}", info.token_owner))
+                .unwrap_or_else(|| edge.token_owner.clone());
+
+            circles_types::PathfindingTransferStep {
+                token_owner,
+                ..edge.clone()
+            }
+        })
+        .collect();
+
+    PathfindingResult {
+        max_flow: path.max_flow,
+        transfers,
+    }
 }
 
 /// Replace wrapped token addresses in a path with their underlying avatar tokens.
@@ -111,10 +181,10 @@ pub fn replace_wrapped_tokens(
         .map(|edge| {
             let token_owner = wrapper_to_avatar
                 .get(&edge.token_owner.to_lowercase())
-                .copied()
-                .unwrap_or_else(|| Address::from_str(&edge.token_owner).unwrap_or(Address::ZERO));
+                .map(|avatar| format!("{avatar:#x}"))
+                .unwrap_or_else(|| edge.token_owner.clone());
             circles_types::PathfindingTransferStep {
-                token_owner: format!("{token_owner:#x}"),
+                token_owner,
                 ..edge.clone()
             }
         })
@@ -225,17 +295,29 @@ fn get_source_and_sink(
     override_sink: Option<Address>,
 ) -> Result<(Address, Address), PathfinderError> {
     use std::collections::HashSet;
-    let senders: HashSet<Address> = path.transfers.iter().map(|t| t.from).collect();
-    let receivers: HashSet<Address> = path.transfers.iter().map(|t| t.to).collect();
+
+    let mut senders = Vec::new();
+    let mut receivers = Vec::new();
+    let mut sender_set = HashSet::new();
+    let mut receiver_set = HashSet::new();
+
+    for transfer in &path.transfers {
+        if sender_set.insert(transfer.from) {
+            senders.push(transfer.from);
+        }
+        if receiver_set.insert(transfer.to) {
+            receivers.push(transfer.to);
+        }
+    }
 
     let source = senders
         .iter()
-        .find(|a| !receivers.contains(*a))
+        .find(|a| !receiver_set.contains(*a))
         .copied()
         .or(override_source);
     let sink = receivers
         .iter()
-        .find(|a| !senders.contains(*a))
+        .find(|a| !sender_set.contains(*a))
         .copied()
         .or(override_sink);
 

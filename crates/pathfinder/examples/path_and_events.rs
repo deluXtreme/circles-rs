@@ -15,6 +15,7 @@ use circles_rpc::CirclesRpc;
 use futures::StreamExt;
 
 const DEFAULT_RPC_URL: &str = "https://rpc.aboutcircles.com/";
+#[cfg(feature = "ws")]
 const DEFAULT_WS_URL: &str = "wss://rpc.helsinki.aboutcircles.com/ws";
 // Sample addresses; replace with your own.
 const SAMPLE_FROM: &str = "0xde374ece6fa50e781e81aac78e811b33d16912c7";
@@ -23,6 +24,7 @@ const SAMPLE_TO: &str = "0x6b69683c8897e3d18e74b1ba117b49f80423da5d";
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let http_url = std::env::var("CIRCLES_RPC_URL").unwrap_or_else(|_| DEFAULT_RPC_URL.to_string());
+    #[cfg(feature = "ws")]
     let ws_url = std::env::var("CIRCLES_RPC_WS_URL")
         .ok()
         .or_else(|| Some(DEFAULT_WS_URL.to_string()));

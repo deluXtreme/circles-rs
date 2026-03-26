@@ -10,10 +10,10 @@ homepage = "https://circles-rs-book.vercel.app/"
 documentation = "https://docs.rs/circles-types"
 
 [dependencies]
-alloy-json-abi = "1.4.1"
+alloy-json-abi = { workspace = true }
 alloy-primitives = { workspace = true }
 alloy-provider = { workspace = true }
-alloy-rpc-types = "1.1.2"
+alloy-rpc-types = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

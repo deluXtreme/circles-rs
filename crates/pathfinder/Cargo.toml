@@ -18,14 +18,16 @@ alloy-primitives = { workspace = true }                                         
 alloy-provider = { workspace = true }
 alloy-sol-types = { workspace = true }                     # sol! macro
 circles-types = { workspace = true }
-circles-rpc = { path = "../rpc", version = "0.1.0" }
-circles-utils = { path = "../utils", version = "0.1.0" }
+circles-rpc = { workspace = true }
+circles-utils = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
-futures = { workspace = true }
 
 [features]
 default = []
 ws = ["circles-rpc/ws"]
+
+[dev-dependencies]
+futures = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

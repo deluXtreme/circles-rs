@@ -12,8 +12,8 @@ documentation = "https://docs.rs/circles-rpc"
 alloy-json-rpc = { workspace = true }
 alloy-primitives = { workspace = true }
 alloy-provider = { workspace = true }
-alloy-transport-http = "1.1.2"
-alloy-transport-ws = { version = "1.1.2", optional = true }
+alloy-transport-http = { workspace = true }
+alloy-transport-ws = { workspace = true, optional = true }
 circles-types = { workspace = true }
 futures = { workspace = true }
 reqwest = { workspace = true }
