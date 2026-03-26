@@ -19,6 +19,7 @@ circles-abis = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 alloy-provider = { workspace = true }
+alloy-contract = { workspace = true }
 alloy-sol-types = { workspace = true }
 bs58 = "0.5"
 serde_json = { workspace = true }

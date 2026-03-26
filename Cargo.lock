@@ -1147,6 +1147,7 @@ dependencies = [
 name = "circles-sdk"
 version = "0.1.0"
 dependencies = [
+ "alloy-contract",
  "alloy-json-rpc",
  "alloy-primitives",
  "alloy-provider",

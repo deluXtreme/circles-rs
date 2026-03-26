@@ -49,8 +49,11 @@
 //!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
 //! - [`HumanAvatar::plan_group_token_redeem`] and
 //!   [`OrganisationAvatar::plan_group_token_redeem`] for automatic group-token redeem planning.
-//! - [`HumanAvatar::available_invitations`], [`HumanAvatar::invitation_origin`], and
-//!   [`HumanAvatar::proxy_inviters`] for the current invitation/referral query surface.
+//! - [`HumanAvatar::available_invitations`], [`HumanAvatar::invitation_origin`],
+//!   [`HumanAvatar::proxy_inviters`], and [`HumanAvatar::find_farm_invite_path`] for the
+//!   current invitation/referral query surface.
+//! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
+//!   planning/execution against existing Safe wallets.
 //! - [`HumanAvatar::plan_generate_referrals`] and [`HumanAvatar::generate_referrals`] for
 //!   invitation-farm batch referral planning/execution.
 //!
