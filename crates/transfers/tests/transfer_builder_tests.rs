@@ -11,6 +11,7 @@ fn demo_config() -> CirclesConfig {
         circles_rpc_url: "http://localhost:8545".into(), // unused in these unit tests
         pathfinder_url: "".into(),
         profile_service_url: "".into(),
+        referrals_service_url: None,
         v1_hub_address: Address::ZERO,
         v2_hub_address: address!("0x0000000000000000000000000000000000000001"),
         name_registry_address: Address::ZERO,
@@ -22,6 +23,7 @@ fn demo_config() -> CirclesConfig {
         invitation_escrow_address: Address::ZERO,
         invitation_farm_address: Address::ZERO,
         referrals_module_address: Address::ZERO,
+        invitation_module_address: Address::ZERO,
     }
 }
 

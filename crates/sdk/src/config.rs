@@ -7,6 +7,7 @@ pub static GNOSIS_MAINNET: Lazy<CirclesConfig> = Lazy::new(|| CirclesConfig {
     circles_rpc_url: "https://rpc.aboutcircles.com/".to_string(),
     pathfinder_url: "https://pathfinder.aboutcircles.com".to_string(),
     profile_service_url: "https://rpc.aboutcircles.com/profiles/".to_string(),
+    referrals_service_url: Some("https://referrals.aboutcircles.com".to_string()),
     v1_hub_address: address!("29b9a7fbb8995b2423a71cc17cf9810798f6c543"),
     v2_hub_address: address!("c12c1e50abb450d6205ea2c3fa861b3b834d13e8"),
     name_registry_address: address!("a27566fd89162cc3d40cb59c87aaaa49b85f3474"),
@@ -17,10 +18,34 @@ pub static GNOSIS_MAINNET: Lazy<CirclesConfig> = Lazy::new(|| CirclesConfig {
     lift_erc20_address: address!("5f99a795dd2743c36d63511f0d4bc667e6d3cdb5"),
     invitation_escrow_address: address!("8f8b74fa13eaaff4176d061a0f98ad5c8e19c903"),
     invitation_farm_address: address!("0000000000000000000000000000000000000000"),
-    referrals_module_address: address!("d6df7cc2c2db03ec91761f4469d8dbaac7e538c9"),
+    referrals_module_address: address!("12105a9b291af2abb0591001155a75949b062ce5"),
+    invitation_module_address: address!("00738aca013b7b2e6cfe1690f0021c3182fa40b5"),
 });
 
 /// Convenience helper to retrieve a cloned mainnet config.
 pub fn gnosis_mainnet() -> CirclesConfig {
     GNOSIS_MAINNET.clone()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gnosis_mainnet_matches_invitation_config_snapshot() {
+        let config = gnosis_mainnet();
+
+        assert_eq!(
+            config.referrals_service_url.as_deref(),
+            Some("https://referrals.aboutcircles.com")
+        );
+        assert_eq!(
+            config.referrals_module_address,
+            address!("12105a9b291af2abb0591001155a75949b062ce5")
+        );
+        assert_eq!(
+            config.invitation_module_address,
+            address!("00738aca013b7b2e6cfe1690f0021c3182fa40b5")
+        );
+    }
 }

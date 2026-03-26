@@ -6,6 +6,7 @@ fn dummy_config() -> CirclesConfig {
         circles_rpc_url: "https://rpc.example.com".into(),
         pathfinder_url: "".into(),
         profile_service_url: "https://profiles.example.com".into(),
+        referrals_service_url: None,
         v1_hub_address: Address::ZERO,
         v2_hub_address: Address::ZERO,
         name_registry_address: Address::ZERO,
@@ -17,6 +18,7 @@ fn dummy_config() -> CirclesConfig {
         invitation_escrow_address: Address::ZERO,
         invitation_farm_address: Address::ZERO,
         referrals_module_address: Address::ZERO,
+        invitation_module_address: Address::ZERO,
     }
 }
 

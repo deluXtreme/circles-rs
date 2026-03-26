@@ -198,8 +198,10 @@ pub use runner::{BatchRun, ContractRunner, RunnerConfig};
 
 mod rpc;
 pub use rpc::{
-    Balance, CirclesQueryResponse, JsonRpcError, JsonRpcRequest, JsonRpcResponse, QueryResponse,
-    SafeQueryResponse, TokenBalanceResponse, TransactionHistoryRow,
+    AllInvitationsResponse, AtScaleInvitation, Balance, CirclesQueryResponse, EscrowInvitation,
+    InvitationOriginResponse, InvitationsFromResponse, InvitedAccountInfo, JsonRpcError,
+    JsonRpcRequest, JsonRpcResponse, QueryResponse, SafeQueryResponse, TokenBalanceResponse,
+    TransactionHistoryRow, TrustInvitation,
 };
 
 mod query;

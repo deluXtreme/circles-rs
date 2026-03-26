@@ -6,7 +6,7 @@ Async JSON-RPC client for the Circles protocol, mirroring the TS `@rpc` package 
 - Thin `CirclesRpc` facade with method groups (`balance`, `token`, `trust`, `avatar`, `profile`, `query`, `events`, `invitation`, `pathfinder`, `group`, `tables`, `health`, `network`, `search`).
 - HTTP constructor helpers (`try_from_http`, `TryFrom<&str>`); WS subscriptions behind the `ws` feature with best-effort `eth_unsubscribe` on drop.
 - `circles_query` helpers with cursor extraction plus `PagedQuery`/`paged_stream` convenience; `paged_query` is validated against live `circles_query`.
-- Normalized token holder balances (`TokenHolderNormalized`) and invitation batching with bounded concurrency.
+- Normalized token holder balances (`TokenHolderNormalized`), invitation-origin / combined-invitation lookups, inviter-outbound invitation queries, and the legacy invitation-balance batching helper.
 - WS parsing tolerates heartbeats (`[]`), flattens batch frames, and maps unknown event types to `CrcUnknownEvent`.
 
 ## Quickstart

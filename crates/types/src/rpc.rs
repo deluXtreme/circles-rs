@@ -1,3 +1,4 @@
+use crate::AvatarInfo;
 use alloy_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -117,6 +118,85 @@ impl<T> SafeQueryResponse<T> {
             error: Some(error),
         }
     }
+}
+
+/// Unified invitation-origin response from `circles_getInvitationOrigin`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InvitationOriginResponse {
+    pub address: Address,
+    pub invitation_type: String,
+    pub inviter: Option<Address>,
+    pub proxy_inviter: Option<Address>,
+    pub escrow_amount: Option<String>,
+    pub block_number: u64,
+    pub timestamp: u64,
+    pub transaction_hash: TxHash,
+    pub version: u32,
+}
+
+/// Trust-based invitation information returned by `circles_getAllInvitations`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustInvitation {
+    pub address: Address,
+    pub source: String,
+    pub balance: String,
+    pub avatar_info: Option<AvatarInfo>,
+}
+
+/// Escrow-based invitation information returned by `circles_getAllInvitations`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EscrowInvitation {
+    pub address: Address,
+    pub source: String,
+    pub escrowed_amount: String,
+    pub escrow_days: u32,
+    pub block_number: u64,
+    pub timestamp: u64,
+    pub avatar_info: Option<AvatarInfo>,
+}
+
+/// At-scale invitation information returned by `circles_getAllInvitations`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtScaleInvitation {
+    pub address: Address,
+    pub source: String,
+    pub block_number: u64,
+    pub timestamp: u64,
+    pub origin_inviter: Option<Address>,
+}
+
+/// Combined invitation response from `circles_getAllInvitations`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllInvitationsResponse {
+    pub address: Address,
+    pub trust_invitations: Vec<TrustInvitation>,
+    pub escrow_invitations: Vec<EscrowInvitation>,
+    pub at_scale_invitations: Vec<AtScaleInvitation>,
+}
+
+/// Account information returned by `circles_getInvitationsFrom`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InvitedAccountInfo {
+    pub address: Address,
+    pub status: String,
+    pub block_number: u64,
+    pub timestamp: u64,
+    pub avatar_info: Option<AvatarInfo>,
+}
+
+/// Response returned by `circles_getInvitationsFrom`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InvitationsFromResponse {
+    pub address: Address,
+    pub accepted: bool,
+    pub results: Vec<InvitedAccountInfo>,
 }
 
 /// Balance type that can be either raw U256 or formatted as TimeCircles floating point
@@ -239,6 +319,74 @@ impl<'de> Deserialize<'de> for TokenBalanceResponse {
             is_group: wire.is_group,
             token_owner: wire.token_owner,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn invitation_origin_response_deserializes_plugin_shape() {
+        let value = json!({
+            "address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+            "invitationType": "v2_at_scale",
+            "inviter": "0x1234567890abcdef1234567890abcdef12345678",
+            "proxyInviter": "0xabcdef1234567890abcdef1234567890abcdef12",
+            "escrowAmount": null,
+            "blockNumber": 36500000,
+            "timestamp": 1704240000,
+            "transactionHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "version": 2
+        });
+
+        let response: InvitationOriginResponse =
+            serde_json::from_value(value).expect("deserialize invitation origin");
+
+        assert_eq!(response.invitation_type, "v2_at_scale");
+        assert_eq!(response.version, 2);
+        assert_eq!(response.block_number, 36_500_000);
+        assert!(response.inviter.is_some());
+        assert!(response.proxy_inviter.is_some());
+    }
+
+    #[test]
+    fn all_invitations_response_deserializes_plugin_shape() {
+        let value = json!({
+            "address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+            "trustInvitations": [{
+                "address": "0x1234567890abcdef1234567890abcdef12345678",
+                "source": "trust",
+                "balance": "150.5",
+                "avatarInfo": null
+            }],
+            "escrowInvitations": [{
+                "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+                "source": "escrow",
+                "escrowedAmount": "100000000000000000000",
+                "escrowDays": 7,
+                "blockNumber": 43645581,
+                "timestamp": 1765725505,
+                "avatarInfo": null
+            }],
+            "atScaleInvitations": [{
+                "address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+                "source": "atScale",
+                "blockNumber": 43260668,
+                "timestamp": 1763742205,
+                "originInviter": null
+            }]
+        });
+
+        let response: AllInvitationsResponse =
+            serde_json::from_value(value).expect("deserialize all invitations");
+
+        assert_eq!(response.trust_invitations.len(), 1);
+        assert_eq!(response.escrow_invitations.len(), 1);
+        assert_eq!(response.at_scale_invitations.len(), 1);
+        assert_eq!(response.trust_invitations[0].balance, "150.5");
+        assert_eq!(response.escrow_invitations[0].escrow_days, 7);
     }
 }
 
