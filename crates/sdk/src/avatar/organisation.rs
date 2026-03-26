@@ -241,6 +241,75 @@ impl OrganisationAvatar {
         self.common.send(txs).await
     }
 
+    /// Plan a group-token mint by routing collateral to the group's mint handler.
+    pub async fn plan_group_token_mint(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        let mint_handler = self
+            .core
+            .base_group(group)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        self.plan_transfer(
+            mint_handler,
+            amount,
+            Some(AdvancedTransferOptions {
+                use_wrapped_balances: Some(true),
+                from_tokens: None,
+                to_tokens: None,
+                exclude_from_tokens: None,
+                exclude_to_tokens: None,
+                simulated_balances: None,
+                simulated_trusts: None,
+                max_transfers: None,
+                tx_data: None,
+            }),
+        )
+        .await
+    }
+
+    /// Execute a group-token mint by routing collateral to the group's mint handler.
+    pub async fn mint_group_token(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        let txs = self.plan_group_token_mint(group, amount).await?;
+        self.common.send(txs).await
+    }
+
+    /// Compute the maximum amount mintable for a group from this avatar.
+    pub async fn max_group_token_mintable(&self, group: Address) -> Result<U256, SdkError> {
+        let mint_handler = self
+            .core
+            .base_group(group)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        Ok(self
+            .max_flow_to(
+                mint_handler,
+                Some(AdvancedTransferOptions {
+                    use_wrapped_balances: Some(true),
+                    from_tokens: None,
+                    to_tokens: None,
+                    exclude_from_tokens: None,
+                    exclude_to_tokens: None,
+                    simulated_balances: None,
+                    simulated_trusts: None,
+                    max_transfers: None,
+                    tx_data: None,
+                }),
+            )
+            .await?
+            .max_flow)
+    }
+
     /// Find a path between this avatar and `to` with a target flow.
     pub async fn find_path(
         &self,
@@ -258,6 +327,69 @@ impl OrganisationAvatar {
         options: Option<AdvancedTransferOptions>,
     ) -> Result<PathfindingResult, SdkError> {
         self.common.max_flow_to(to, options).await
+    }
+
+    /// Get the owner address for a group.
+    pub async fn group_owner(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .owner()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the mint handler address for a group.
+    pub async fn group_mint_handler(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the treasury address for a group.
+    pub async fn group_treasury(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .BASE_TREASURY()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the service address for a group.
+    pub async fn group_service(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .service()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the fee collection address for a group.
+    pub async fn group_fee_collection(&self, group: Address) -> Result<Address, SdkError> {
+        self.core
+            .base_group(group)
+            .feeCollection()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get all membership conditions for a group.
+    pub async fn group_membership_conditions(
+        &self,
+        group: Address,
+    ) -> Result<Vec<Address>, SdkError> {
+        self.core
+            .base_group(group)
+            .getMembershipConditions()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
     }
 
     /// Build a typed organisation avatar wrapper from already-fetched components.

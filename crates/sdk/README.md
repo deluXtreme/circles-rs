@@ -13,7 +13,8 @@ The usage model is intentionally simple:
 - Typed avatar helpers for balances, aggregated trust, profiles, pathfinding, transfer planning, replenish planning, and registration flows.
 - Invitation and referral helpers for human avatars.
 - Profile metadata / short-name write helpers plus personal minting for human avatars.
-- Base-group trust/property write helpers (`trust_add_batch_with_conditions`, `set_owner`, `set_service`, `set_fee_collection`, `set_membership_condition`).
+- Base-group trust/property helpers (`owner`, `mint_handler`, `service`, `fee_collection`, `membership_conditions`, `trust_add_batch_with_conditions`, `set_owner`, `set_service`, `set_fee_collection`, `set_membership_condition`).
+- Human and organisation group-token mint/property helpers (`plan_group_token_mint`, `mint_group_token`, `max_group_token_mintable`, plus group owner/treasury/mint-handler/service/fee-collection lookups).
 - Transfer planning and replenish/max-flow helpers via `circles-transfers` and `circles-pathfinder`.
 - Optional WebSocket subscriptions with retry/backoff and HTTP catch-up through the `ws` feature.
 - Shared mainnet config through `config::gnosis_mainnet()` and `GNOSIS_MAINNET`.
@@ -76,4 +77,5 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 - Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances/trust edges.
 - Avatar wrappers expose `total_balance`, aggregated trust helpers, and `plan_replenish` / `replenish`; human and organisation avatars also expose `max_replenishable` plus `plan_replenish_max` / `replenish_max`.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
+- The main remaining facade gaps are direct-transfer/history helpers, group-token redeem/group-membership convenience methods, and the richer TS invitation surface.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

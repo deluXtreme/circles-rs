@@ -50,6 +50,23 @@ impl BaseGroupAvatar {
         self.common.total_balance(as_time_circles, use_v2).await
     }
 
+    /// Get the total supply of this group's token.
+    pub async fn total_supply(&self) -> Result<U256, SdkError> {
+        let token_id = self
+            .core
+            .hub_v2()
+            .toTokenId(self.address)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        self.core
+            .hub_v2()
+            .totalSupply(token_id)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
     /// Get trust relations.
     pub async fn trust_relations(&self) -> Result<Vec<TrustRelation>, SdkError> {
         self.common.trust_relations().await
@@ -85,6 +102,56 @@ impl BaseGroupAvatar {
     /// Check whether `other_avatar` trusts this avatar.
     pub async fn is_trusted_by(&self, other_avatar: Address) -> Result<bool, SdkError> {
         self.common.is_trusted_by(other_avatar).await
+    }
+
+    /// Get the group owner address.
+    pub async fn owner(&self) -> Result<Address, SdkError> {
+        self.core
+            .base_group(self.address)
+            .owner()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the mint handler address.
+    pub async fn mint_handler(&self) -> Result<Address, SdkError> {
+        self.core
+            .base_group(self.address)
+            .BASE_MINT_HANDLER()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the service address.
+    pub async fn service(&self) -> Result<Address, SdkError> {
+        self.core
+            .base_group(self.address)
+            .service()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get the fee collection address.
+    pub async fn fee_collection(&self) -> Result<Address, SdkError> {
+        self.core
+            .base_group(self.address)
+            .feeCollection()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get all membership conditions.
+    pub async fn membership_conditions(&self) -> Result<Vec<Address>, SdkError> {
+        self.core
+            .base_group(self.address)
+            .getMembershipConditions()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
     }
 
     /// Fetch profile (cached by CID in memory).
