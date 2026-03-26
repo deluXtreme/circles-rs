@@ -6,7 +6,7 @@
 //! execution backend when the caller wants write parity.
 
 use alloy_network::AnyNetwork;
-use alloy_primitives::{Address, Bytes, U256, aliases::TxHash};
+use alloy_primitives::{Address, B256, Bytes, U256, aliases::TxHash};
 use alloy_provider::{Identity, Provider, ProviderBuilder, RootProvider};
 use alloy_rpc_types::TransactionRequest;
 use alloy_signer_local::PrivateKeySigner;
@@ -14,8 +14,9 @@ use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use reqwest::Url;
 use safe_rs::{
-    CallBuilder, Eoa, EoaBatchResult, Error as SafeRsError, ExecutionResult, Safe, Wallet,
-    WalletBuilder,
+    Call, CallBuilder, ChainConfig, Eoa, EoaBatchResult, Error as SafeRsError, ExecutionResult,
+    IMultiSend, ISafe, Operation, Safe, SafeTxParams, Wallet, WalletBuilder,
+    encoding::{compute_safe_transaction_hash, encode_multisend_data},
 };
 use thiserror::Error;
 
@@ -56,6 +57,98 @@ pub struct SubmittedTx {
     pub success: bool,
     /// Position of the transaction inside a sequential batch, when meaningful.
     pub index: Option<usize>,
+}
+
+/// Prepared Safe execution data for browser/external-signature workflows.
+///
+/// This is the Rust analogue of the TypeScript Safe batch `getSafeTransaction()`
+/// seam: it captures the canonical Safe transaction fields plus the EIP-712 hash
+/// that an external signer/backend would sign before turning it into an
+/// `execTransaction` call.
+#[derive(Debug, Clone)]
+pub struct PreparedSafeExecution {
+    /// Safe account that will execute the transaction.
+    pub safe_address: Address,
+    /// Chain id used when computing the Safe EIP-712 hash.
+    pub chain_id: u64,
+    /// Original SDK-prepared transactions before Safe wrapping.
+    pub transactions: Vec<PreparedTransaction>,
+    /// Canonical Safe transaction parameters.
+    pub safe_tx: SafeTxParams,
+    /// EIP-712 hash that the signer/backend must authorize.
+    pub safe_tx_hash: B256,
+}
+
+impl PreparedSafeExecution {
+    /// Whether this prepared Safe execution wraps multiple inner transactions.
+    pub fn is_batch(&self) -> bool {
+        self.transactions.len() > 1
+    }
+
+    /// Build the final Safe `execTransaction` call once signatures are available.
+    pub fn to_exec_transaction(&self, signatures: Bytes) -> PreparedTransaction {
+        call_to_tx(
+            self.safe_address,
+            ISafe::execTransactionCall {
+                to: self.safe_tx.to,
+                value: self.safe_tx.value,
+                data: self.safe_tx.data.clone(),
+                operation: self.safe_tx.operation.as_u8(),
+                safeTxGas: self.safe_tx.safe_tx_gas,
+                baseGas: self.safe_tx.base_gas,
+                gasPrice: self.safe_tx.gas_price,
+                gasToken: self.safe_tx.gas_token,
+                refundReceiver: self.safe_tx.refund_receiver,
+                signatures,
+            },
+            None,
+        )
+    }
+}
+
+/// Read-only Safe transaction preparer for browser/external signing workflows.
+///
+/// Unlike [`SafeContractRunner`], this does not require a local private key and
+/// does not execute transactions. It only fetches the current Safe nonce/chain id
+/// and produces the canonical Safe payload/hash a browser signer would need next.
+pub struct SafeTransactionPreparer {
+    safe_address: Address,
+    provider: AnyHttpProvider,
+}
+
+impl SafeTransactionPreparer {
+    /// Connect a Safe transaction preparer to the given RPC URL and Safe address.
+    pub fn connect(rpc_url: &str, safe_address: Address) -> Result<Self, RunnerError> {
+        let rpc_url = parse_rpc_url(rpc_url)?;
+        let provider = build_read_provider(rpc_url);
+        Ok(Self {
+            safe_address,
+            provider,
+        })
+    }
+
+    /// Safe address this preparer targets.
+    pub fn safe_address(&self) -> Address {
+        self.safe_address
+    }
+
+    /// Prepare a canonical Safe transaction from one or more SDK transactions.
+    pub async fn prepare_transactions(
+        &self,
+        txs: Vec<PreparedTransaction>,
+    ) -> Result<PreparedSafeExecution, RunnerError> {
+        let chain_id = self
+            .provider
+            .get_chain_id()
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))?;
+        let nonce = ISafe::new(self.safe_address, &self.provider)
+            .nonce()
+            .call()
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))?;
+        prepare_safe_execution(self.safe_address, chain_id, nonce, txs)
+    }
 }
 
 /// Buffered batch helper mirroring the TypeScript `BatchRun` concept.
@@ -219,6 +312,72 @@ fn build_read_provider(rpc_url: Url) -> AnyHttpProvider {
     ProviderBuilder::<Identity, Identity, AnyNetwork>::default().connect_http(rpc_url)
 }
 
+fn prepared_to_safe_call(tx: &PreparedTransaction) -> Call {
+    Call::new(tx.to, tx.value.unwrap_or_default(), tx.data.clone())
+}
+
+fn build_safe_inner_tx(
+    txs: &[PreparedTransaction],
+    chain_config: &ChainConfig,
+) -> (Address, U256, Bytes, Operation) {
+    if txs.len() == 1 {
+        let tx = &txs[0];
+        (
+            tx.to,
+            tx.value.unwrap_or_default(),
+            tx.data.clone(),
+            Operation::Call,
+        )
+    } else {
+        let calls = txs.iter().map(prepared_to_safe_call).collect::<Vec<_>>();
+        let transactions = encode_multisend_data(&calls);
+        let calldata = Bytes::from(IMultiSend::multiSendCall { transactions }.abi_encode());
+        (
+            chain_config.addresses.multi_send,
+            U256::ZERO,
+            calldata,
+            Operation::DelegateCall,
+        )
+    }
+}
+
+fn prepare_safe_execution(
+    safe_address: Address,
+    chain_id: u64,
+    nonce: U256,
+    txs: Vec<PreparedTransaction>,
+) -> Result<PreparedSafeExecution, RunnerError> {
+    if txs.is_empty() {
+        return Err(RunnerError::Rejected(
+            "no transactions provided".to_string(),
+        ));
+    }
+
+    let chain_config = ChainConfig::new(chain_id);
+    let (to, value, data, operation) = build_safe_inner_tx(&txs, &chain_config);
+    let safe_tx = SafeTxParams {
+        to,
+        value,
+        data,
+        operation,
+        safe_tx_gas: U256::ZERO,
+        base_gas: U256::ZERO,
+        gas_price: U256::ZERO,
+        gas_token: Address::ZERO,
+        refund_receiver: Address::ZERO,
+        nonce,
+    };
+    let safe_tx_hash = compute_safe_transaction_hash(chain_id, safe_address, &safe_tx);
+
+    Ok(PreparedSafeExecution {
+        safe_address,
+        chain_id,
+        transactions: txs,
+        safe_tx,
+        safe_tx_hash,
+    })
+}
+
 fn attach_prepared_transactions<B>(builder: B, txs: Vec<PreparedTransaction>) -> B
 where
     B: CallBuilder,
@@ -258,6 +417,25 @@ impl SafeContractRunner {
             .await
             .map_err(map_safe_error)?;
         Ok(Self { wallet, provider })
+    }
+
+    /// Prepare the canonical Safe payload/hash for one or more SDK transactions
+    /// without executing them immediately.
+    pub async fn prepare_transactions(
+        &self,
+        txs: Vec<PreparedTransaction>,
+    ) -> Result<PreparedSafeExecution, RunnerError> {
+        let chain_id = self
+            .provider
+            .get_chain_id()
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))?;
+        let nonce = ISafe::new(self.wallet.address(), &self.provider)
+            .nonce()
+            .call()
+            .await
+            .map_err(|err| RunnerError::Transport(err.to_string()))?;
+        prepare_safe_execution(self.wallet.address(), chain_id, nonce, txs)
     }
 }
 
@@ -517,6 +695,116 @@ mod tests {
     }
 
     #[test]
+    fn prepare_safe_execution_uses_direct_call_for_single_transaction() {
+        let tx = PreparedTransaction {
+            to: Address::repeat_byte(0x11),
+            data: Bytes::from_static(&[0xaa, 0xbb]),
+            value: Some(U256::from(7u64)),
+        };
+
+        let prepared = prepare_safe_execution(
+            Address::repeat_byte(0x44),
+            100,
+            U256::from(9u64),
+            vec![tx.clone()],
+        )
+        .expect("prepare safe execution");
+
+        assert!(!prepared.is_batch());
+        assert_eq!(prepared.transactions, vec![tx.clone()]);
+        assert_eq!(prepared.safe_tx.to, tx.to);
+        assert_eq!(prepared.safe_tx.value, U256::from(7u64));
+        assert_eq!(prepared.safe_tx.data, tx.data);
+        assert_eq!(prepared.safe_tx.operation, Operation::Call);
+        assert_eq!(prepared.safe_tx.nonce, U256::from(9u64));
+        assert_eq!(
+            prepared.safe_tx_hash,
+            compute_safe_transaction_hash(100, Address::repeat_byte(0x44), &prepared.safe_tx)
+        );
+    }
+
+    #[test]
+    fn prepare_safe_execution_uses_multisend_for_batches() {
+        let txs = vec![
+            PreparedTransaction {
+                to: Address::repeat_byte(0x11),
+                data: Bytes::from_static(&[0xaa]),
+                value: None,
+            },
+            PreparedTransaction {
+                to: Address::repeat_byte(0x22),
+                data: Bytes::from_static(&[0xbb, 0xcc]),
+                value: Some(U256::from(5u64)),
+            },
+        ];
+        let calls = txs.iter().map(prepared_to_safe_call).collect::<Vec<_>>();
+        let expected_multisend = encode_multisend_data(&calls);
+        let expected_data = Bytes::from(
+            IMultiSend::multiSendCall {
+                transactions: expected_multisend,
+            }
+            .abi_encode(),
+        );
+
+        let prepared = prepare_safe_execution(
+            Address::repeat_byte(0x55),
+            100,
+            U256::from(3u64),
+            txs.clone(),
+        )
+        .expect("prepare safe execution");
+
+        assert!(prepared.is_batch());
+        assert_eq!(prepared.transactions, txs);
+        assert_eq!(
+            prepared.safe_tx.to,
+            ChainConfig::new(100).addresses.multi_send
+        );
+        assert_eq!(prepared.safe_tx.value, U256::ZERO);
+        assert_eq!(prepared.safe_tx.operation, Operation::DelegateCall);
+        assert_eq!(prepared.safe_tx.data, expected_data);
+    }
+
+    #[test]
+    fn prepared_safe_execution_builds_exec_transaction_call() {
+        let prepared = prepare_safe_execution(
+            Address::repeat_byte(0x66),
+            100,
+            U256::from(1u64),
+            vec![PreparedTransaction {
+                to: Address::repeat_byte(0x11),
+                data: Bytes::from_static(&[0xab, 0xcd]),
+                value: Some(U256::from(2u64)),
+            }],
+        )
+        .expect("prepare safe execution");
+
+        let tx = prepared.to_exec_transaction(Bytes::from_static(&[0x12, 0x34]));
+        let decoded =
+            ISafe::execTransactionCall::abi_decode(&tx.data).expect("decode execTransaction call");
+
+        assert_eq!(tx.to, prepared.safe_address);
+        assert_eq!(tx.value, None);
+        assert_eq!(decoded.to, prepared.safe_tx.to);
+        assert_eq!(decoded.value, prepared.safe_tx.value);
+        assert_eq!(decoded.data, prepared.safe_tx.data);
+        assert_eq!(decoded.operation, prepared.safe_tx.operation.as_u8());
+        assert_eq!(decoded.safeTxGas, prepared.safe_tx.safe_tx_gas);
+        assert_eq!(decoded.baseGas, prepared.safe_tx.base_gas);
+        assert_eq!(decoded.gasPrice, prepared.safe_tx.gas_price);
+        assert_eq!(decoded.gasToken, prepared.safe_tx.gas_token);
+        assert_eq!(decoded.refundReceiver, prepared.safe_tx.refund_receiver);
+        assert_eq!(decoded.signatures, Bytes::from_static(&[0x12, 0x34]));
+    }
+
+    #[test]
+    fn prepare_safe_execution_rejects_empty_batches() {
+        let result = prepare_safe_execution(Address::ZERO, 100, U256::ZERO, Vec::new());
+
+        assert!(matches!(result, Err(RunnerError::Rejected(_))));
+    }
+
+    #[test]
     fn prepared_to_request_preserves_fields_and_duplicates_input_data() {
         let tx = PreparedTransaction {
             to: ANVIL_SECOND_ADDRESS,
@@ -603,6 +891,13 @@ mod tests {
     #[tokio::test]
     async fn eoa_runner_rejects_invalid_private_key() {
         let result = EoaContractRunner::connect("https://rpc.example.invalid", "bad-key").await;
+
+        assert!(matches!(result, Err(RunnerError::Rejected(_))));
+    }
+
+    #[test]
+    fn safe_transaction_preparer_rejects_invalid_rpc_url() {
+        let result = SafeTransactionPreparer::connect("not-a-url", Address::ZERO);
 
         assert!(matches!(result, Err(RunnerError::Rejected(_))));
     }
