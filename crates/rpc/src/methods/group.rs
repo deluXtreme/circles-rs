@@ -3,8 +3,8 @@ use crate::error::Result;
 use crate::methods::QueryMethods;
 use crate::paged_query::{PagedFetch, PagedQuery};
 use circles_types::{
-    Address, Conjunction, Filter, FilterPredicate, GroupMembershipRow, GroupQueryParams, GroupRow,
-    PagedQueryParams, SortOrder,
+    Address, Conjunction, CursorColumn, Filter, FilterPredicate, GroupMembershipRow,
+    GroupQueryParams, GroupRow, GroupTokenHolderRow, OrderBy, PagedQueryParams, SortOrder,
 };
 use std::pin::Pin;
 use std::sync::Arc;
@@ -82,6 +82,8 @@ impl GroupMethods {
             filter: Some(vec![
                 FilterPredicate::equals("member".into(), format!("{avatar:#x}")).into(),
             ]),
+            cursor_columns: None,
+            order_columns: None,
             limit,
         })
     }
@@ -109,6 +111,33 @@ impl GroupMethods {
             ],
             filter: Some(vec![
                 FilterPredicate::equals("group".into(), format!("{group:#x}")).into(),
+            ]),
+            cursor_columns: None,
+            order_columns: None,
+            limit,
+        })
+    }
+
+    /// Paged `GroupTokenHoldersBalance` query matching the TS group holders helper.
+    pub fn get_group_holders(&self, group: Address, limit: u32) -> PagedQuery<GroupTokenHolderRow> {
+        self.paged_query(PagedQueryParams {
+            namespace: "V_CrcV2".into(),
+            table: "GroupTokenHoldersBalance".into(),
+            sort_order: SortOrder::DESC,
+            columns: vec![
+                "group".into(),
+                "holder".into(),
+                "totalBalance".into(),
+                "demurragedTotalBalance".into(),
+                "fractionOwnership".into(),
+            ],
+            filter: Some(vec![
+                FilterPredicate::equals("group".into(), format!("{group:#x}")).into(),
+            ]),
+            cursor_columns: Some(vec![CursorColumn::asc("holder".into())]),
+            order_columns: Some(vec![
+                OrderBy::desc("totalBalance".into()),
+                OrderBy::asc("holder".into()),
             ]),
             limit,
         })
@@ -147,6 +176,8 @@ impl GroupMethods {
                 "erc20WrapperStatic".into(),
             ],
             filter: build_group_filters(params),
+            cursor_columns: None,
+            order_columns: None,
             limit,
         })
     }
@@ -292,5 +323,24 @@ mod tests {
             }
             other => panic!("expected conjunction filter, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn group_holders_query_matches_ts_cursor_and_order_shape() {
+        let query = methods().get_group_holders(Address::repeat_byte(0x66), 10);
+
+        assert_eq!(query.params.table, "GroupTokenHoldersBalance");
+        assert_eq!(query.params.sort_order, SortOrder::DESC);
+        assert_eq!(
+            query.params.cursor_columns,
+            Some(vec![CursorColumn::asc("holder".into())])
+        );
+        assert_eq!(
+            query.params.order_columns,
+            Some(vec![
+                OrderBy::desc("totalBalance".into()),
+                OrderBy::asc("holder".into()),
+            ])
+        );
     }
 }

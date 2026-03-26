@@ -1,7 +1,7 @@
 use alloy_primitives::{address, Address, Bytes, U256};
 use alloy_sol_types::SolCall;
-use circles_abis::HubV2;
-use circles_transfers::TransferBuilder;
+use circles_abis::{BaseGroup, HubV2};
+use circles_transfers::{TransferBuilder, TransferError};
 use circles_types::CirclesConfig;
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Read, Write};
@@ -185,6 +185,12 @@ fn u256_result(value: U256) -> Value {
         .for_each(|(idx, byte)| {
             encoded[idx] = *byte;
         });
+    json!(format!("0x{}", hex_bytes(&encoded)))
+}
+
+fn address_result(value: Address) -> Value {
+    let mut encoded = [0u8; 32];
+    encoded[12..].copy_from_slice(value.as_slice());
     json!(format!("0x{}", hex_bytes(&encoded)))
 }
 
@@ -515,4 +521,233 @@ async fn construct_replenish_handles_wrapped_path_branch() {
         .find(|request| request["method"].as_str() == Some("circlesV2_findPath"))
         .expect("path request");
     assert_eq!(path_request["params"][0]["SimulatedTrusts"], Value::Null);
+}
+
+#[tokio::test]
+async fn construct_group_token_redeem_matches_ts_flow_shape() {
+    let from = address!("0xde374ece6fa50e781e81aac78e811b33d16912c7");
+    let group = address!("0x1111111111111111111111111111111111111111");
+    let treasury = address!("0x2222222222222222222222222222222222222222");
+    let collateral_a = address!("0x3333333333333333333333333333333333333333");
+    let collateral_b = address!("0x4444444444444444444444444444444444444444");
+    let amount = U256::from(100u64);
+    let treasury_selector = selector_hex(BaseGroup::BASE_TREASURYCall {});
+
+    let server = MockRpcServer::spawn(move |request| match request["method"].as_str().unwrap() {
+        "circles_getTokenInfo" => json_rpc_success(
+            &request["id"],
+            json!({
+                "block_number": 0,
+                "timestamp": 0,
+                "transaction_index": 0,
+                "log_index": 0,
+                "transaction_hash": format!("{:#x}", alloy_primitives::TxHash::ZERO),
+                "version": 2,
+                "info_type": null,
+                "token_type": "CrcV2_RegisterGroup",
+                "token": format!("{group:#x}"),
+                "token_owner": format!("{group:#x}"),
+            }),
+        ),
+        "circlesV2_getTokenBalances" => json_rpc_success(
+            &request["id"],
+            json!([
+                {
+                    "tokenAddress": format!("{collateral_a:#x}"),
+                    "tokenId": format!("{collateral_a:#x}"),
+                    "tokenOwner": format!("{collateral_a:#x}"),
+                    "tokenType": "CrcV2_RegisterHuman",
+                    "version": 2,
+                    "attoCircles": "1000",
+                    "circles": 0.000000000000001,
+                    "staticAttoCircles": "1000",
+                    "staticCircles": 0.000000000000001,
+                    "attoCrc": "1000",
+                    "crc": 0.000000000000001,
+                    "isErc20": false,
+                    "isErc1155": true,
+                    "isWrapped": false,
+                    "isInflationary": false,
+                    "isGroup": false
+                },
+                {
+                    "tokenAddress": format!("{collateral_b:#x}"),
+                    "tokenId": format!("{collateral_b:#x}"),
+                    "tokenOwner": format!("{collateral_b:#x}"),
+                    "tokenType": "CrcV2_RegisterHuman",
+                    "version": 2,
+                    "attoCircles": "1000",
+                    "circles": 0.000000000000001,
+                    "staticAttoCircles": "1000",
+                    "staticCircles": 0.000000000000001,
+                    "attoCrc": "1000",
+                    "crc": 0.000000000000001,
+                    "isErc20": false,
+                    "isErc1155": true,
+                    "isWrapped": false,
+                    "isInflationary": false,
+                    "isGroup": false
+                }
+            ]),
+        ),
+        "circles_getAggregatedTrustRelations" => json_rpc_success(
+            &request["id"],
+            json!([
+                {
+                    "subject_avatar": format!("{from:#x}"),
+                    "relation": "trusts",
+                    "object_avatar": format!("{collateral_a:#x}"),
+                    "timestamp": 0
+                },
+                {
+                    "subject_avatar": format!("{from:#x}"),
+                    "relation": "mutuallyTrusts",
+                    "object_avatar": format!("{collateral_b:#x}"),
+                    "timestamp": 0
+                }
+            ]),
+        ),
+        "circlesV2_findPath" => json_rpc_success(
+            &request["id"],
+            json!({
+                "maxFlow": amount,
+                "transfers": [{
+                    "from": format!("{from:#x}"),
+                    "to": format!("{from:#x}"),
+                    "tokenOwner": format!("{collateral_a:#x}"),
+                    "value": amount,
+                }]
+            }),
+        ),
+        "circles_getTokenInfoBatch" => json_rpc_success(
+            &request["id"],
+            json!([{
+                "block_number": 0,
+                "timestamp": 0,
+                "transaction_index": 0,
+                "log_index": 0,
+                "transaction_hash": format!("{:#x}", alloy_primitives::TxHash::ZERO),
+                "version": 2,
+                "info_type": null,
+                "token_type": "CrcV2_RegisterHuman",
+                "token": format!("{collateral_a:#x}"),
+                "token_owner": format!("{collateral_a:#x}"),
+            }]),
+        ),
+        "eth_call" => {
+            let data = eth_call_data(request);
+            assert!(data.starts_with(&treasury_selector));
+            json_rpc_success(&request["id"], address_result(treasury))
+        }
+        other => panic!("unexpected method {other}"),
+    });
+
+    let builder = TransferBuilder::new(demo_config(server.url()))
+        .expect("builder")
+        .with_approval_check(false);
+    let txs = builder
+        .construct_group_token_redeem(from, group, amount)
+        .await
+        .expect("construct group token redeem");
+
+    assert_eq!(txs.len(), 2);
+    assert_eq!(txs[0].to, demo_config(server.url()).v2_hub_address);
+    assert_eq!(txs[1].to, demo_config(server.url()).v2_hub_address);
+    assert_eq!(
+        recorded_method_count(&server.requests(), "circlesV2_findPath"),
+        2
+    );
+
+    let first_path_request = server
+        .requests()
+        .into_iter()
+        .find(|request| request["method"].as_str() == Some("circlesV2_findPath"))
+        .expect("first path request");
+    assert_eq!(
+        first_path_request["params"][0]["UseWrappedBalances"],
+        json!(false)
+    );
+    assert_eq!(
+        first_path_request["params"][0]["FromTokens"],
+        json!([format!("{group:#x}")])
+    );
+    assert_eq!(
+        first_path_request["params"][0]["ToTokens"],
+        json!([format!("{collateral_a:#x}"), format!("{collateral_b:#x}")])
+    );
+}
+
+#[tokio::test]
+async fn construct_group_token_redeem_fails_without_trusted_collateral() {
+    let from = address!("0xde374ece6fa50e781e81aac78e811b33d16912c7");
+    let group = address!("0x1111111111111111111111111111111111111111");
+    let treasury = address!("0x2222222222222222222222222222222222222222");
+    let collateral = address!("0x3333333333333333333333333333333333333333");
+    let treasury_selector = selector_hex(BaseGroup::BASE_TREASURYCall {});
+
+    let server = MockRpcServer::spawn(move |request| match request["method"].as_str().unwrap() {
+        "circles_getTokenInfo" => json_rpc_success(
+            &request["id"],
+            json!({
+                "block_number": 0,
+                "timestamp": 0,
+                "transaction_index": 0,
+                "log_index": 0,
+                "transaction_hash": format!("{:#x}", alloy_primitives::TxHash::ZERO),
+                "version": 2,
+                "info_type": null,
+                "token_type": "CrcV2_RegisterGroup",
+                "token": format!("{group:#x}"),
+                "token_owner": format!("{group:#x}"),
+            }),
+        ),
+        "circlesV2_getTokenBalances" => json_rpc_success(
+            &request["id"],
+            json!([{
+                "tokenAddress": format!("{collateral:#x}"),
+                "tokenId": format!("{collateral:#x}"),
+                "tokenOwner": format!("{collateral:#x}"),
+                "tokenType": "CrcV2_RegisterHuman",
+                "version": 2,
+                "attoCircles": "1000",
+                "circles": 0.000000000000001,
+                "staticAttoCircles": "1000",
+                "staticCircles": 0.000000000000001,
+                "attoCrc": "1000",
+                "crc": 0.000000000000001,
+                "isErc20": false,
+                "isErc1155": true,
+                "isWrapped": false,
+                "isInflationary": false,
+                "isGroup": false
+            }]),
+        ),
+        "circles_getAggregatedTrustRelations" => json_rpc_success(&request["id"], json!([])),
+        "eth_call" => {
+            let data = eth_call_data(request);
+            assert!(data.starts_with(&treasury_selector));
+            json_rpc_success(&request["id"], address_result(treasury))
+        }
+        other => panic!("unexpected method {other}"),
+    });
+
+    let builder = TransferBuilder::new(demo_config(server.url())).expect("builder");
+    let err = builder
+        .construct_group_token_redeem(from, group, U256::from(10u64))
+        .await
+        .expect_err("missing trusted collateral should fail");
+
+    match err {
+        TransferError::Generic { code, .. } => {
+            assert_eq!(
+                code.as_deref(),
+                Some("GROUP_TOKEN_REDEEM_NO_TRUSTED_COLLATERAL")
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+    assert_eq!(
+        recorded_method_count(&server.requests(), "circlesV2_findPath"),
+        0
+    );
 }

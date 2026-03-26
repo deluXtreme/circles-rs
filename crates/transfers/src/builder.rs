@@ -1,15 +1,16 @@
 use crate::error::{TransferError, TransfersErrorSource};
 use alloy_primitives::{aliases::U96, Address, Bytes, U256};
 use alloy_sol_types::SolCall;
-use circles_abis::{DemurrageCircles, HubV2, InflationaryCircles, LiftERC20};
+use circles_abis::{BaseGroup, DemurrageCircles, HubV2, InflationaryCircles, LiftERC20};
 use circles_pathfinder::{
     create_flow_matrix, expected_unwrapped_totals, replace_wrapped_tokens,
     token_info_map_from_path, wrapped_totals_from_path,
 };
 use circles_rpc::CirclesRpc;
 use circles_types::{
-    AdvancedTransferOptions, Balance, CirclesConfig, FindPathParams, PathfindingTransferStep,
-    SimulatedTrust, TokenBalanceResponse, TokenInfo, TransferStep,
+    AdvancedTransferOptions, AggregatedTrustRelation, Balance, CirclesConfig, FindPathParams,
+    PathfindingTransferStep, SimulatedTrust, TokenBalanceResponse, TokenInfo, TransferStep,
+    TrustRelationType,
 };
 use circles_utils::converter::{
     atto_circles_to_atto_static_circles, atto_static_circles_to_atto_circles,
@@ -358,6 +359,155 @@ impl TransferBuilder {
 
         if needs_temporary_trust {
             transactions.push(self.trust_tx(token_id, U96::ZERO));
+        }
+
+        Ok(transactions)
+    }
+
+    /// Construct the TS-style automatic group-token redeem flow.
+    pub async fn construct_group_token_redeem(
+        &self,
+        from: Address,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<TransferTx>, TransferError> {
+        if amount.is_zero() {
+            return Err(TransferError::generic(
+                "group token redeem amount must be positive",
+                Some("GROUP_TOKEN_REDEEM_INVALID_AMOUNT"),
+                TransfersErrorSource::Validation,
+            ));
+        }
+
+        let group_info = self
+            .rpc
+            .token_info()
+            .get_token_info(group)
+            .await
+            .map_err(|e| {
+                TransferError::generic(
+                    e.to_string(),
+                    None::<String>,
+                    TransfersErrorSource::Transfers,
+                )
+            })?;
+
+        if group_info.token_type != "CrcV2_RegisterGroup" {
+            return Err(TransferError::generic(
+                format!(
+                    "Only base groups can be redeemed through group-token convenience; got token type {} for {group:#x}.",
+                    group_info.token_type
+                ),
+                Some("GROUP_TOKEN_REDEEM_UNSUPPORTED_TYPE"),
+                TransfersErrorSource::Validation,
+            ));
+        }
+
+        let treasury = self.group_treasury(group).await?;
+        let treasury_balances = self
+            .rpc
+            .token()
+            .get_token_balances(treasury, false, true)
+            .await
+            .map_err(|e| {
+                TransferError::generic(
+                    e.to_string(),
+                    None::<String>,
+                    TransfersErrorSource::Transfers,
+                )
+            })?;
+        let treasury_tokens = treasury_balances
+            .into_iter()
+            .filter(|balance| balance.is_erc1155)
+            .map(|balance| balance.token_address)
+            .collect::<HashSet<_>>();
+
+        let trust_relationships = self
+            .rpc
+            .trust()
+            .get_aggregated_trust_relations(from)
+            .await
+            .map_err(|e| {
+                TransferError::generic(
+                    e.to_string(),
+                    None::<String>,
+                    TransfersErrorSource::Transfers,
+                )
+            })?;
+        let expected_to_tokens =
+            filter_redeemable_collateral_tokens(&trust_relationships, &treasury_tokens);
+
+        if expected_to_tokens.is_empty() {
+            return Err(TransferError::generic(
+                format!(
+                    "No trusted ERC-1155 collateral tokens are available in treasury {treasury:#x} for group {group:#x}."
+                ),
+                Some("GROUP_TOKEN_REDEEM_NO_TRUSTED_COLLATERAL"),
+                TransfersErrorSource::Validation,
+            ));
+        }
+
+        let max_redeemable = self
+            .rpc
+            .pathfinder()
+            .find_path(FindPathParams {
+                from,
+                to: from,
+                target_flow: U256::MAX,
+                use_wrapped_balances: Some(false),
+                from_tokens: Some(vec![group]),
+                to_tokens: Some(expected_to_tokens.clone()),
+                exclude_from_tokens: None,
+                exclude_to_tokens: None,
+                simulated_balances: None,
+                simulated_trusts: None,
+                max_transfers: None,
+            })
+            .await
+            .map_err(|e| {
+                TransferError::generic(
+                    format!("Failed to compute max redeemable group flow: {e}"),
+                    Some("GROUP_TOKEN_REDEEM_MAX_FLOW_FAILED"),
+                    TransfersErrorSource::Pathfinding,
+                )
+            })?;
+
+        if max_redeemable.max_flow < amount {
+            return Err(TransferError::generic(
+                format!(
+                    "Specified amount {amount} exceeds max redeemable flow {} for group {group:#x}.",
+                    max_redeemable.max_flow
+                ),
+                Some("GROUP_TOKEN_REDEEM_EXCEEDS_MAX_FLOW"),
+                TransfersErrorSource::Validation,
+            ));
+        }
+
+        let transactions = self
+            .construct_advanced_transfer(
+                from,
+                from,
+                amount,
+                Some(AdvancedTransferOptions {
+                    use_wrapped_balances: Some(false),
+                    from_tokens: Some(vec![group]),
+                    to_tokens: Some(expected_to_tokens),
+                    exclude_from_tokens: None,
+                    exclude_to_tokens: None,
+                    simulated_balances: None,
+                    simulated_trusts: None,
+                    max_transfers: None,
+                    tx_data: None,
+                }),
+            )
+            .await?;
+
+        if transactions.is_empty() {
+            return Err(TransferError::generic(
+                "No transactions generated for group token redeem.",
+                Some("GROUP_TOKEN_REDEEM_EMPTY"),
+                TransfersErrorSource::Transfers,
+            ));
         }
 
         Ok(transactions)
@@ -785,6 +935,28 @@ fn replenish_trust_expiry() -> U96 {
     U96::from(expiry)
 }
 
+fn filter_redeemable_collateral_tokens(
+    trust_relationships: &[AggregatedTrustRelation],
+    treasury_tokens: &HashSet<Address>,
+) -> Vec<Address> {
+    let mut tokens = Vec::new();
+
+    for trust in trust_relationships {
+        let trusted = matches!(
+            trust.relation,
+            TrustRelationType::Trusts | TrustRelationType::MutuallyTrusts
+        );
+        if trusted
+            && treasury_tokens.contains(&trust.object_avatar)
+            && !tokens.contains(&trust.object_avatar)
+        {
+            tokens.push(trust.object_avatar);
+        }
+    }
+
+    tokens
+}
+
 impl TransferBuilder {
     async fn needs_approval(&self, operator: Address) -> Option<bool> {
         let Ok(url) = self.config.circles_rpc_url.parse() else {
@@ -857,6 +1029,25 @@ impl TransferBuilder {
             }));
         }
         Ok(None)
+    }
+
+    async fn group_treasury(&self, group: Address) -> Result<Address, TransferError> {
+        let url = self.config.circles_rpc_url.parse().map_err(|e| {
+            TransferError::generic(
+                format!("Invalid RPC URL for group treasury lookup: {e}"),
+                Some("GROUP_TOKEN_REDEEM_INVALID_RPC_URL"),
+                TransfersErrorSource::Transfers,
+            )
+        })?;
+        let provider = alloy_provider::ProviderBuilder::new().connect_http(url);
+        let base_group = BaseGroup::new(group, provider);
+        base_group.BASE_TREASURY().call().await.map_err(|e| {
+            TransferError::generic(
+                e.to_string(),
+                Some("GROUP_TOKEN_REDEEM_TREASURY_LOOKUP_FAILED"),
+                TransfersErrorSource::Transfers,
+            )
+        })
     }
 
     async fn is_trusted(&self, truster: Address, trustee: Address) -> Result<bool, TransferError> {
@@ -1075,24 +1266,60 @@ mod tests {
 
         let balances = vec![
             TokenBalanceResponse {
+                token_address: token_owner,
                 token_id: token_owner,
                 balance: Balance::Raw(U256::from(10u64)),
                 static_atto_circles: None,
                 static_circles: None,
+                token_type: None,
+                version: None,
+                atto_circles: None,
+                circles: None,
+                atto_crc: None,
+                crc: None,
+                is_erc20: false,
+                is_erc1155: true,
+                is_wrapped: false,
+                is_inflationary: false,
+                is_group: false,
                 token_owner,
             },
             TokenBalanceResponse {
+                token_address: dem_wrapper,
                 token_id: dem_wrapper,
                 balance: Balance::Raw(U256::from(20u64)),
                 static_atto_circles: Some(U256::from(20u64)),
                 static_circles: None,
+                token_type: None,
+                version: None,
+                atto_circles: None,
+                circles: None,
+                atto_crc: None,
+                crc: None,
+                is_erc20: true,
+                is_erc1155: false,
+                is_wrapped: true,
+                is_inflationary: false,
+                is_group: false,
                 token_owner,
             },
             TokenBalanceResponse {
+                token_address: inf_wrapper,
                 token_id: inf_wrapper,
                 balance: Balance::Raw(U256::from(30u64)),
                 static_atto_circles: Some(U256::from(40u64)),
                 static_circles: None,
+                token_type: None,
+                version: None,
+                atto_circles: None,
+                circles: None,
+                atto_crc: None,
+                crc: None,
+                is_erc20: true,
+                is_erc1155: false,
+                is_wrapped: true,
+                is_inflationary: true,
+                is_group: false,
                 token_owner,
             },
         ];

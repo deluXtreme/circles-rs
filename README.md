@@ -21,13 +21,13 @@ As of March 26, 2026, this workspace is closer to the TypeScript SDK, but it is 
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| `circles-rpc` | Good coverage | Core HTTP/query/event decoding is in place, including paged transaction history plus group-membership/group-query helpers used by the higher-level crates. |
+| `circles-rpc` | Good coverage | Core HTTP/query/event decoding is in place, including paged transaction history plus the flexible cursor/order pagination needed for group membership, group queries, and group-holder views. |
 | `circles-pathfinder` | Close | Recent parity work aligned flow-matrix terminal edges, wrapped-token rewriting, token-info helpers, netted-flow helpers, and explicit RPC/client entrypoints. |
-| `circles-transfers` | Close | Advanced transfer planning, aggregate transfers, and the TS-style `constructReplenish` flow are present; remaining work is mostly higher-level parity polish and broader behavioral coverage. |
-| `circles-sdk` | Partial, improving | Read flows and typed avatars are usable, replenish planning/execution rides the runner abstraction, and the convenience surface now covers aggregated trust helpers, direct-transfer planning/execution, transaction-history pagination, profile metadata / short-name writes, personal minting, max-replenish helpers, base-group read/write helpers, human group-membership detail helpers, and group-token mint/property helpers; fuller group-token parity and wallet-backend parity are still incomplete. |
+| `circles-transfers` | Close | Advanced transfer planning, aggregate transfers, the TS-style `constructReplenish` flow, and the automatic group-token redeem planner are present; remaining work is mostly higher-level parity polish and broader behavioral coverage. |
+| `circles-sdk` | Partial, improving | Read flows and typed avatars are usable, replenish planning/execution rides the runner abstraction, and the convenience surface now covers aggregated trust helpers, direct-transfer planning/execution, transaction-history pagination, profile metadata / short-name writes, personal minting, max-replenish helpers, base-group read/write helpers, human group-membership detail helpers, top-level group member/collateral/holder reads, and group-token mint/redeem/property helpers; wallet-backend parity and the richer invitation facade are still incomplete. |
 | `circles-profiles`, `circles-utils`, `circles-types`, `circles-abis` | Supporting / lower risk | These crates are in service for the current SDK flows and are not the main parity bottlenecks right now. |
 
-The biggest remaining parity work is no longer the replenish planner itself. The open gaps are the rest of the higher-level SDK facade and execution-backend parity, especially fuller group-token redeem/member convenience, the richer invitation surface, and wallet-specific flows outside the generic runner abstraction.
+The biggest remaining parity work is no longer the replenish planner or group convenience. The open gaps are the last higher-level SDK facade edges and execution-backend parity, especially the richer invitation / referral surface and wallet-specific flows outside the generic runner abstraction.
 
 ## Usage model
 

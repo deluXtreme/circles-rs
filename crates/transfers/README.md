@@ -8,6 +8,7 @@ Builder for Circles transfer transactions (port of TS `@aboutcircles/sdk-transfe
 - Self-transfer fast-path resolves wrapper type via LiftERC20; approval inclusion is configurable.
 - Includes an aggregate-capable entrypoint that mirrors the TS recipient self-transfer behavior when `to_tokens` selects exactly one token.
 - Includes the TS-style replenish planner: use existing unwrapped balance first, then local unwraps, then deficit pathfinding with temporary trust when needed.
+- Includes the TS-style automatic group-token redeem planner: inspect treasury collateral, filter by trusted ERC-1155 tokens, validate max redeemable flow, then build the redeem flow matrix.
 - Fixtures cover demurraged-only, mixed wrappers (with rewrap), and a no-leftover inflationary case (static balance forced to zero for now).
 
 ## Usage
