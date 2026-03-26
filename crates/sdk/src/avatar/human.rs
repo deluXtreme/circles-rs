@@ -14,9 +14,10 @@ use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, GroupMembershipRow,
-    GroupQueryParams, GroupRow, PathfindingResult, SortOrder, TokenBalanceResponse,
-    TransactionHistoryRow, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, AllInvitationsResponse, AvatarInfo, Balance,
+    GroupMembershipRow, GroupQueryParams, GroupRow, InvitationOriginResponse,
+    InvitationsFromResponse, InvitedAccountInfo, PathfindingResult, SortOrder,
+    TokenBalanceResponse, TransactionHistoryRow, TrustRelation,
 };
 use hex::encode as hex_encode;
 use rand::RngCore;
@@ -54,6 +55,10 @@ sol! {
         address referralsModule;
         bytes callData;
     }
+}
+
+fn invitation_fee_amount() -> U256 {
+    U256::from(96u128) * U256::from(10).pow(U256::from(18))
 }
 
 impl HumanAvatar {
@@ -566,10 +571,7 @@ impl HumanAvatar {
         self.common.send(vec![tx]).await
     }
 
-    /// Generate invitation secrets/signers and return prepared transactions (claim + batch transfer).
-    ///
-    /// Does not submit; pair with a runner to send. Each invite funds 96 CRC.
-    pub async fn generate_invites(
+    async fn generate_invites_inner(
         &self,
         number_of_invites: u64,
     ) -> Result<GeneratedInvites, SdkError> {
@@ -621,7 +623,7 @@ impl HumanAvatar {
         let encoded_payload = payload.abi_encode();
 
         // Amounts: 96 CRC each
-        let amount = U256::from(96u128) * U256::from(10).pow(U256::from(18));
+        let amount = invitation_fee_amount();
         let values = vec![amount; ids.len()];
 
         // Build txs: claimInvites + safeBatchTransferFrom to invitation module
@@ -667,7 +669,123 @@ impl HumanAvatar {
         })
     }
 
-    /// Invitation rows (RPC helper).
+    /// Plan batch referral generation via the invitation farm without submitting.
+    pub async fn plan_generate_referrals(
+        &self,
+        number_of_invites: u64,
+    ) -> Result<GeneratedInvites, SdkError> {
+        self.generate_invites_inner(number_of_invites).await
+    }
+
+    /// Backward-compatible alias for the older plan-only helper name.
+    pub async fn generate_invites(
+        &self,
+        number_of_invites: u64,
+    ) -> Result<GeneratedInvites, SdkError> {
+        self.plan_generate_referrals(number_of_invites).await
+    }
+
+    /// Execute batch referral generation using the configured runner.
+    pub async fn generate_referrals(
+        &self,
+        number_of_invites: u64,
+    ) -> Result<GeneratedInvites, SdkError> {
+        let generated = self.plan_generate_referrals(number_of_invites).await?;
+        self.submit_generated_referrals(generated).await
+    }
+
+    /// Invitation fee in atto-circles (96 CRC), matching the TS helper constant.
+    pub fn invitation_fee(&self) -> U256 {
+        invitation_fee_amount()
+    }
+
+    /// Invitation module address currently configured on the invitation farm.
+    pub async fn invitation_module(&self) -> Result<Address, SdkError> {
+        self.common
+            .core
+            .invitation_farm()
+            .invitationModule()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Remaining invitation quota available to this avatar on the invitation farm.
+    pub async fn invitation_quota(&self) -> Result<U256, SdkError> {
+        self.common
+            .core
+            .invitation_farm()
+            .inviterQuota(self.address)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Unified invitation-origin helper for this avatar.
+    pub async fn invitation_origin(&self) -> Result<Option<InvitationOriginResponse>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_invitation_origin(self.address)
+            .await?)
+    }
+
+    /// Direct inviter for this avatar when available.
+    pub async fn invited_by(&self) -> Result<Option<Address>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_invited_by(self.address)
+            .await?)
+    }
+
+    /// Combined invitation availability for this avatar across trust, escrow, and at-scale sources.
+    pub async fn available_invitations(
+        &self,
+        minimum_balance: Option<String>,
+    ) -> Result<AllInvitationsResponse, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_all_invitations(self.address, minimum_balance)
+            .await?)
+    }
+
+    /// Accounts invited by this avatar, filtered by accepted vs pending status.
+    pub async fn invitations_from(
+        &self,
+        accepted: bool,
+    ) -> Result<InvitationsFromResponse, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_invitations_from(self.address, accepted)
+            .await?)
+    }
+
+    /// Accepted invitees for this avatar.
+    pub async fn accepted_invitees(&self) -> Result<Vec<InvitedAccountInfo>, SdkError> {
+        Ok(self.invitations_from(true).await?.results)
+    }
+
+    /// Pending invitees for this avatar.
+    pub async fn pending_invitees(&self) -> Result<Vec<InvitedAccountInfo>, SdkError> {
+        Ok(self.invitations_from(false).await?.results)
+    }
+
+    async fn submit_generated_referrals(
+        &self,
+        mut generated: GeneratedInvites,
+    ) -> Result<GeneratedInvites, SdkError> {
+        generated.submitted = Some(self.common.send(generated.txs.clone()).await?);
+        Ok(generated)
+    }
+
+    /// Legacy invitation-balance rows (RPC helper).
     pub async fn invitations(
         &self,
     ) -> Result<Vec<circles_rpc::methods::invitation::InvitationRow>, SdkError> {
@@ -773,6 +891,7 @@ mod tests {
             circles_rpc_url: "https://rpc.example.com".into(),
             pathfinder_url: "https://pathfinder.example.com".into(),
             profile_service_url: "https://profiles.example.com".into(),
+            referrals_service_url: None,
             v1_hub_address: Address::repeat_byte(0x01),
             v2_hub_address: Address::repeat_byte(0x02),
             name_registry_address: Address::repeat_byte(0x03),
@@ -784,6 +903,7 @@ mod tests {
             invitation_escrow_address: Address::repeat_byte(0x09),
             invitation_farm_address: Address::repeat_byte(0x0a),
             referrals_module_address: Address::repeat_byte(0x0b),
+            invitation_module_address: Address::repeat_byte(0x0c),
         }
     }
 
@@ -863,6 +983,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn invitation_fee_matches_ts_constant() {
+        assert_eq!(
+            invitation_fee_amount(),
+            U256::from(96u128) * U256::from(10).pow(U256::from(18))
+        );
+    }
+
     #[tokio::test]
     async fn write_helpers_encode_expected_calls() {
         let (avatar, runner, config) = test_avatar();
@@ -907,5 +1035,39 @@ mod tests {
 
         assert_eq!(sent[3][0].to, config.v2_hub_address);
         assert_eq!(&sent[3][0].data[..4], &HubV2::stopCall {}.abi_encode()[..4]);
+    }
+
+    #[tokio::test]
+    async fn submit_generated_referrals_uses_runner_for_prepared_batch() {
+        let (avatar, runner, _config) = test_avatar();
+        let prepared = GeneratedInvites {
+            secrets: vec!["0x1234".into()],
+            signers: vec![Address::repeat_byte(0x55)],
+            txs: vec![
+                RunnerTx {
+                    to: Address::repeat_byte(0x11),
+                    data: Bytes::from(vec![0xaa]),
+                    value: None,
+                },
+                RunnerTx {
+                    to: Address::repeat_byte(0x22),
+                    data: Bytes::from(vec![0xbb]),
+                    value: None,
+                },
+            ],
+            submitted: None,
+        };
+
+        let result = avatar
+            .submit_generated_referrals(prepared)
+            .await
+            .expect("submit generated referrals");
+
+        assert_eq!(result.txs.len(), 2);
+        assert!(result.submitted.is_some());
+
+        let sent = runner.sent.lock().expect("lock");
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].len(), 2);
     }
 }

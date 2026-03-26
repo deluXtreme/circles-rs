@@ -49,6 +49,10 @@
 //!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
 //! - [`HumanAvatar::plan_group_token_redeem`] and
 //!   [`OrganisationAvatar::plan_group_token_redeem`] for automatic group-token redeem planning.
+//! - [`HumanAvatar::available_invitations`] and [`HumanAvatar::invitation_origin`] for the
+//!   current invitation/referral query surface.
+//! - [`HumanAvatar::plan_generate_referrals`] and [`HumanAvatar::generate_referrals`] for
+//!   invitation-farm batch referral planning/execution.
 //!
 //! ## Validation
 //!
