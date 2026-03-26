@@ -15,6 +15,7 @@ alloy-provider = { workspace = true }
 alloy-transport-http = { workspace = true }
 alloy-transport-ws = { workspace = true, optional = true }
 circles-types = { workspace = true }
+circles-utils = { workspace = true }
 futures = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }

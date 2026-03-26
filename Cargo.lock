@@ -1134,6 +1134,7 @@ dependencies = [
  "alloy-transport-http",
  "alloy-transport-ws",
  "circles-types",
+ "circles-utils",
  "futures",
  "reqwest",
  "serde",

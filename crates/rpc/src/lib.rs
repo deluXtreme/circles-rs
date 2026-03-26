@@ -20,7 +20,7 @@ pub use events::EventStream;
 pub use methods::{
     AvatarMethods, BalanceMethods, EventsMethods, GroupMethods, HealthMethods, InvitationMethods,
     NetworkMethods, PathfinderMethods, QueryMethods, SearchMethods, TablesMethods,
-    TokenInfoMethods, TokenMethods, TrustMethods,
+    TokenInfoMethods, TokenMethods, TransactionMethods, TrustMethods,
 };
 pub use paged_query::{Page, PagedQuery};
 pub use rpc::CirclesRpc;

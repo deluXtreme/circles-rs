@@ -199,7 +199,7 @@ pub use runner::{BatchRun, ContractRunner, RunnerConfig};
 mod rpc;
 pub use rpc::{
     Balance, CirclesQueryResponse, JsonRpcError, JsonRpcRequest, JsonRpcResponse, QueryResponse,
-    SafeQueryResponse, TokenBalanceResponse,
+    SafeQueryResponse, TokenBalanceResponse, TransactionHistoryRow,
 };
 
 mod query;

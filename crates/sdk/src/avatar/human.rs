@@ -8,14 +8,15 @@ use alloy_primitives::{Address, U256, aliases::U96};
 use alloy_sol_types::{SolCall, SolValue, sol};
 use circles_abis::{HubV2, InvitationFarm, ReferralsModule};
 use circles_profiles::Profiles;
-use circles_rpc::CirclesRpc;
 #[cfg(feature = "ws")]
 use circles_rpc::events::subscription::CirclesSubscription;
+use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, PathfindingResult,
-    TokenBalanceResponse, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, GroupMembershipRow,
+    GroupQueryParams, GroupRow, PathfindingResult, SortOrder, TokenBalanceResponse,
+    TransactionHistoryRow, TrustRelation,
 };
 use hex::encode as hex_encode;
 use rand::RngCore;
@@ -114,6 +115,15 @@ impl HumanAvatar {
     /// Fetch profile (cached by CID in memory).
     pub async fn profile(&self) -> Result<Option<Profile>, SdkError> {
         self.common.profile(self.info.cid_v0.as_deref()).await
+    }
+
+    /// Get transaction history for this avatar using cursor-based pagination.
+    pub fn transaction_history(
+        &self,
+        limit: u32,
+        sort_order: SortOrder,
+    ) -> PagedQuery<TransactionHistoryRow> {
+        self.common.transaction_history(limit, sort_order)
     }
 
     /// Update profile via profiles service and store CID through NameRegistry (requires runner).
@@ -446,6 +456,56 @@ impl HumanAvatar {
             .call()
             .await
             .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Get group memberships for this avatar using the shared paged-query helper.
+    pub fn group_memberships(
+        &self,
+        limit: u32,
+        sort_order: SortOrder,
+    ) -> PagedQuery<GroupMembershipRow> {
+        self.common
+            .rpc
+            .group()
+            .get_group_memberships(self.address, limit, sort_order)
+    }
+
+    /// Fetch all group memberships, then resolve full group rows for the referenced groups.
+    ///
+    /// This mirrors the TS helper shape: `limit` is used as the page size for the
+    /// membership query, not as a hard cap on the final enriched result count.
+    pub async fn group_membership_details(&self, limit: u32) -> Result<Vec<GroupRow>, SdkError> {
+        let mut query = self.group_memberships(limit, SortOrder::DESC);
+        let mut memberships = Vec::new();
+
+        while let Some(page) = query.next_page().await? {
+            memberships.extend(page.items);
+            if !page.has_more {
+                break;
+            }
+        }
+
+        if memberships.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let group_addresses = memberships
+            .into_iter()
+            .map(|membership| membership.group)
+            .collect::<Vec<_>>();
+
+        Ok(self
+            .common
+            .rpc
+            .group()
+            .find_groups(
+                group_addresses.len() as u32,
+                Some(GroupQueryParams {
+                    group_address_in: Some(group_addresses),
+                    ..Default::default()
+                }),
+            )
+            .await?)
     }
 
     /// Mint all currently claimable personal tokens (requires runner).

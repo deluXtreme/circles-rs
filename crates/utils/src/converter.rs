@@ -1,6 +1,6 @@
 use alloy_primitives::U256;
 use num_bigint::BigUint;
-use num_traits::Zero;
+use num_traits::{ToPrimitive, Zero};
 
 /// Demurrage/inflation conversion helpers ported from the TS CirclesConverter.
 /// We use 1e36-scaled factors (GAMMA_36/BETA_36) to avoid overflow and match
@@ -22,6 +22,10 @@ fn one_36() -> BigUint {
 
 const SECONDS_PER_DAY: u64 = 86_400;
 const INFLATION_DAY_ZERO_UNIX: u64 = 1_602_720_000; // 2020-10-15 00:00:00 UTC
+const V1_ACCURACY: u64 = 100_000_000; // 1e8
+const V1_INFLATION_PCT_NUM: u64 = 107;
+const V1_INFLATION_PCT_DEN: u64 = 100;
+const PERIOD_SEC: u64 = 31_556_952; // 365.25 days
 
 /// UNIX timestamp (seconds) → Circles day index (can be negative if before day zero).
 pub fn day_from_timestamp(unix_seconds: u64) -> i64 {
@@ -64,6 +68,15 @@ fn big_to_u256(val: BigUint) -> U256 {
     U256::from_limbs(limbs)
 }
 
+fn v1_inflate_factor(period_idx: u64) -> BigUint {
+    if period_idx == 0 {
+        return BigUint::from(V1_ACCURACY);
+    }
+    let num = BigUint::from(V1_INFLATION_PCT_NUM).pow(period_idx as u32);
+    let den = BigUint::from(V1_INFLATION_PCT_DEN).pow(period_idx as u32);
+    (BigUint::from(V1_ACCURACY) * num) / den
+}
+
 /// Demurraged atto-circles → static atto-circles for a given timestamp.
 ///
 /// If `now_unix_seconds` is `None`, uses the current time. Negative day indices
@@ -98,6 +111,39 @@ pub fn atto_static_circles_to_atto_circles(
     let infl = u256_to_big(static_circles);
     let dem = (infl * factor) / one_36();
     big_to_u256(dem)
+}
+
+/// Demurraged atto-circles → UI circles as `f64`.
+pub fn atto_circles_to_circles(atto: U256) -> f64 {
+    if atto.is_zero() {
+        return 0.0;
+    }
+
+    let big = u256_to_big(atto);
+    let scale = BigUint::from(1_000_000_000_000_000_000u64);
+    let whole = &big / &scale;
+    let frac = &big % &scale;
+
+    whole.to_f64().unwrap_or(f64::INFINITY) + frac.to_f64().unwrap_or(0.0) / 1e18
+}
+
+/// Demurraged atto-circles → inflationary CRC amount at the provided timestamp.
+pub fn atto_circles_to_atto_crc(demurraged: U256, block_timestamp_utc: u64) -> U256 {
+    let seconds_since_epoch = block_timestamp_utc.saturating_sub(INFLATION_DAY_ZERO_UNIX);
+    let period_idx = seconds_since_epoch / PERIOD_SEC;
+    let seconds_into_period = seconds_since_epoch % PERIOD_SEC;
+
+    let factor_cur = v1_inflate_factor(period_idx);
+    let factor_next = v1_inflate_factor(period_idx + 1);
+
+    let period = BigUint::from(PERIOD_SEC);
+    let seconds_into = BigUint::from(seconds_into_period);
+    let r_p = (&factor_cur * (BigUint::from(PERIOD_SEC) - &seconds_into))
+        + (&factor_next * &seconds_into);
+
+    let numerator =
+        u256_to_big(demurraged) * BigUint::from(3u64) * BigUint::from(V1_ACCURACY) * &period;
+    big_to_u256(numerator / r_p)
 }
 
 fn now_ts() -> u64 {
