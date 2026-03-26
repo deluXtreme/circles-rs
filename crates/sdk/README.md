@@ -8,6 +8,7 @@ The usage model is intentionally simple:
 - Use `get_avatar` when you want a typed wrapper (`HumanAvatar`, `OrganisationAvatar`, `BaseGroupAvatar`).
 - Provide a `ContractRunner` only when you need write paths such as registration, trust updates, or transfer submission.
 - Use the built-in `EoaContractRunner` or `SafeContractRunner` when you want an SDK-managed execution backend instead of implementing the trait yourself.
+- Use `SafeTransactionPreparer` when you need the canonical Safe payload/hash for an external or browser signer but cannot execute through a local private key.
 
 ## Capabilities
 
@@ -56,10 +57,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 All write-capable methods return `SdkError::MissingRunner` until a `ContractRunner` is provided. The SDK keeps read logic separate from transaction submission so Safe, EOAs, or other runner backends can be added without changing the public read API.
 
-The crate now ships two built-in runner implementations:
+The crate now ships two built-in runner implementations plus a Safe preparation helper:
 
 - `EoaContractRunner::connect(rpc_url, private_key)` for direct EOA execution.
 - `SafeContractRunner::connect(rpc_url, private_key, safe_address)` for existing single-owner (1/1) Safes backed by `safe-rs`.
+- `SafeTransactionPreparer::connect(rpc_url, safe_address)` for fetching the current Safe nonce/chain id and building the exact Safe tx hash plus `execTransaction` payload inputs before external signing/submission.
 - `ContractRunner` now also exposes buffered batch execution plus runner-level `estimate_gas`, `call`, and `resolve_name` hooks for the remaining non-browser parity surface.
 
 ## Examples
@@ -73,8 +75,10 @@ The crate now ships two built-in runner implementations:
 - Implement `ContractRunner` to enable write paths.
 - `EoaContractRunner` executes prepared txs sequentially from the signer account.
 - `SafeContractRunner` executes prepared tx batches atomically through an existing Safe and currently targets single-owner Safes.
+- `SafeTransactionPreparer` mirrors the TypeScript Safe batch `getSafeTransaction()` seam for browser/external signing, but it does not submit transactions by itself.
 - `BatchRun` is the buffered execution helper mirroring the TS batch-run concept.
 - `PreparedTransaction` is the SDK’s handoff format: target address, calldata, and optional value.
+- `PreparedSafeExecution` is the canonical Safe batch/single-call representation returned by `SafeTransactionPreparer` and `SafeContractRunner::prepare_transactions`.
 - `SubmittedTx` now carries the tx hash plus backend success/index metadata where available.
 - The current API remains generic, so other wallet backends can still be layered in later.
 
@@ -93,5 +97,5 @@ The crate now ships two built-in runner implementations:
 - `HumanAvatar` now also exposes `invitation_origin`, `invited_by`, `available_invitations`, `invitations_from`, `accepted_invitees`, `pending_invitees`, `invitation_fee`, `invitation_module`, `invitation_quota`, `proxy_inviters`, `find_invite_path`, `find_farm_invite_path`, `compute_referral_address`, `plan_invite`, `invite`, `plan_referral_code`, `get_referral_code`, `plan_generate_referrals`, `generate_referrals`, and `list_referrals`.
 - `Sdk::referrals()` returns the optional referrals backend client, which currently supports store/store-batch/retrieve/public-list flows plus authenticated `list_mine` when a bearer token is supplied explicitly.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
-- The main remaining facade gaps are the follow-up referrals service/auth polish plus broader wallet parity such as browser-backed Safe execution.
+- The main remaining facade gaps are the follow-up referrals service/auth polish plus actual browser-provider Safe execution on top of the new preparation foundation.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.
