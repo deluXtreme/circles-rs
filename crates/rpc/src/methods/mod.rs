@@ -14,6 +14,7 @@ pub mod search;
 pub mod tables;
 pub mod token;
 pub mod token_info;
+pub mod transaction;
 pub mod trust;
 
 pub use avatar::AvatarMethods;
@@ -29,4 +30,5 @@ pub use search::SearchMethods;
 pub use tables::TablesMethods;
 pub use token::TokenMethods;
 pub use token_info::TokenInfoMethods;
+pub use transaction::TransactionMethods;
 pub use trust::TrustMethods;

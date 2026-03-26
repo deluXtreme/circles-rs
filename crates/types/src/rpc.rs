@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Serialize};
 
 /// JSON-RPC request structure
@@ -139,4 +139,33 @@ pub struct TokenBalanceResponse {
     #[serde(default, rename = "staticCircles")]
     pub static_circles: Option<f64>,
     pub token_owner: Address,
+}
+
+/// Transaction history row matching the TS RPC helper shape.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionHistoryRow {
+    pub block_number: u64,
+    pub timestamp: u64,
+    pub transaction_index: u32,
+    pub log_index: u32,
+    pub transaction_hash: TxHash,
+    pub version: u32,
+    pub from: Address,
+    pub to: Address,
+    pub id: String,
+    pub token_address: Address,
+    pub value: String,
+    #[serde(default)]
+    pub circles: Option<f64>,
+    #[serde(default)]
+    pub atto_circles: Option<U256>,
+    #[serde(default)]
+    pub static_circles: Option<f64>,
+    #[serde(default)]
+    pub static_atto_circles: Option<U256>,
+    #[serde(default)]
+    pub crc: Option<f64>,
+    #[serde(default)]
+    pub atto_crc: Option<U256>,
 }

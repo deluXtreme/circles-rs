@@ -3,7 +3,7 @@ use crate::error::{CirclesRpcError, Result};
 use crate::methods::{
     AvatarMethods, BalanceMethods, EventsMethods, GroupMethods, HealthMethods, InvitationMethods,
     NetworkMethods, PathfinderMethods, QueryMethods, SearchMethods, TablesMethods,
-    TokenInfoMethods, TokenMethods, TrustMethods,
+    TokenInfoMethods, TokenMethods, TransactionMethods, TrustMethods,
 };
 use crate::paged_query::{PagedFetch, PagedQuery};
 use circles_types::PagedQueryParams;
@@ -97,6 +97,10 @@ impl CirclesRpc {
     /// RPC methods for path-finding in the trust graph.
     pub fn pathfinder(&self) -> PathfinderMethods {
         PathfinderMethods::new(self.client.clone())
+    }
+    /// RPC methods for transaction history queries.
+    pub fn transaction(&self) -> TransactionMethods {
+        TransactionMethods::new(self.client.clone())
     }
     /// RPC methods for group lookups.
     pub fn group(&self) -> GroupMethods {
