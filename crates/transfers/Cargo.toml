@@ -28,3 +28,6 @@ bytes = "1.6"
 [features]
 default = []
 ws = ["circles-rpc/ws"]
+
+[dev-dependencies]
+tokio = { workspace = true }
