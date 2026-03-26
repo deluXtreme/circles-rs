@@ -4,7 +4,7 @@ use crate::runner::{PreparedTransaction as RunnerTx, SubmittedTx as RunnerSubmit
 use crate::{
     ContractRunner, Core, PreparedTransaction, Profile, SdkError, SubmittedTx, call_to_tx,
 };
-use alloy_primitives::{Address, Bytes, U256, aliases::U96};
+use alloy_primitives::{Address, Bytes, U256, address, aliases::U96};
 use alloy_sol_types::{SolCall, SolValue, sol};
 use circles_abis::{HubV2, InvitationFarm, ReferralsModule};
 use circles_profiles::Profiles;
@@ -14,12 +14,15 @@ use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AdvancedTransferOptions, AggregatedTrustRelation, AvatarInfo, Balance, GroupMembershipRow,
-    GroupQueryParams, GroupRow, PathfindingResult, SortOrder, TokenBalanceResponse,
-    TransactionHistoryRow, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, AllInvitationsResponse, AvatarInfo, Balance,
+    GroupMembershipRow, GroupQueryParams, GroupRow, InvitationOriginResponse,
+    InvitationsFromResponse, InvitedAccountInfo, PathfindingResult, PathfindingTransferStep,
+    SimulatedTrust, SortOrder, TokenBalanceResponse, TransactionHistoryRow, TrustRelation,
 };
 use hex::encode as hex_encode;
 use rand::RngCore;
+use std::collections::{BTreeMap, HashMap};
+use std::str::FromStr;
 use std::sync::Arc;
 
 /// Top-level avatar enum variant: human.
@@ -49,11 +52,77 @@ pub struct GeneratedInvites {
     pub submitted: Option<Vec<RunnerSubmitted>>,
 }
 
+/// Proxy inviter candidate used by the TS invitation planner surface.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProxyInviter {
+    pub address: Address,
+    pub possible_invites: u64,
+}
+
 sol! {
     struct ReferralPayload {
         address referralsModule;
         bytes callData;
     }
+}
+
+fn invitation_fee_amount() -> U256 {
+    U256::from(96u128) * U256::from(10).pow(U256::from(18))
+}
+
+fn invitation_max_flow() -> U256 {
+    U256::from_str("9999999999999999999999999999999999999").expect("valid invitation max flow")
+}
+
+fn gnosis_group_address() -> Address {
+    address!("c19bc204eb1c1d5b3fe500e5e5dfabab625f286c")
+}
+
+fn order_proxy_inviters(mut inviters: Vec<ProxyInviter>, inviter: Address) -> Vec<ProxyInviter> {
+    inviters.sort_by(|a, b| {
+        let a_is_inviter = a.address == inviter;
+        let b_is_inviter = b.address == inviter;
+        b_is_inviter
+            .cmp(&a_is_inviter)
+            .then_with(|| format!("{:#x}", a.address).cmp(&format!("{:#x}", b.address)))
+    });
+    inviters
+}
+
+fn summarize_proxy_inviters(
+    terminal_transfers: &[PathfindingTransferStep],
+    owner_remap: &HashMap<Address, Address>,
+    inviter: Address,
+) -> Vec<ProxyInviter> {
+    let mut totals = BTreeMap::<Address, U256>::new();
+
+    for transfer in terminal_transfers {
+        let Ok(raw_owner) = Address::from_str(&transfer.token_owner) else {
+            continue;
+        };
+        let resolved_owner = owner_remap.get(&raw_owner).copied().unwrap_or(raw_owner);
+        totals
+            .entry(resolved_owner)
+            .and_modify(|total| *total += transfer.value)
+            .or_insert(transfer.value);
+    }
+
+    let fee = invitation_fee_amount();
+    let inviters = totals
+        .into_iter()
+        .filter_map(|(address, amount)| {
+            let possible = amount / fee;
+            if possible == U256::ZERO {
+                return None;
+            }
+            Some(ProxyInviter {
+                address,
+                possible_invites: u64::try_from(possible).unwrap_or(u64::MAX),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    order_proxy_inviters(inviters, inviter)
 }
 
 impl HumanAvatar {
@@ -566,10 +635,7 @@ impl HumanAvatar {
         self.common.send(vec![tx]).await
     }
 
-    /// Generate invitation secrets/signers and return prepared transactions (claim + batch transfer).
-    ///
-    /// Does not submit; pair with a runner to send. Each invite funds 96 CRC.
-    pub async fn generate_invites(
+    async fn generate_invites_inner(
         &self,
         number_of_invites: u64,
     ) -> Result<GeneratedInvites, SdkError> {
@@ -621,7 +687,7 @@ impl HumanAvatar {
         let encoded_payload = payload.abi_encode();
 
         // Amounts: 96 CRC each
-        let amount = U256::from(96u128) * U256::from(10).pow(U256::from(18));
+        let amount = invitation_fee_amount();
         let values = vec![amount; ids.len()];
 
         // Build txs: claimInvites + safeBatchTransferFrom to invitation module
@@ -667,7 +733,309 @@ impl HumanAvatar {
         })
     }
 
-    /// Invitation rows (RPC helper).
+    /// Plan batch referral generation via the invitation farm without submitting.
+    pub async fn plan_generate_referrals(
+        &self,
+        number_of_invites: u64,
+    ) -> Result<GeneratedInvites, SdkError> {
+        self.generate_invites_inner(number_of_invites).await
+    }
+
+    /// Backward-compatible alias for the older plan-only helper name.
+    pub async fn generate_invites(
+        &self,
+        number_of_invites: u64,
+    ) -> Result<GeneratedInvites, SdkError> {
+        self.plan_generate_referrals(number_of_invites).await
+    }
+
+    /// Execute batch referral generation using the configured runner.
+    pub async fn generate_referrals(
+        &self,
+        number_of_invites: u64,
+    ) -> Result<GeneratedInvites, SdkError> {
+        let generated = self.plan_generate_referrals(number_of_invites).await?;
+        self.submit_generated_referrals(generated).await
+    }
+
+    /// Invitation fee in atto-circles (96 CRC), matching the TS helper constant.
+    pub fn invitation_fee(&self) -> U256 {
+        invitation_fee_amount()
+    }
+
+    /// Invitation module address currently configured on the invitation farm.
+    pub async fn invitation_module(&self) -> Result<Address, SdkError> {
+        self.common
+            .core
+            .invitation_farm()
+            .invitationModule()
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Remaining invitation quota available to this avatar on the invitation farm.
+    pub async fn invitation_quota(&self) -> Result<U256, SdkError> {
+        self.common
+            .core
+            .invitation_farm()
+            .inviterQuota(self.address)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Compute the deterministic Safe address used by the referrals module for a signer.
+    pub async fn compute_referral_address(&self, signer: Address) -> Result<Address, SdkError> {
+        self.common
+            .core
+            .referrals_module()
+            .computeAddress(signer)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))
+    }
+
+    /// Unified invitation-origin helper for this avatar.
+    pub async fn invitation_origin(&self) -> Result<Option<InvitationOriginResponse>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_invitation_origin(self.address)
+            .await?)
+    }
+
+    /// Direct inviter for this avatar when available.
+    pub async fn invited_by(&self) -> Result<Option<Address>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_invited_by(self.address)
+            .await?)
+    }
+
+    /// Combined invitation availability for this avatar across trust, escrow, and at-scale sources.
+    pub async fn available_invitations(
+        &self,
+        minimum_balance: Option<String>,
+    ) -> Result<AllInvitationsResponse, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_all_invitations(self.address, minimum_balance)
+            .await?)
+    }
+
+    /// Proxy inviters that can route invitations to the invitation module.
+    pub async fn proxy_inviters(&self) -> Result<Vec<ProxyInviter>, SdkError> {
+        let invitation_module = self.common.core.config.invitation_module_address;
+
+        let gnosis_group_trusts = self
+            .common
+            .rpc
+            .trust()
+            .get_trusts(gnosis_group_address())
+            .await?;
+        let trusts_inviter_relations = self.common.rpc.trust().get_trusted_by(self.address).await?;
+        let mutual_trust_relations = self
+            .common
+            .rpc
+            .trust()
+            .get_mutual_trusts(self.address)
+            .await?;
+        let module_trusts_relations = self
+            .common
+            .rpc
+            .trust()
+            .get_trusts(invitation_module)
+            .await?;
+        let module_mutual_trust_relations = self
+            .common
+            .rpc
+            .trust()
+            .get_mutual_trusts(invitation_module)
+            .await?;
+
+        let set1 = gnosis_group_trusts
+            .into_iter()
+            .map(|relation| relation.object_avatar)
+            .collect::<std::collections::HashSet<_>>();
+        let set2 = trusts_inviter_relations
+            .into_iter()
+            .chain(mutual_trust_relations.into_iter())
+            .map(|relation| relation.object_avatar)
+            .collect::<std::collections::HashSet<_>>();
+        let set3 = module_trusts_relations
+            .into_iter()
+            .chain(module_mutual_trust_relations.into_iter())
+            .map(|relation| relation.object_avatar)
+            .collect::<std::collections::HashSet<_>>();
+
+        let mut tokens_to_use = set2
+            .into_iter()
+            .filter(|address| set3.contains(address) && !set1.contains(address))
+            .collect::<Vec<_>>();
+        tokens_to_use.push(self.address);
+
+        let path = self
+            .common
+            .find_path(
+                invitation_module,
+                invitation_max_flow(),
+                Some(AdvancedTransferOptions {
+                    use_wrapped_balances: Some(true),
+                    from_tokens: None,
+                    to_tokens: Some(tokens_to_use),
+                    exclude_from_tokens: None,
+                    exclude_to_tokens: None,
+                    simulated_balances: None,
+                    simulated_trusts: Some(vec![SimulatedTrust {
+                        truster: invitation_module,
+                        trustee: self.address,
+                    }]),
+                    max_transfers: None,
+                    tx_data: None,
+                }),
+            )
+            .await?;
+
+        if path.transfers.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let terminal_transfers = path
+            .transfers
+            .iter()
+            .filter(|transfer| transfer.to == invitation_module)
+            .cloned()
+            .collect::<Vec<_>>();
+        if terminal_transfers.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let raw_owners = terminal_transfers
+            .iter()
+            .filter_map(|transfer| Address::from_str(&transfer.token_owner).ok())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        let token_infos = self
+            .common
+            .rpc
+            .token_info()
+            .get_token_info_batch(raw_owners)
+            .await?;
+        let owner_remap = token_infos
+            .into_iter()
+            .map(|info| (info.token, info.token_owner))
+            .collect::<HashMap<_, _>>();
+
+        Ok(summarize_proxy_inviters(
+            &terminal_transfers,
+            &owner_remap,
+            self.address,
+        ))
+    }
+
+    /// Find an invitation path to the configured invitation module, optionally forcing a proxy inviter.
+    pub async fn find_invite_path(
+        &self,
+        proxy_inviter_address: Option<Address>,
+    ) -> Result<PathfindingResult, SdkError> {
+        let invitation_module = self.common.core.config.invitation_module_address;
+        let token_to_use = match proxy_inviter_address {
+            Some(address) => address,
+            None => self
+                .proxy_inviters()
+                .await?
+                .into_iter()
+                .next()
+                .map(|inviter| inviter.address)
+                .ok_or_else(|| {
+                    SdkError::OperationFailed(format!(
+                        "no proxy inviters available for {:#x}",
+                        self.address
+                    ))
+                })?,
+        };
+
+        let path = self
+            .common
+            .find_path(
+                invitation_module,
+                invitation_fee_amount(),
+                Some(AdvancedTransferOptions {
+                    use_wrapped_balances: Some(true),
+                    from_tokens: None,
+                    to_tokens: Some(vec![token_to_use]),
+                    exclude_from_tokens: None,
+                    exclude_to_tokens: None,
+                    simulated_balances: None,
+                    simulated_trusts: Some(vec![SimulatedTrust {
+                        truster: invitation_module,
+                        trustee: self.address,
+                    }]),
+                    max_transfers: None,
+                    tx_data: None,
+                }),
+            )
+            .await?;
+
+        if path.transfers.is_empty() {
+            return Err(SdkError::OperationFailed(format!(
+                "no invitation path found from {:#x} to {:#x}",
+                self.address, invitation_module
+            )));
+        }
+
+        if path.max_flow < invitation_fee_amount() {
+            return Err(SdkError::OperationFailed(format!(
+                "insufficient balance for invitation flow from {:#x}: requested {} wei, available {} wei",
+                self.address,
+                invitation_fee_amount(),
+                path.max_flow
+            )));
+        }
+
+        Ok(path)
+    }
+
+    /// Accounts invited by this avatar, filtered by accepted vs pending status.
+    pub async fn invitations_from(
+        &self,
+        accepted: bool,
+    ) -> Result<InvitationsFromResponse, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_invitations_from(self.address, accepted)
+            .await?)
+    }
+
+    /// Accepted invitees for this avatar.
+    pub async fn accepted_invitees(&self) -> Result<Vec<InvitedAccountInfo>, SdkError> {
+        Ok(self.invitations_from(true).await?.results)
+    }
+
+    /// Pending invitees for this avatar.
+    pub async fn pending_invitees(&self) -> Result<Vec<InvitedAccountInfo>, SdkError> {
+        Ok(self.invitations_from(false).await?.results)
+    }
+
+    async fn submit_generated_referrals(
+        &self,
+        mut generated: GeneratedInvites,
+    ) -> Result<GeneratedInvites, SdkError> {
+        generated.submitted = Some(self.common.send(generated.txs.clone()).await?);
+        Ok(generated)
+    }
+
+    /// Legacy invitation-balance rows (RPC helper).
     pub async fn invitations(
         &self,
     ) -> Result<Vec<circles_rpc::methods::invitation::InvitationRow>, SdkError> {
@@ -773,6 +1141,7 @@ mod tests {
             circles_rpc_url: "https://rpc.example.com".into(),
             pathfinder_url: "https://pathfinder.example.com".into(),
             profile_service_url: "https://profiles.example.com".into(),
+            referrals_service_url: None,
             v1_hub_address: Address::repeat_byte(0x01),
             v2_hub_address: Address::repeat_byte(0x02),
             name_registry_address: Address::repeat_byte(0x03),
@@ -784,6 +1153,7 @@ mod tests {
             invitation_escrow_address: Address::repeat_byte(0x09),
             invitation_farm_address: Address::repeat_byte(0x0a),
             referrals_module_address: Address::repeat_byte(0x0b),
+            invitation_module_address: Address::repeat_byte(0x0c),
         }
     }
 
@@ -863,6 +1233,64 @@ mod tests {
         );
     }
 
+    #[test]
+    fn invitation_fee_matches_ts_constant() {
+        assert_eq!(
+            invitation_fee_amount(),
+            U256::from(96u128) * U256::from(10).pow(U256::from(18))
+        );
+    }
+
+    #[test]
+    fn order_proxy_inviters_prioritizes_inviter() {
+        let inviter = Address::repeat_byte(0xaa);
+        let ordered = order_proxy_inviters(
+            vec![
+                ProxyInviter {
+                    address: Address::repeat_byte(0xbb),
+                    possible_invites: 1,
+                },
+                ProxyInviter {
+                    address: inviter,
+                    possible_invites: 2,
+                },
+            ],
+            inviter,
+        );
+
+        assert_eq!(ordered[0].address, inviter);
+    }
+
+    #[test]
+    fn summarize_proxy_inviters_rewrites_wrapped_owners() {
+        let inviter = Address::repeat_byte(0xaa);
+        let wrapper = Address::repeat_byte(0xbb);
+        let other = Address::repeat_byte(0xcc);
+        let terminal = vec![
+            PathfindingTransferStep {
+                from: Address::repeat_byte(0x01),
+                to: Address::repeat_byte(0x02),
+                token_owner: format!("{wrapper:#x}"),
+                value: invitation_fee_amount() * U256::from(2u64),
+            },
+            PathfindingTransferStep {
+                from: Address::repeat_byte(0x03),
+                to: Address::repeat_byte(0x02),
+                token_owner: format!("{other:#x}"),
+                value: invitation_fee_amount(),
+            },
+        ];
+        let owner_remap = HashMap::from([(wrapper, inviter)]);
+
+        let inviters = summarize_proxy_inviters(&terminal, &owner_remap, inviter);
+
+        assert_eq!(inviters.len(), 2);
+        assert_eq!(inviters[0].address, inviter);
+        assert_eq!(inviters[0].possible_invites, 2);
+        assert_eq!(inviters[1].address, other);
+        assert_eq!(inviters[1].possible_invites, 1);
+    }
+
     #[tokio::test]
     async fn write_helpers_encode_expected_calls() {
         let (avatar, runner, config) = test_avatar();
@@ -907,5 +1335,39 @@ mod tests {
 
         assert_eq!(sent[3][0].to, config.v2_hub_address);
         assert_eq!(&sent[3][0].data[..4], &HubV2::stopCall {}.abi_encode()[..4]);
+    }
+
+    #[tokio::test]
+    async fn submit_generated_referrals_uses_runner_for_prepared_batch() {
+        let (avatar, runner, _config) = test_avatar();
+        let prepared = GeneratedInvites {
+            secrets: vec!["0x1234".into()],
+            signers: vec![Address::repeat_byte(0x55)],
+            txs: vec![
+                RunnerTx {
+                    to: Address::repeat_byte(0x11),
+                    data: Bytes::from(vec![0xaa]),
+                    value: None,
+                },
+                RunnerTx {
+                    to: Address::repeat_byte(0x22),
+                    data: Bytes::from(vec![0xbb]),
+                    value: None,
+                },
+            ],
+            submitted: None,
+        };
+
+        let result = avatar
+            .submit_generated_referrals(prepared)
+            .await
+            .expect("submit generated referrals");
+
+        assert_eq!(result.txs.len(), 2);
+        assert!(result.submitted.is_some());
+
+        let sent = runner.sent.lock().expect("lock");
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].len(), 2);
     }
 }

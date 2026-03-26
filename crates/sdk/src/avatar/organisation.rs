@@ -508,6 +508,7 @@ mod tests {
             circles_rpc_url: "https://rpc.example.com".into(),
             pathfinder_url: "https://pathfinder.example.com".into(),
             profile_service_url: "https://profiles.example.com".into(),
+            referrals_service_url: None,
             v1_hub_address: Address::repeat_byte(0x01),
             v2_hub_address: Address::repeat_byte(0x02),
             name_registry_address: Address::repeat_byte(0x03),
@@ -519,6 +520,7 @@ mod tests {
             invitation_escrow_address: Address::repeat_byte(0x09),
             invitation_farm_address: Address::repeat_byte(0x0a),
             referrals_module_address: Address::repeat_byte(0x0b),
+            invitation_module_address: Address::repeat_byte(0x0c),
         }
     }
 

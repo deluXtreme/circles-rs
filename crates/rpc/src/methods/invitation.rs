@@ -1,6 +1,8 @@
 use crate::client::RpcClient;
 use crate::error::Result;
-use circles_types::{Address, Balance};
+use circles_types::{
+    Address, AllInvitationsResponse, Balance, InvitationOriginResponse, InvitationsFromResponse,
+};
 use futures::pin_mut;
 use futures::stream::{self, StreamExt};
 
@@ -27,6 +29,44 @@ pub struct InvitationRow {
 impl InvitationMethods {
     pub fn new(client: RpcClient) -> Self {
         Self { client }
+    }
+
+    /// `circles_getInvitationOrigin` — reconstruct how an avatar joined Circles.
+    pub async fn get_invitation_origin(
+        &self,
+        address: Address,
+    ) -> Result<Option<InvitationOriginResponse>> {
+        self.client
+            .call("circles_getInvitationOrigin", (address,))
+            .await
+    }
+
+    /// TS parity helper: return only the direct inviter address when present.
+    pub async fn get_invited_by(&self, address: Address) -> Result<Option<Address>> {
+        Ok(self
+            .get_invitation_origin(address)
+            .await?
+            .and_then(|origin| origin.inviter))
+    }
+
+    /// `circles_getAllInvitations` — return trust, escrow, and at-scale invitations.
+    pub async fn get_all_invitations(
+        &self,
+        address: Address,
+        minimum_balance: Option<String>,
+    ) -> Result<AllInvitationsResponse> {
+        match minimum_balance {
+            Some(minimum_balance) => {
+                self.client
+                    .call("circles_getAllInvitations", (address, minimum_balance))
+                    .await
+            }
+            None => {
+                self.client
+                    .call("circles_getAllInvitations", (address,))
+                    .await
+            }
+        }
     }
 
     /// circles_getInvitations — batches balance lookups concurrently per invitee.
@@ -62,5 +102,16 @@ impl InvitationMethods {
             rows.push(res?);
         }
         Ok(rows)
+    }
+
+    /// `circles_getInvitationsFrom` — accepted or pending invitees for an inviter.
+    pub async fn get_invitations_from(
+        &self,
+        address: Address,
+        accepted: bool,
+    ) -> Result<InvitationsFromResponse> {
+        self.client
+            .call("circles_getInvitationsFrom", (address, accepted))
+            .await
     }
 }

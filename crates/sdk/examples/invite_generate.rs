@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     if let circles_sdk::Avatar::Human(h) = avatar {
-        let generated = h.generate_invites(2).await?;
+        let generated = h.plan_generate_referrals(2).await?;
         println!("Secrets: {:?}", generated.secrets);
         println!("Signers: {:?}", generated.signers);
         for (i, tx) in generated.txs.iter().enumerate() {

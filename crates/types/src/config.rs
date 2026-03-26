@@ -10,6 +10,8 @@ pub struct CirclesConfig {
     pub pathfinder_url: String,
     /// Profile service URL for user profiles and metadata
     pub profile_service_url: String,
+    /// Optional referrals service URL for storing and retrieving referral metadata
+    pub referrals_service_url: Option<String>,
     /// Circles V1 Hub contract address
     pub v1_hub_address: Address,
     /// Circles V2 Hub contract address
@@ -32,4 +34,6 @@ pub struct CirclesConfig {
     pub invitation_farm_address: Address,
     /// Referrals Module contract address
     pub referrals_module_address: Address,
+    /// Invitation Module contract address
+    pub invitation_module_address: Address,
 }

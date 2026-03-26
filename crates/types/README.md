@@ -20,6 +20,7 @@ let config = CirclesConfig {
     circles_rpc_url: "https://rpc.aboutcircles.com/".into(),
     pathfinder_url: "https://pathfinder.aboutcircles.com/".into(),
     profile_service_url: "https://rpc.aboutcircles.com/profiles".into(),
+    referrals_service_url: Some("https://referrals.aboutcircles.com".into()),
     v1_hub_address: Address::ZERO,
     v2_hub_address: Address::ZERO,
     name_registry_address: Address::ZERO,
@@ -31,6 +32,7 @@ let config = CirclesConfig {
     invitation_escrow_address: Address::ZERO,
     invitation_farm_address: Address::ZERO,
     referrals_module_address: Address::ZERO,
+    invitation_module_address: Address::ZERO,
 };
 
 let params = FindPathParams {

@@ -18,6 +18,7 @@ fn demo_config(rpc_url: &str) -> CirclesConfig {
         circles_rpc_url: rpc_url.into(),
         pathfinder_url: "".into(),
         profile_service_url: "".into(),
+        referrals_service_url: None,
         v1_hub_address: Address::ZERO,
         v2_hub_address: address!("0x0000000000000000000000000000000000000001"),
         name_registry_address: Address::ZERO,
@@ -29,6 +30,7 @@ fn demo_config(rpc_url: &str) -> CirclesConfig {
         invitation_escrow_address: Address::ZERO,
         invitation_farm_address: Address::ZERO,
         referrals_module_address: Address::ZERO,
+        invitation_module_address: Address::ZERO,
     }
 }
 
