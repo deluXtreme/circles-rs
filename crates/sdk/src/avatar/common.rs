@@ -1,7 +1,9 @@
 #[cfg(feature = "ws")]
 use crate::ws;
-use crate::{ContractRunner, Core, PreparedTransaction, Profile, SdkError};
-use alloy_primitives::{Address, U256};
+use crate::{ContractRunner, Core, PreparedTransaction, Profile, SdkError, call_to_tx};
+use alloy_primitives::{Address, Bytes, U256};
+use alloy_sol_types::sol;
+use circles_abis::HubV2;
 use circles_profiles::Profiles;
 #[cfg(feature = "ws")]
 use circles_rpc::events::subscription::CirclesSubscription;
@@ -16,6 +18,55 @@ use circles_types::{CirclesEvent, Filter};
 #[cfg(feature = "ws")]
 use serde_json::json;
 use std::sync::Arc;
+
+sol! {
+    interface IERC20Like {
+        function transfer(address to, uint256 value) external returns (bool);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DirectTransferKind {
+    Erc1155,
+    Erc20,
+}
+
+fn classify_direct_transfer_kind(token_type: &str) -> Option<DirectTransferKind> {
+    match token_type {
+        "CrcV2_RegisterHuman" | "CrcV2_RegisterGroup" => Some(DirectTransferKind::Erc1155),
+        "CrcV2_ERC20WrapperDeployed_Demurraged" | "CrcV2_ERC20WrapperDeployed_Inflationary" => {
+            Some(DirectTransferKind::Erc20)
+        }
+        _ => None,
+    }
+}
+
+fn build_direct_erc1155_transfer_tx(
+    hub: Address,
+    from: Address,
+    to: Address,
+    token_id: U256,
+    amount: U256,
+    data: Bytes,
+) -> PreparedTransaction {
+    let call = HubV2::safeTransferFromCall {
+        _from: from,
+        _to: to,
+        _id: token_id,
+        _value: amount,
+        _data: data,
+    };
+    call_to_tx(hub, call, None)
+}
+
+fn build_direct_erc20_transfer_tx(
+    token: Address,
+    to: Address,
+    amount: U256,
+) -> PreparedTransaction {
+    let call = IERC20Like::transferCall { to, value: amount };
+    call_to_tx(token, call, None)
+}
 
 /// Shared avatar context and read helpers.
 ///
@@ -202,6 +253,71 @@ impl CommonAvatar {
         self.send(txs).await
     }
 
+    /// Plan a direct transfer without pathfinding.
+    ///
+    /// Mirrors the TS direct-transfer helper:
+    /// - human/group tokens use `HubV2.safeTransferFrom`
+    /// - wrapped ERC20 tokens use `transfer(address,uint256)`
+    pub async fn plan_direct_transfer(
+        &self,
+        to: Address,
+        amount: U256,
+        token_address: Option<Address>,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        if amount.is_zero() {
+            return Err(SdkError::OperationFailed(
+                "direct transfer amount must be positive".to_string(),
+            ));
+        }
+
+        let token = token_address.unwrap_or(self.address);
+        let token_info = self.rpc.token_info().get_token_info(token).await?;
+
+        let tx = match classify_direct_transfer_kind(&token_info.token_type) {
+            Some(DirectTransferKind::Erc1155) => {
+                let token_id = self
+                    .core
+                    .hub_v2()
+                    .toTokenId(token)
+                    .call()
+                    .await
+                    .map_err(|e| SdkError::Contract(e.to_string()))?;
+                build_direct_erc1155_transfer_tx(
+                    self.core.config.v2_hub_address,
+                    self.address,
+                    to,
+                    token_id,
+                    amount,
+                    tx_data.unwrap_or_default(),
+                )
+            }
+            Some(DirectTransferKind::Erc20) => build_direct_erc20_transfer_tx(token, to, amount),
+            None => {
+                return Err(SdkError::OperationFailed(format!(
+                    "direct transfer is not supported for token type {}",
+                    token_info.token_type
+                )));
+            }
+        };
+
+        Ok(vec![tx])
+    }
+
+    /// Execute a direct transfer using the runner (if present).
+    pub async fn direct_transfer(
+        &self,
+        to: Address,
+        amount: U256,
+        token_address: Option<Address>,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self
+            .plan_direct_transfer(to, amount, token_address, tx_data)
+            .await?;
+        self.send(txs).await
+    }
+
     /// Plan a replenish flow for `token_id`, optionally delivering the final
     /// balance to `receiver` instead of keeping it on this avatar.
     pub async fn plan_replenish(
@@ -308,5 +424,79 @@ impl CommonAvatar {
             Some(self.address),
         )
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::address;
+    use alloy_sol_types::SolCall;
+
+    #[test]
+    fn direct_transfer_classifies_ts_token_types() {
+        assert_eq!(
+            classify_direct_transfer_kind("CrcV2_RegisterHuman"),
+            Some(DirectTransferKind::Erc1155)
+        );
+        assert_eq!(
+            classify_direct_transfer_kind("CrcV2_RegisterGroup"),
+            Some(DirectTransferKind::Erc1155)
+        );
+        assert_eq!(
+            classify_direct_transfer_kind("CrcV2_ERC20WrapperDeployed_Demurraged"),
+            Some(DirectTransferKind::Erc20)
+        );
+        assert_eq!(
+            classify_direct_transfer_kind("CrcV2_ERC20WrapperDeployed_Inflationary"),
+            Some(DirectTransferKind::Erc20)
+        );
+        assert_eq!(
+            classify_direct_transfer_kind("CrcV2_RegisterOrganization"),
+            None
+        );
+    }
+
+    #[test]
+    fn erc1155_direct_transfer_tx_matches_hub_call() {
+        let data = Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]);
+        let tx = build_direct_erc1155_transfer_tx(
+            address!("1000000000000000000000000000000000000000"),
+            address!("2000000000000000000000000000000000000000"),
+            address!("3000000000000000000000000000000000000000"),
+            U256::from(7u64),
+            U256::from(9u64),
+            data.clone(),
+        );
+
+        let expected = HubV2::safeTransferFromCall {
+            _from: address!("2000000000000000000000000000000000000000"),
+            _to: address!("3000000000000000000000000000000000000000"),
+            _id: U256::from(7u64),
+            _value: U256::from(9u64),
+            _data: data,
+        };
+
+        assert_eq!(tx.to, address!("1000000000000000000000000000000000000000"));
+        assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
+        assert_eq!(tx.value, None);
+    }
+
+    #[test]
+    fn erc20_direct_transfer_tx_matches_transfer_call() {
+        let tx = build_direct_erc20_transfer_tx(
+            address!("4000000000000000000000000000000000000000"),
+            address!("5000000000000000000000000000000000000000"),
+            U256::from(42u64),
+        );
+
+        let expected = IERC20Like::transferCall {
+            to: address!("5000000000000000000000000000000000000000"),
+            value: U256::from(42u64),
+        };
+
+        assert_eq!(tx.to, address!("4000000000000000000000000000000000000000"));
+        assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
+        assert_eq!(tx.value, None);
     }
 }
