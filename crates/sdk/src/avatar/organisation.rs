@@ -3,7 +3,7 @@ use crate::cid_v0_to_digest::cid_v0_to_digest;
 use crate::{
     ContractRunner, Core, PreparedTransaction, Profile, SdkError, SubmittedTx, call_to_tx,
 };
-use alloy_primitives::{Address, U256, aliases::U96};
+use alloy_primitives::{Address, Bytes, U256, aliases::U96};
 use circles_abis::HubV2;
 use circles_profiles::Profiles;
 #[cfg(feature = "ws")]
@@ -176,6 +176,32 @@ impl OrganisationAvatar {
         options: Option<AdvancedTransferOptions>,
     ) -> Result<Vec<SubmittedTx>, SdkError> {
         self.common.transfer(to, amount, options).await
+    }
+
+    /// Plan a direct transfer without pathfinding.
+    pub async fn plan_direct_transfer(
+        &self,
+        to: Address,
+        amount: U256,
+        token_address: Option<Address>,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common
+            .plan_direct_transfer(to, amount, token_address, tx_data)
+            .await
+    }
+
+    /// Execute a direct transfer using the runner (requires runner).
+    pub async fn direct_transfer(
+        &self,
+        to: Address,
+        amount: U256,
+        token_address: Option<Address>,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .direct_transfer(to, amount, token_address, tx_data)
+            .await
     }
 
     /// Plan a replenish flow without submitting.
