@@ -351,6 +351,36 @@ impl CommonAvatar {
         self.send(txs).await
     }
 
+    /// Plan a TS-style automatic group-token redeem flow for `group`.
+    pub async fn plan_group_token_redeem(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        let builder = TransferBuilder::new(self.core.config.clone())?;
+        let txs = builder
+            .construct_group_token_redeem(self.address, group, amount)
+            .await?;
+        Ok(txs
+            .into_iter()
+            .map(|tx| PreparedTransaction {
+                to: tx.to,
+                data: tx.data,
+                value: Some(tx.value),
+            })
+            .collect())
+    }
+
+    /// Execute a group-token redeem flow using the runner (if present).
+    pub async fn group_token_redeem(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self.plan_group_token_redeem(group, amount).await?;
+        self.send(txs).await
+    }
+
     /// Find a path between this avatar and `to` with a target flow (defaults use_wrapped_balances=true).
     pub async fn find_path(
         &self,

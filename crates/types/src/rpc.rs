@@ -1,5 +1,5 @@
 use alloy_primitives::{Address, TxHash, U256};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// JSON-RPC request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,8 +128,10 @@ pub enum Balance {
 }
 
 /// Token balance response from circles_getTokenBalances
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TokenBalanceResponse {
+    #[serde(rename = "tokenAddress")]
+    pub token_address: Address,
     #[serde(rename = "tokenId")]
     pub token_id: Address,
     pub balance: Balance,
@@ -138,7 +140,106 @@ pub struct TokenBalanceResponse {
     pub static_atto_circles: Option<U256>,
     #[serde(default, rename = "staticCircles")]
     pub static_circles: Option<f64>,
+    #[serde(default, rename = "tokenType", skip_serializing_if = "Option::is_none")]
+    pub token_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
+    #[serde(
+        default,
+        rename = "attoCircles",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub atto_circles: Option<U256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub circles: Option<f64>,
+    #[serde(default, rename = "attoCrc", skip_serializing_if = "Option::is_none")]
+    pub atto_crc: Option<U256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crc: Option<f64>,
+    #[serde(default, rename = "isErc20")]
+    pub is_erc20: bool,
+    #[serde(default, rename = "isErc1155")]
+    pub is_erc1155: bool,
+    #[serde(default, rename = "isWrapped")]
+    pub is_wrapped: bool,
+    #[serde(default, rename = "isInflationary")]
+    pub is_inflationary: bool,
+    #[serde(default, rename = "isGroup")]
+    pub is_group: bool,
+    #[serde(rename = "tokenOwner")]
     pub token_owner: Address,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct TokenBalanceResponseWire {
+    #[serde(default, rename = "tokenAddress", alias = "token_address")]
+    token_address: Option<Address>,
+    #[serde(rename = "tokenId", alias = "token_id")]
+    token_id: Address,
+    #[serde(default)]
+    balance: Option<Balance>,
+    #[serde(default, rename = "staticAttoCircles")]
+    static_atto_circles: Option<U256>,
+    #[serde(default, rename = "staticCircles")]
+    static_circles: Option<f64>,
+    #[serde(default, rename = "tokenType", alias = "token_type")]
+    token_type: Option<String>,
+    #[serde(default)]
+    version: Option<u32>,
+    #[serde(default, rename = "attoCircles")]
+    atto_circles: Option<U256>,
+    #[serde(default)]
+    circles: Option<f64>,
+    #[serde(default, rename = "attoCrc")]
+    atto_crc: Option<U256>,
+    #[serde(default)]
+    crc: Option<f64>,
+    #[serde(default, rename = "isErc20", alias = "is_erc20")]
+    is_erc20: bool,
+    #[serde(default, rename = "isErc1155", alias = "is_erc1155")]
+    is_erc1155: bool,
+    #[serde(default, rename = "isWrapped", alias = "is_wrapped")]
+    is_wrapped: bool,
+    #[serde(default, rename = "isInflationary", alias = "is_inflationary")]
+    is_inflationary: bool,
+    #[serde(default, rename = "isGroup", alias = "is_group")]
+    is_group: bool,
+    #[serde(rename = "tokenOwner", alias = "token_owner")]
+    token_owner: Address,
+}
+
+impl<'de> Deserialize<'de> for TokenBalanceResponse {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = TokenBalanceResponseWire::deserialize(deserializer)?;
+        let balance = wire
+            .balance
+            .or_else(|| wire.atto_circles.map(Balance::Raw))
+            .or_else(|| wire.circles.map(Balance::TimeCircles))
+            .ok_or_else(|| serde::de::Error::missing_field("balance / attoCircles / circles"))?;
+
+        Ok(Self {
+            token_address: wire.token_address.unwrap_or(wire.token_id),
+            token_id: wire.token_id,
+            balance,
+            static_atto_circles: wire.static_atto_circles,
+            static_circles: wire.static_circles,
+            token_type: wire.token_type,
+            version: wire.version,
+            atto_circles: wire.atto_circles,
+            circles: wire.circles,
+            atto_crc: wire.atto_crc,
+            crc: wire.crc,
+            is_erc20: wire.is_erc20,
+            is_erc1155: wire.is_erc1155,
+            is_wrapped: wire.is_wrapped,
+            is_inflationary: wire.is_inflationary,
+            is_group: wire.is_group,
+            token_owner: wire.token_owner,
+        })
+    }
 }
 
 /// Transaction history row matching the TS RPC helper shape.

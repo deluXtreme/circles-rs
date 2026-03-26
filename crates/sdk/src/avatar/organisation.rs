@@ -317,6 +317,24 @@ impl OrganisationAvatar {
         self.common.send(txs).await
     }
 
+    /// Plan a group-token redeem flow back into trusted treasury collateral.
+    pub async fn plan_group_token_redeem(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common.plan_group_token_redeem(group, amount).await
+    }
+
+    /// Execute a group-token redeem flow back into trusted treasury collateral.
+    pub async fn redeem_group_token(
+        &self,
+        group: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.group_token_redeem(group, amount).await
+    }
+
     /// Compute the maximum amount mintable for a group from this avatar.
     pub async fn max_group_token_mintable(&self, group: Address) -> Result<U256, SdkError> {
         let mint_handler = self
