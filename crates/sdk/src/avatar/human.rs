@@ -55,6 +55,17 @@ pub struct GeneratedInvites {
     pub submitted: Option<Vec<RunnerSubmitted>>,
 }
 
+/// Single referral-code planning result for the TS `getReferralCode` flow.
+#[derive(Debug, Clone)]
+pub struct ReferralCodePlan {
+    /// Generated referral private key to share with the invitee.
+    pub private_key: String,
+    /// Signer address derived from the generated private key.
+    pub signer: Address,
+    /// Prepared transactions required to activate the referral on-chain.
+    pub txs: Vec<PreparedTransaction>,
+}
+
 /// Proxy inviter candidate used by the TS invitation planner surface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProxyInviter {
@@ -149,19 +160,28 @@ fn build_claim_invite_tx(invitation_farm: Address) -> PreparedTransaction {
     call_to_tx(invitation_farm, call, None)
 }
 
-fn build_direct_invite_transfer_tx(
+fn encode_referral_invite_data(signer: Address, referrals_module: Address) -> Bytes {
+    let create_account = ReferralsModule::createAccountCall { signer };
+    let payload = ReferralPayload {
+        referralsModule: referrals_module,
+        callData: create_account.abi_encode().into(),
+    };
+    Bytes::from(payload.abi_encode())
+}
+
+fn build_invitation_transfer_tx(
     hub: Address,
     from: Address,
     invitation_module: Address,
     claimed_id: U256,
-    invitee: Address,
+    tx_data: Bytes,
 ) -> PreparedTransaction {
     let call = HubV2::safeTransferFromCall {
         _from: from,
         _to: invitation_module,
         _id: claimed_id,
         _value: invitation_fee_amount(),
-        _data: encode_direct_invite_data(invitee),
+        _data: tx_data,
     };
     call_to_tx(hub, call, None)
 }
@@ -239,6 +259,87 @@ impl HumanAvatar {
             module_enabled,
             inviter_trusted,
         ))
+    }
+
+    async fn plan_invitation_delivery(
+        &self,
+        tx_data: Bytes,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        let invitation_module = self.common.core.config.invitation_module_address;
+        let mut transactions = self.ensure_inviter_setup().await?;
+        let transfer_builder = TransferBuilder::new(self.common.core.config.clone())?;
+        let proxy_inviters = self.proxy_inviters().await?;
+
+        if let Some(proxy_inviter) = proxy_inviters.first() {
+            let transfer_txs = transfer_builder
+                .construct_advanced_transfer_with_aggregate(
+                    self.address,
+                    invitation_module,
+                    invitation_fee_amount(),
+                    Some(AdvancedTransferOptions {
+                        use_wrapped_balances: Some(true),
+                        from_tokens: None,
+                        to_tokens: Some(vec![proxy_inviter.address]),
+                        exclude_from_tokens: None,
+                        exclude_to_tokens: None,
+                        simulated_balances: None,
+                        simulated_trusts: Some(vec![SimulatedTrust {
+                            truster: invitation_module,
+                            trustee: self.address,
+                        }]),
+                        max_transfers: None,
+                        tx_data: Some(tx_data.clone()),
+                    }),
+                    true,
+                )
+                .await?;
+            transactions.extend(transfer_txs_to_prepared(transfer_txs));
+            return Ok(transactions);
+        }
+
+        let farm_txs = transfer_builder
+            .construct_advanced_transfer_with_aggregate(
+                self.address,
+                farm_destination_address(),
+                invitation_fee_amount(),
+                Some(AdvancedTransferOptions {
+                    use_wrapped_balances: Some(true),
+                    from_tokens: None,
+                    to_tokens: Some(vec![gnosis_group_address()]),
+                    exclude_from_tokens: None,
+                    exclude_to_tokens: None,
+                    simulated_balances: None,
+                    simulated_trusts: None,
+                    max_transfers: None,
+                    tx_data: None,
+                }),
+                true,
+            )
+            .await?;
+        transactions.extend(transfer_txs_to_prepared(farm_txs));
+
+        let claimed_id = self
+            .core
+            .invitation_farm()
+            .claimInvite()
+            .from(farm_quota_holder())
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?;
+        let live_invitation_module = self.invitation_module().await?;
+
+        transactions.push(build_claim_invite_tx(
+            self.common.core.config.invitation_farm_address,
+        ));
+        transactions.push(build_invitation_transfer_tx(
+            self.common.core.config.v2_hub_address,
+            self.address,
+            live_invitation_module,
+            claimed_id,
+            tx_data,
+        ));
+
+        Ok(transactions)
     }
 
     /// Get detailed token balances (v1/v2 selectable).
@@ -1176,87 +1277,37 @@ impl HumanAvatar {
             )));
         }
 
-        let invitation_module = self.common.core.config.invitation_module_address;
-        let mut transactions = self.ensure_inviter_setup().await?;
-        let transfer_builder = TransferBuilder::new(self.common.core.config.clone())?;
-        let proxy_inviters = self.proxy_inviters().await?;
-
-        if let Some(proxy_inviter) = proxy_inviters.first() {
-            let transfer_txs = transfer_builder
-                .construct_advanced_transfer_with_aggregate(
-                    self.address,
-                    invitation_module,
-                    invitation_fee_amount(),
-                    Some(AdvancedTransferOptions {
-                        use_wrapped_balances: Some(true),
-                        from_tokens: None,
-                        to_tokens: Some(vec![proxy_inviter.address]),
-                        exclude_from_tokens: None,
-                        exclude_to_tokens: None,
-                        simulated_balances: None,
-                        simulated_trusts: Some(vec![SimulatedTrust {
-                            truster: invitation_module,
-                            trustee: self.address,
-                        }]),
-                        max_transfers: None,
-                        tx_data: Some(encode_direct_invite_data(invitee)),
-                    }),
-                    true,
-                )
-                .await?;
-            transactions.extend(transfer_txs_to_prepared(transfer_txs));
-            return Ok(transactions);
-        }
-
-        let farm_txs = transfer_builder
-            .construct_advanced_transfer_with_aggregate(
-                self.address,
-                farm_destination_address(),
-                invitation_fee_amount(),
-                Some(AdvancedTransferOptions {
-                    use_wrapped_balances: Some(true),
-                    from_tokens: None,
-                    to_tokens: Some(vec![gnosis_group_address()]),
-                    exclude_from_tokens: None,
-                    exclude_to_tokens: None,
-                    simulated_balances: None,
-                    simulated_trusts: None,
-                    max_transfers: None,
-                    tx_data: None,
-                }),
-                true,
-            )
-            .await?;
-        transactions.extend(transfer_txs_to_prepared(farm_txs));
-
-        let claimed_id = self
-            .core
-            .invitation_farm()
-            .claimInvite()
-            .from(farm_quota_holder())
-            .call()
+        self.plan_invitation_delivery(encode_direct_invite_data(invitee))
             .await
-            .map_err(|e| SdkError::Contract(e.to_string()))?;
-        let live_invitation_module = self.invitation_module().await?;
-
-        transactions.push(build_claim_invite_tx(
-            self.common.core.config.invitation_farm_address,
-        ));
-        transactions.push(build_direct_invite_transfer_tx(
-            self.common.core.config.v2_hub_address,
-            self.address,
-            live_invitation_module,
-            claimed_id,
-            invitee,
-        ));
-
-        Ok(transactions)
     }
 
     /// Execute a direct invite flow using the configured runner.
     pub async fn invite(&self, invitee: Address) -> Result<Vec<SubmittedTx>, SdkError> {
         let txs = self.plan_invite(invitee).await?;
         self.common.send(txs).await
+    }
+
+    /// Plan the TS-style single-referral flow and return the generated private key.
+    pub async fn plan_referral_code(&self) -> Result<ReferralCodePlan, SdkError> {
+        let private_key = generate_private_key();
+        let signer = private_key_to_address(&private_key)?;
+        let txs = self
+            .plan_invitation_delivery(encode_referral_invite_data(
+                signer,
+                self.common.core.config.referrals_module_address,
+            ))
+            .await?;
+
+        Ok(ReferralCodePlan {
+            private_key,
+            signer,
+            txs,
+        })
+    }
+
+    /// Backward-compatible TS-style name for the single-referral planner.
+    pub async fn get_referral_code(&self) -> Result<ReferralCodePlan, SdkError> {
+        self.plan_referral_code().await
     }
 
     /// Accounts invited by this avatar, filtered by accepted vs pending status.
@@ -1662,12 +1713,12 @@ mod tests {
 
     #[test]
     fn direct_invite_transfer_tx_matches_hub_call() {
-        let tx = build_direct_invite_transfer_tx(
+        let tx = build_invitation_transfer_tx(
             address!("8000000000000000000000000000000000000008"),
             address!("9000000000000000000000000000000000000009"),
             address!("a00000000000000000000000000000000000000a"),
             U256::from(123u64),
-            address!("b00000000000000000000000000000000000000b"),
+            encode_direct_invite_data(address!("b00000000000000000000000000000000000000b")),
         );
 
         let expected = HubV2::safeTransferFromCall {
@@ -1681,6 +1732,21 @@ mod tests {
         assert_eq!(tx.to, address!("8000000000000000000000000000000000000008"));
         assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
         assert_eq!(tx.value, None);
+    }
+
+    #[test]
+    fn referral_invite_data_encodes_create_account_payload() {
+        let signer = address!("c00000000000000000000000000000000000000c");
+        let referrals_module = address!("d00000000000000000000000000000000000000d");
+        let data = encode_referral_invite_data(signer, referrals_module);
+
+        let expected_create_account = ReferralsModule::createAccountCall { signer };
+        let expected_payload = ReferralPayload {
+            referralsModule: referrals_module,
+            callData: expected_create_account.abi_encode().into(),
+        };
+
+        assert_eq!(data, Bytes::from(expected_payload.abi_encode()));
     }
 
     #[tokio::test]
