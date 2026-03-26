@@ -11,7 +11,8 @@ The usage model is intentionally simple:
 ## Capabilities
 
 - Typed avatar helpers for balances, aggregated trust, profiles, direct-transfer planning/execution, pathfinding, replenish planning, group-token redeem planning/execution, registration flows, and invitation/referral discovery.
-- Invitation and referral helpers for human avatars, including invitation-origin lookups, inbound/outbound invitation queries, invitation fee/module/quota helpers, proxy-inviter discovery, invite-path and farm-path lookup, deterministic referral-address computation, direct-invite planning/execution, and batch referral generation planning/execution.
+- Invitation and referral helpers for human avatars, including invitation-origin lookups, inbound/outbound invitation queries, invitation fee/module/quota helpers, proxy-inviter discovery, invite-path and farm-path lookup, deterministic referral-address computation, direct-invite planning/execution, batch referral generation planning/execution, and public referral listing via the optional referrals backend.
+- Optional referrals backend client surfaced through `Sdk::referrals()` for store/store-batch/retrieve/list flows when `referrals_service_url` is configured.
 - Profile metadata / short-name write helpers plus personal minting for human avatars.
 - Transaction-history pagination for all typed avatars plus human group-membership/detail helpers.
 - Base-group trust/property helpers (`owner`, `mint_handler`, `service`, `fee_collection`, `membership_conditions`, `trust_add_batch_with_conditions`, `set_owner`, `set_service`, `set_fee_collection`, `set_membership_condition`).
@@ -78,7 +79,8 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 - WS helpers tolerate heartbeats and batched frames; unknown event types still surface as regular events from `circles-rpc`.
 - Transfer/pathfinding helpers default to wrapped balances; tune `AdvancedTransferOptions` when you need exclusions or simulated balances/trust edges.
 - Avatar wrappers expose `total_balance`, aggregated trust helpers, `plan_direct_transfer` / `direct_transfer`, and `plan_replenish` / `replenish`; human and organisation avatars also expose `max_replenishable` plus `plan_replenish_max` / `replenish_max`.
-- `HumanAvatar` now also exposes `invitation_origin`, `invited_by`, `available_invitations`, `invitations_from`, `accepted_invitees`, `pending_invitees`, `invitation_fee`, `invitation_module`, `invitation_quota`, `proxy_inviters`, `find_invite_path`, `find_farm_invite_path`, `compute_referral_address`, `plan_invite`, `invite`, `plan_generate_referrals`, and `generate_referrals`.
+- `HumanAvatar` now also exposes `invitation_origin`, `invited_by`, `available_invitations`, `invitations_from`, `accepted_invitees`, `pending_invitees`, `invitation_fee`, `invitation_module`, `invitation_quota`, `proxy_inviters`, `find_invite_path`, `find_farm_invite_path`, `compute_referral_address`, `plan_invite`, `invite`, `plan_generate_referrals`, `generate_referrals`, and `list_referrals`.
+- `Sdk::referrals()` returns the optional referrals backend client, which currently supports store/store-batch/retrieve/public-list flows plus authenticated `list_mine` when a bearer token is supplied explicitly.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
-- The main remaining facade gaps are the optional referrals backend plus the remaining TS invitation write/planner surface (`getReferralCode` storage/composition and full referral backend wiring), followed by wallet-backend execution parity.
+- The main remaining facade gaps are the remaining TS invitation write/planner surface (`getReferralCode` storage/composition and any follow-up referral-session/auth polish), followed by wallet-backend execution parity.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

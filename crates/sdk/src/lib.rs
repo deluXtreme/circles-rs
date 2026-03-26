@@ -54,6 +54,7 @@
 //!   current invitation/referral query surface.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
+//! - [`Sdk::referrals`] and [`HumanAvatar::list_referrals`] for the optional referrals backend.
 //! - [`HumanAvatar::plan_generate_referrals`] and [`HumanAvatar::generate_referrals`] for
 //!   invitation-farm batch referral planning/execution.
 //!
@@ -71,6 +72,12 @@ mod runner;
 mod services;
 #[cfg(feature = "ws")]
 pub mod ws;
+pub use services::referrals::{
+    Referral, ReferralInfo, ReferralList, ReferralListMineOptions, ReferralPreview,
+    ReferralPreviewList, ReferralPublicListOptions, ReferralSession, ReferralStatus,
+    ReferralStoreInput, ReferralSyncStatus, Referrals, ReferralsError, StoreBatchError,
+    StoreBatchResult,
+};
 pub use services::registration;
 
 #[cfg(feature = "ws")]
@@ -111,6 +118,8 @@ pub enum SdkError {
     Rpc(#[from] circles_rpc::CirclesRpcError),
     #[error("profiles error: {0}")]
     Profiles(#[from] circles_profiles::ProfilesError),
+    #[error("referrals error: {0}")]
+    Referrals(#[from] services::referrals::ReferralsError),
     #[error("transfers error: {0}")]
     Transfers(#[from] circles_transfers::TransferError),
     #[error("runner error: {0}")]
@@ -140,6 +149,7 @@ pub struct Sdk {
     pub(crate) config: CirclesConfig,
     pub(crate) rpc: Arc<CirclesRpc>,
     pub(crate) profiles: Profiles,
+    pub(crate) referrals: Option<Referrals>,
     pub(crate) core: Arc<Core>,
     pub(crate) runner: Option<Arc<dyn ContractRunner>>,
     pub(crate) sender_address: Option<Address>,
@@ -155,9 +165,15 @@ impl Sdk {
         let core = Arc::new(Core::new(config.clone()));
         let rpc = Arc::new(CirclesRpc::try_from_http(&config.circles_rpc_url)?);
         let profiles = Profiles::new(config.profile_service_url.clone())?;
+        let referrals = config
+            .referrals_service_url
+            .as_deref()
+            .map(|url| Referrals::new(url, core.clone()))
+            .transpose()?;
         Ok(Self {
             rpc,
             profiles,
+            referrals,
             config,
             core,
             runner,
@@ -183,6 +199,11 @@ impl Sdk {
     /// Access the profiles client.
     pub fn profiles(&self) -> &Profiles {
         &self.profiles
+    }
+
+    /// Optional referrals client when `referrals_service_url` is configured.
+    pub fn referrals(&self) -> Option<&Referrals> {
+        self.referrals.as_ref()
     }
 
     /// Optional runner.

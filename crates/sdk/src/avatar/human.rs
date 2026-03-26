@@ -1,6 +1,10 @@
 use crate::avatar::common::CommonAvatar;
 use crate::cid_v0_to_digest::cid_v0_to_digest;
 use crate::runner::{PreparedTransaction as RunnerTx, SubmittedTx as RunnerSubmitted};
+use crate::services::referrals::{
+    ReferralPreviewList, ReferralPublicListOptions, Referrals, generate_private_key,
+    private_key_to_address,
+};
 use crate::{
     ContractRunner, Core, PreparedTransaction, Profile, SdkError, SubmittedTx, call_to_tx,
 };
@@ -20,8 +24,6 @@ use circles_types::{
     InvitationsFromResponse, InvitedAccountInfo, PathfindingResult, PathfindingTransferStep,
     SimulatedTrust, SortOrder, TokenBalanceResponse, TransactionHistoryRow, TrustRelation,
 };
-use hex::encode as hex_encode;
-use rand::RngCore;
 use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -780,11 +782,9 @@ impl HumanAvatar {
         let mut secrets = Vec::with_capacity(ids.len());
         let mut signers = Vec::with_capacity(ids.len());
         for _ in &ids {
-            let mut buf = [0u8; 32];
-            rand::thread_rng().fill_bytes(&mut buf);
-            secrets.push(format!("0x{}", hex_encode(buf)));
-            // Derive pseudo signer as lowercased hex address (no checksum)
-            let signer = Address::from_slice(&buf[12..]);
+            let secret = generate_private_key();
+            let signer = private_key_to_address(&secret)?;
+            secrets.push(secret);
             signers.push(signer);
         }
 
@@ -1280,6 +1280,38 @@ impl HumanAvatar {
     /// Pending invitees for this avatar.
     pub async fn pending_invitees(&self) -> Result<Vec<InvitedAccountInfo>, SdkError> {
         Ok(self.invitations_from(false).await?.results)
+    }
+
+    /// Public referral previews created by this avatar via the optional referrals backend.
+    pub async fn list_referrals(
+        &self,
+        limit: Option<u32>,
+        offset: Option<u32>,
+    ) -> Result<ReferralPreviewList, SdkError> {
+        let referrals_service_url = self
+            .common
+            .core
+            .config
+            .referrals_service_url
+            .as_deref()
+            .ok_or_else(|| {
+                SdkError::OperationFailed(
+                    "Referrals service not configured. Set referrals_service_url in CirclesConfig."
+                        .to_string(),
+                )
+            })?;
+        let referrals = Referrals::new(referrals_service_url, self.core.clone())?;
+
+        Ok(referrals
+            .list_public(
+                self.address,
+                Some(ReferralPublicListOptions {
+                    limit,
+                    offset,
+                    in_session: None,
+                }),
+            )
+            .await?)
     }
 
     async fn submit_generated_referrals(

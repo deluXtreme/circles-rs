@@ -17,13 +17,15 @@ circles-types = { workspace = true }
 circles-transfers = { workspace = true }
 circles-abis = { workspace = true }
 thiserror = { workspace = true }
+serde = { workspace = true }
 tokio = { workspace = true, optional = true }
 alloy-provider = { workspace = true }
 alloy-contract = { workspace = true }
 alloy-sol-types = { workspace = true }
+reqwest = { workspace = true, features = ["rustls-tls"] }
+k256 = { workspace = true }
 bs58 = "0.5"
 serde_json = { workspace = true }
-rand = "0.8"
 hex = "0.4"
 futures = { workspace = true, optional = true }
 alloy-json-rpc = { workspace = true, optional = true }
