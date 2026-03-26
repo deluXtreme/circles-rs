@@ -29,12 +29,12 @@ alloy-transport-http = "1.1.2"
 alloy-transport-ws = "1.1.2"
 async-trait = "0.1.89"
 circles-abis = { path = "crates/abis", version = "0.1.0" }
-circles-pathfinder = { path = "crates/pathfinder", version = "0.5.0" }
+circles-pathfinder = { path = "crates/pathfinder", version = "0.5.1" }
 circles-profiles = { path = "crates/profiles", version = "0.1.0" }
-circles-rpc = { path = "crates/rpc", version = "0.1.0" }
-circles-transfers = { path = "crates/transfers", version = "0.1.0" }
-circles-types = { path = "crates/types", version = "0.3.0" }
-circles-utils = { path = "crates/utils", version = "0.1.0" }
+circles-rpc = { path = "crates/rpc", version = "0.1.1" }
+circles-transfers = { path = "crates/transfers", version = "0.1.1" }
+circles-types = { path = "crates/types", version = "0.3.1" }
+circles-utils = { path = "crates/utils", version = "0.1.1" }
 futures = "0.3"
 reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }

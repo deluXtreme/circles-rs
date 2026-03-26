@@ -1,6 +1,6 @@
 [package]
 name = "circles-transfers"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Transfer transaction builder for Circles protocol"
 authors = ["franco <0xpantera@proton.me>"]

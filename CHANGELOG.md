@@ -6,9 +6,22 @@ For detailed changes, see individual crate changelogs:
 - [circles-types](crates/types/CHANGELOG.md) - Core type definitions
 - [circles-pathfinder](crates/pathfinder/CHANGELOG.md) - Pathfinding and flow matrix calculation
 
-## [0.3.0] - 2025-12-05
+## [0.5.0] - 2026-03-26
 
 ### Coordinated Changes
+- **circles-types v0.3.1**: Expanded pathfinding/query/config/RPC types for invitation, referral, group, and pagination parity.
+- **circles-utils v0.1.1**: Refined converter math used by newer wrapper-aware flows.
+- **circles-rpc v0.1.1**: Added transaction history, group/member pagination, invitation helpers, and aggregated trust query surface.
+- **circles-pathfinder v0.5.1**: Added TS parity fixes for wrapped tokens, token info, netted flow checks, and richer RPC/path helpers.
+- **circles-transfers v0.1.1**: Added replenish parity, group-token redeem planning, aggregate helpers, and broader behavioral tests.
+- **circles-sdk v0.1.1**: Added direct transfer, group token, invite/referral, native wallet runner, runner-surface, and Safe execution-builder parity work.
+
+### Release Infrastructure
+- Added a repo-owned publish script and manual GitHub Actions publish workflow for ordered crates.io releases.
+
+### Documentation
+- Refreshed workspace and SDK parity snapshots for the current alpha state.
+
 ## [0.4.0] - 2025-12-05
 
 ### Coordinated Changes
@@ -28,6 +41,10 @@ For detailed changes, see individual crate changelogs:
 
 ### Documentation
 - Alpha docs and rustdoc polish across crates (wrapper guidance, WS notes, SDK usage).
+
+## [0.3.0] - 2025-07-17
+
+### Coordinated Changes
 
 ## [0.3.0] - 2025-07-17
 
@@ -111,7 +128,8 @@ When releasing breaking changes in `circles-types`:
 3. Test integration across workspace
 4. Publish dependent crates with appropriate version bumps
 
-[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/workspace-v0.4.0...HEAD
+[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/workspace-v0.5.0...HEAD
+[0.5.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.5.0
 [0.4.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.4.0
 [0.3.0]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.3.0
 [0.2.1]: https://github.com/deluXtreme/circles-rs/releases/tag/workspace-v0.2.1

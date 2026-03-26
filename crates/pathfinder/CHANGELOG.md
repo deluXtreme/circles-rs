@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-03-26
+
+### Added
+- TS parity helpers for wrapped token rewriting, token info lookups, stream preparation, and explicit RPC entrypoints.
+
+### Changed
+- Aligned terminal-edge handling, fallback behavior, and netted-flow ordering with the TypeScript SDK.
+
+### Fixed
+- Added broader parity tests covering wrapped-token and malformed-path edge cases.
+
 ## [0.5.0] - 2025-07-18
 
 ### Added
@@ -147,5 +158,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive error handling with `thiserror`
 - Modular architecture supporting both high-level and composable APIs
 
-[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/pathfinder-v0.1.0...HEAD
+[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/circles-pathfinder-v0.5.1...HEAD
+[0.5.1]: https://github.com/deluXtreme/circles-rs/releases/tag/circles-pathfinder-v0.5.1
 [0.1.0]: https://github.com/deluXtreme/circles-rs/releases/tag/pathfinder-v0.1.0

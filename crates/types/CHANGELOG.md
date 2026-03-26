@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-03-26
+
+### Added
+- Expanded Circles config, pathfinding, query, group, and RPC type coverage for the newer invitation/referral/group parity work.
+
+### Changed
+- Updated docs/examples to reflect the current workspace parity surface.
+
 ## [0.2.1] - 2025-06-10
 ### Documentation
 - Fixed changelog formatting and content for v0.2.0 release
@@ -34,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Supports efficient serialization for JSON-RPC communication
 - Designed for zero-copy operations where possible
 
-[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/types-v0.1.0...HEAD
+[Unreleased]: https://github.com/deluXtreme/circles-rs/compare/circles-types-v0.3.1...HEAD
+[0.3.1]: https://github.com/deluXtreme/circles-rs/releases/tag/circles-types-v0.3.1
 [0.1.0]: https://github.com/deluXtreme/circles-rs/releases/tag/types-v0.1.0
