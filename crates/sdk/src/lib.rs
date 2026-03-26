@@ -36,6 +36,8 @@
 //! - [`Avatar`] gives you a typed wrapper after runtime avatar detection.
 //! - [`ContractRunner`] is only required for write paths such as registrations, trust changes,
 //!   and transfer submission.
+//! - [`SafeContractRunner`] and [`EoaContractRunner`] are the built-in execution backends for
+//!   existing single-owner Safe wallets and direct EOA execution.
 //! - The optional `ws` feature enables WebSocket subscriptions with retry/backoff and HTTP catch-up helpers.
 //!
 //! ## Recommended Entry Points
@@ -43,6 +45,8 @@
 //! - [`config::gnosis_mainnet`] for the shared mainnet configuration.
 //! - [`Sdk::avatar_info`] for a fast read-only probe.
 //! - [`Sdk::get_avatar`] when you want a typed avatar wrapper.
+//! - [`EoaContractRunner::connect`] and [`SafeContractRunner::connect`] when you want built-in
+//!   execution backends for existing wallets.
 //! - [`HumanAvatar::plan_transfer`], [`OrganisationAvatar::plan_transfer`], and
 //!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
 //! - [`HumanAvatar::plan_direct_transfer`], [`OrganisationAvatar::plan_direct_transfer`], and
@@ -97,7 +101,10 @@ use circles_types::{
     GroupTokenHolderRow, SortOrder, TokenBalanceResponse, TrustRelation,
 };
 use core::Core;
-pub use runner::{ContractRunner, PreparedTransaction, RunnerError, SubmittedTx, call_to_tx};
+pub use runner::{
+    ContractRunner, EoaContractRunner, PreparedTransaction, RunnerError, SafeContractRunner,
+    SubmittedTx, call_to_tx,
+};
 #[cfg(feature = "ws")]
 use serde_json::to_value;
 use std::sync::Arc;

@@ -7,6 +7,7 @@ The usage model is intentionally simple:
 - Construct `Sdk` with `None` for read-only flows.
 - Use `get_avatar` when you want a typed wrapper (`HumanAvatar`, `OrganisationAvatar`, `BaseGroupAvatar`).
 - Provide a `ContractRunner` only when you need write paths such as registration, trust updates, or transfer submission.
+- Use the built-in `EoaContractRunner` or `SafeContractRunner` when you want an SDK-managed execution backend instead of implementing the trait yourself.
 
 ## Capabilities
 
@@ -55,6 +56,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 All write-capable methods return `SdkError::MissingRunner` until a `ContractRunner` is provided. The SDK keeps read logic separate from transaction submission so Safe, EOAs, or other runner backends can be added without changing the public read API.
 
+The crate now ships two built-in runner implementations:
+
+- `EoaContractRunner::connect(rpc_url, private_key)` for direct EOA execution.
+- `SafeContractRunner::connect(rpc_url, private_key, safe_address)` for existing single-owner (1/1) Safes backed by `safe-rs`.
+
 ## Examples
 
 - `basic_read.rs`: avatar info, balances, trust, and pathfinding.
@@ -64,8 +70,10 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 ## Runners
 
 - Implement `ContractRunner` to enable write paths.
+- `EoaContractRunner` executes prepared txs sequentially from the signer account.
+- `SafeContractRunner` executes prepared tx batches atomically through an existing Safe and currently targets single-owner Safes.
 - `PreparedTransaction` is the SDK’s handoff format: target address, calldata, and optional value.
-- Safe-specific support is still deferred; the current API is intentionally generic.
+- The current API remains generic, so other wallet backends can still be layered in later.
 
 ## Tests
 
@@ -82,5 +90,5 @@ All write-capable methods return `SdkError::MissingRunner` until a `ContractRunn
 - `HumanAvatar` now also exposes `invitation_origin`, `invited_by`, `available_invitations`, `invitations_from`, `accepted_invitees`, `pending_invitees`, `invitation_fee`, `invitation_module`, `invitation_quota`, `proxy_inviters`, `find_invite_path`, `find_farm_invite_path`, `compute_referral_address`, `plan_invite`, `invite`, `plan_referral_code`, `get_referral_code`, `plan_generate_referrals`, `generate_referrals`, and `list_referrals`.
 - `Sdk::referrals()` returns the optional referrals backend client, which currently supports store/store-batch/retrieve/public-list flows plus authenticated `list_mine` when a bearer token is supplied explicitly.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
-- The main remaining facade gaps are the follow-up referrals service/auth polish and wallet-backend execution parity.
+- The main remaining facade gaps are the follow-up referrals service/auth polish plus broader wallet parity such as browser-backed Safe execution and richer result ergonomics.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.

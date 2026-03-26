@@ -16,11 +16,14 @@ members = [
 alloy-contract = "1.1.2"
 alloy-json-abi = "1.4.1"
 alloy-json-rpc = "1.1.2"
+alloy-network = "1.1.2"
+alloy-node-bindings = "1.1.2"
 alloy-provider = { version = "1.1.2", features = ["reqwest"] }
 alloy-primitives = { version = "1.4.1", default-features = false, features = [
     "serde",
 ] }
 alloy-rpc-types = "1.1.2"
+alloy-signer-local = "1.1.2"
 alloy-sol-types = { version = "1.4.1", features = ["json"] }
 alloy-transport-http = "1.1.2"
 alloy-transport-ws = "1.1.2"
@@ -37,6 +40,7 @@ reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0"
 k256 = "0.13.4"
+safe-rs = "0.9.0"
 thiserror = "2.0.17"
 tokio = { version = "1.47.2", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.43"
