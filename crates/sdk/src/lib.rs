@@ -61,6 +61,8 @@
 //! - [`HumanAvatar::available_invitations`], [`HumanAvatar::invitation_origin`],
 //!   [`HumanAvatar::proxy_inviters`], and [`HumanAvatar::find_farm_invite_path`] for the
 //!   current invitation/referral query surface.
+//! - [`Sdk::data_profile_view`], [`Sdk::data_trust_network_summary`], and
+//!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
 //! - [`Sdk::referrals`] and [`HumanAvatar::list_referrals`] for the optional referrals backend.
@@ -102,8 +104,11 @@ use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AggregatedTrustRelation, AvatarInfo, AvatarType, CirclesConfig, GroupMembershipRow,
-    GroupTokenHolderRow, SortOrder, TokenBalanceResponse, TrustRelation,
+    AggregatedTrustRelation, AvatarInfo, AvatarType, CirclesConfig, EnrichedTransaction,
+    EnrichedTransactionHistoryOptions, GroupMembershipRow, GroupQueryParams, GroupRow,
+    GroupTokenHolderRow, PagedAggregatedTrustRelationsResponse, PagedProfileSearchResponse,
+    PagedResponse, PagedValidInvitersResponse, ProfileView, SortOrder, TokenBalanceResponse,
+    TokenHolderRow, TransactionHistoryRow, TrustNetworkSummary, TrustRelation,
 };
 use core::Core;
 pub use runner::{
@@ -178,7 +183,7 @@ impl Sdk {
         let sender_address = runner.as_ref().map(|r| r.sender_address());
         let core = Arc::new(Core::new(config.clone()));
         let rpc = Arc::new(CirclesRpc::try_from_http(&config.circles_rpc_url)?);
-        let profiles = Profiles::new(config.profile_service_url.clone())?;
+        let profiles = Profiles::new(config.effective_profile_service_url())?;
         let referrals = config
             .referrals_service_url
             .as_deref()
@@ -278,6 +283,157 @@ impl Sdk {
             .rpc
             .token()
             .get_token_balances(avatar, as_time_circles, use_v2)
+            .await?)
+    }
+
+    /// Read the consolidated profile view for an avatar directly from the RPC service.
+    pub async fn data_profile_view(&self, avatar: Address) -> Result<ProfileView, SdkError> {
+        Ok(self.rpc.sdk().get_profile_view(avatar).await?)
+    }
+
+    /// Read trust-network summary metrics for an avatar directly from the RPC service.
+    pub async fn data_trust_network_summary(
+        &self,
+        avatar: Address,
+        max_depth: Option<u32>,
+    ) -> Result<TrustNetworkSummary, SdkError> {
+        Ok(self
+            .rpc
+            .sdk()
+            .get_trust_network_summary(avatar, max_depth)
+            .await?)
+    }
+
+    /// Read paginated enriched trust relations for an avatar directly from the RPC service.
+    pub async fn data_trust_aggregated_enriched(
+        &self,
+        avatar: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedAggregatedTrustRelationsResponse, SdkError> {
+        Ok(self
+            .rpc
+            .sdk()
+            .get_aggregated_trust_relations_enriched(avatar, limit, cursor)
+            .await?)
+    }
+
+    /// Read paginated valid inviters for an avatar directly from the RPC service.
+    pub async fn data_valid_inviters(
+        &self,
+        avatar: Address,
+        minimum_balance: Option<&str>,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedValidInvitersResponse, SdkError> {
+        Ok(self
+            .rpc
+            .sdk()
+            .get_valid_inviters(avatar, minimum_balance, limit, cursor)
+            .await?)
+    }
+
+    /// Read enriched transaction history directly from the consolidated RPC endpoint.
+    pub async fn data_transaction_history_enriched(
+        &self,
+        avatar: Address,
+        from_block: u64,
+        options: EnrichedTransactionHistoryOptions,
+    ) -> Result<PagedResponse<EnrichedTransaction>, SdkError> {
+        Ok(self
+            .rpc
+            .sdk()
+            .get_transaction_history_enriched(avatar, from_block, options)
+            .await?)
+    }
+
+    /// Read native paged transaction history directly from the RPC service.
+    pub async fn data_transaction_history(
+        &self,
+        avatar: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+        version: Option<u32>,
+        exclude_intermediary: Option<bool>,
+    ) -> Result<PagedResponse<TransactionHistoryRow>, SdkError> {
+        Ok(self
+            .rpc
+            .transaction()
+            .get_transaction_history_page(avatar, limit, cursor, version, exclude_intermediary)
+            .await?)
+    }
+
+    /// Browse groups through the native cursor-based RPC endpoint.
+    ///
+    /// Only the TS-native `name_starts_with`, `symbol_starts_with`, and `owner_in`
+    /// filters are forwarded to the backend.
+    pub async fn data_find_groups(
+        &self,
+        limit: Option<u32>,
+        params: Option<GroupQueryParams>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<GroupRow>, SdkError> {
+        Ok(self
+            .rpc
+            .group()
+            .find_groups_page(limit, params, cursor)
+            .await?)
+    }
+
+    /// Read group memberships through the native cursor-based RPC endpoint.
+    pub async fn data_group_memberships(
+        &self,
+        avatar: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<GroupMembershipRow>, SdkError> {
+        Ok(self
+            .rpc
+            .group()
+            .get_group_memberships_page(avatar, limit, cursor)
+            .await?)
+    }
+
+    /// Read members of a group through the native cursor-based RPC endpoint.
+    pub async fn data_group_members(
+        &self,
+        group: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<GroupMembershipRow>, SdkError> {
+        Ok(self
+            .rpc
+            .group()
+            .get_group_members_page(group, limit, cursor)
+            .await?)
+    }
+
+    /// Read token holders through the native cursor-based RPC endpoint.
+    pub async fn data_token_holders(
+        &self,
+        token: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<TokenHolderRow>, SdkError> {
+        Ok(self
+            .rpc
+            .token()
+            .get_token_holders_page(token, limit, cursor)
+            .await?)
+    }
+
+    /// Search profiles by address prefix or text directly from the consolidated RPC endpoint.
+    pub async fn search_profiles_by_address_or_name(
+        &self,
+        query: &str,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+        types: Option<Vec<AvatarType>>,
+    ) -> Result<PagedProfileSearchResponse, SdkError> {
+        Ok(self
+            .rpc
+            .sdk()
+            .search_profile_by_address_or_name(query, limit, cursor, types)
             .await?)
     }
 

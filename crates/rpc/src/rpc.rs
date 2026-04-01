@@ -2,7 +2,7 @@ use crate::client::RpcClient;
 use crate::error::{CirclesRpcError, Result};
 use crate::methods::{
     AvatarMethods, BalanceMethods, EventsMethods, GroupMethods, HealthMethods, InvitationMethods,
-    NetworkMethods, PathfinderMethods, QueryMethods, SearchMethods, TablesMethods,
+    NetworkMethods, PathfinderMethods, QueryMethods, SdkMethods, SearchMethods, TablesMethods,
     TokenInfoMethods, TokenMethods, TransactionMethods, TrustMethods,
 };
 use crate::paged_query::{PagedFetch, PagedQuery};
@@ -121,6 +121,10 @@ impl CirclesRpc {
     /// RPC methods for profile search.
     pub fn search(&self) -> SearchMethods {
         SearchMethods::new(self.client.clone())
+    }
+    /// Consolidated SDK-enablement RPC methods.
+    pub fn sdk(&self) -> SdkMethods {
+        SdkMethods::new(self.client.clone())
     }
 
     /// Build a `PagedQuery` helper around `circles_query`.

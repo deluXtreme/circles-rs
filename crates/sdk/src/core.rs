@@ -22,13 +22,13 @@ impl Core {
         Self { config }
     }
 
-    /// HTTP provider built from the configured Circles RPC URL.
+    /// HTTP provider built from the configured chain RPC URL.
     pub fn provider(&self) -> RootProvider {
         ProviderBuilder::<Identity, Identity>::default().connect_http(
             self.config
-                .circles_rpc_url
+                .effective_chain_rpc_url()
                 .parse()
-                .expect("circles_rpc_url must be a valid URL"),
+                .expect("effective chain rpc url must be a valid URL"),
         )
     }
 

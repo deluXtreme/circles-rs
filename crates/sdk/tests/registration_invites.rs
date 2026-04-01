@@ -4,8 +4,9 @@ use circles_types::{AvatarInfo, AvatarType, CirclesConfig};
 fn dummy_config() -> CirclesConfig {
     CirclesConfig {
         circles_rpc_url: "https://rpc.example.com".into(),
-        pathfinder_url: "".into(),
-        profile_service_url: "https://profiles.example.com".into(),
+        chain_rpc_url: None,
+        pathfinder_url: None,
+        profile_service_url: Some("https://profiles.example.com".into()),
         referrals_service_url: None,
         v1_hub_address: Address::ZERO,
         v2_hub_address: Address::ZERO,

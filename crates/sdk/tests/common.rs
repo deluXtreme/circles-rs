@@ -17,11 +17,14 @@ pub fn maybe_live_config() -> Option<CirclesConfig> {
     if let Ok(url) = std::env::var("CIRCLES_RPC_URL") {
         cfg.circles_rpc_url = url;
     }
+    if let Ok(url) = std::env::var("CIRCLES_CHAIN_RPC_URL") {
+        cfg.chain_rpc_url = Some(url);
+    }
     if let Ok(url) = std::env::var("CIRCLES_PATHFINDER_URL") {
-        cfg.pathfinder_url = url;
+        cfg.pathfinder_url = Some(url);
     }
     if let Ok(url) = std::env::var("CIRCLES_PROFILE_URL") {
-        cfg.profile_service_url = url;
+        cfg.profile_service_url = Some(url);
     }
     Some(cfg)
 }

@@ -40,8 +40,21 @@ pub struct TokenInfo {
 
 /// Token holder information from V_CrcV2_BalancesByAccountAndToken
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenHolder {
     pub account: Address,
+    #[serde(alias = "token_address")]
     pub token_address: Address,
+    #[serde(alias = "demurraged_total_balance")]
     pub demurraged_total_balance: String,
+}
+
+/// Token holder row emitted by `circles_getTokenHolders`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenHolderRow {
+    pub account: Address,
+    pub balance: String,
+    pub token_address: Address,
+    pub version: u32,
 }

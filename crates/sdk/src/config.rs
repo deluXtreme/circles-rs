@@ -5,8 +5,9 @@ use once_cell::sync::Lazy;
 /// Gnosis Chain (100) mainnet Circles configuration.
 pub static GNOSIS_MAINNET: Lazy<CirclesConfig> = Lazy::new(|| CirclesConfig {
     circles_rpc_url: "https://rpc.aboutcircles.com/".to_string(),
-    pathfinder_url: "https://pathfinder.aboutcircles.com".to_string(),
-    profile_service_url: "https://rpc.aboutcircles.com/profiles/".to_string(),
+    chain_rpc_url: None,
+    pathfinder_url: None,
+    profile_service_url: None,
     referrals_service_url: Some("https://referrals.aboutcircles.com".to_string()),
     v1_hub_address: address!("29b9a7fbb8995b2423a71cc17cf9810798f6c543"),
     v2_hub_address: address!("c12c1e50abb450d6205ea2c3fa861b3b834d13e8"),
@@ -35,6 +36,14 @@ mod tests {
     fn gnosis_mainnet_matches_invitation_config_snapshot() {
         let config = gnosis_mainnet();
 
+        assert_eq!(
+            config.effective_chain_rpc_url(),
+            "https://rpc.aboutcircles.com/"
+        );
+        assert_eq!(
+            config.effective_profile_service_url(),
+            "https://rpc.aboutcircles.com/profiles/"
+        );
         assert_eq!(
             config.referrals_service_url.as_deref(),
             Some("https://referrals.aboutcircles.com")

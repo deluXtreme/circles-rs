@@ -16,8 +16,9 @@ use std::time::Duration;
 fn demo_config(rpc_url: &str) -> CirclesConfig {
     CirclesConfig {
         circles_rpc_url: rpc_url.into(),
-        pathfinder_url: "".into(),
-        profile_service_url: "".into(),
+        chain_rpc_url: None,
+        pathfinder_url: None,
+        profile_service_url: None,
         referrals_service_url: None,
         v1_hub_address: Address::ZERO,
         v2_hub_address: address!("0x0000000000000000000000000000000000000001"),
