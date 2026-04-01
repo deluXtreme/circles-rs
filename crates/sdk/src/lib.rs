@@ -69,7 +69,8 @@
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
 //! - [`Sdk::referrals`], [`Sdk::distributions`], [`Referrals::with_auth_token`],
-//!   [`Referrals::list_mine_authenticated`], and [`HumanAvatar::list_referrals`] for the
+//!   [`Referrals::list_mine_authenticated`], [`Sdk::with_referrals_auth_token`],
+//!   [`Sdk::with_referrals_auth_token_provider`], and [`HumanAvatar::list_referrals`] for the
 //!   optional referrals backend.
 //! - [`HumanAvatar::plan_referral_code`] and [`HumanAvatar::get_referral_code`] for the
 //!   TS-style single-referral planner used by `getReferralCode()`.
@@ -244,6 +245,37 @@ impl Sdk {
         self.referrals
             .as_ref()
             .map(|referrals| referrals.distributions())
+    }
+
+    /// Configure a fixed bearer token for the SDK-scoped referrals client.
+    pub fn with_referrals_auth_token(mut self, token: impl Into<String>) -> Result<Self, SdkError> {
+        let referrals = self.referrals.take().ok_or_else(|| {
+            SdkError::OperationFailed(
+                "Referrals service not configured. Set referrals_service_url in CirclesConfig."
+                    .to_string(),
+            )
+        })?;
+        self.referrals = Some(referrals.with_auth_token(token));
+        Ok(self)
+    }
+
+    /// Configure an async bearer-token provider for the SDK-scoped referrals client.
+    pub fn with_referrals_auth_token_provider<F, Fut>(
+        mut self,
+        provider: F,
+    ) -> Result<Self, SdkError>
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<String, ReferralsError>> + Send + 'static,
+    {
+        let referrals = self.referrals.take().ok_or_else(|| {
+            SdkError::OperationFailed(
+                "Referrals service not configured. Set referrals_service_url in CirclesConfig."
+                    .to_string(),
+            )
+        })?;
+        self.referrals = Some(referrals.with_auth_token_provider(provider));
+        Ok(self)
     }
 
     /// Dedicated invitation-farm facade mirroring the TS SDK service surface.
@@ -721,4 +753,46 @@ pub enum Avatar {
     Organisation(OrganisationAvatar),
     /// Base group avatar wrapper.
     Group(BaseGroupAvatar),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Sdk;
+    use crate::config;
+
+    #[test]
+    fn with_referrals_auth_token_requires_backend() {
+        let mut cfg = config::gnosis_mainnet();
+        cfg.referrals_service_url = None;
+
+        let sdk = Sdk::new(cfg, None).expect("sdk");
+        let err = match sdk.with_referrals_auth_token("token") {
+            Ok(_) => panic!("missing referrals backend"),
+            Err(err) => err,
+        };
+
+        assert!(err.to_string().contains("Referrals service not configured"));
+    }
+
+    #[test]
+    fn with_referrals_auth_token_keeps_clients_available() {
+        let sdk = Sdk::new(config::gnosis_mainnet(), None)
+            .expect("sdk")
+            .with_referrals_auth_token("token")
+            .expect("configure token");
+
+        assert!(sdk.referrals().is_some());
+        assert!(sdk.distributions().is_some());
+    }
+
+    #[test]
+    fn with_referrals_auth_token_provider_keeps_clients_available() {
+        let sdk = Sdk::new(config::gnosis_mainnet(), None)
+            .expect("sdk")
+            .with_referrals_auth_token_provider(|| async { Ok("provider-token".to_string()) })
+            .expect("configure provider");
+
+        assert!(sdk.referrals().is_some());
+        assert!(sdk.distributions().is_some());
+    }
 }
