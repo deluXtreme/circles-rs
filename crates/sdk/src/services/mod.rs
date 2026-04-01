@@ -6,3 +6,5 @@ pub mod invite_farm;
 pub mod referrals;
 /// Registration helpers (human/org/base group).
 pub mod registration;
+/// Dedicated tokens facade mirroring the TS SDK service.
+pub mod tokens;
