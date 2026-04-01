@@ -15,6 +15,7 @@ The usage model is intentionally simple:
 - Typed avatar helpers for balances, aggregated trust, profiles, direct-transfer planning/execution, pathfinding, replenish planning, group-token redeem planning/execution, registration flows, and invitation/referral discovery.
 - Invitation and referral helpers for human avatars, including invitation-origin lookups, inbound/outbound invitation queries, invitation fee/module/quota helpers, proxy-inviter discovery, invite-path and farm-path lookup, deterministic referral-address computation, direct-invite planning/execution, single-referral `getReferralCode` planning, batch referral generation planning/execution, and public referral listing via the optional referrals backend.
 - Dedicated TS-style `Sdk::register()` facade for `as_human`, `as_organization`, and `as_group` registration flows, including profile-or-CID input where the TS SDK accepts either form.
+- Dedicated TS-style `Sdk::data()` facade for basic avatar/trust/balance/invitation reads on top of the existing flat `data_*` helpers.
 - Dedicated TS-style `Sdk::tokens()` facade for wrapper lookups and holder pagination on top of the existing flat token helpers.
 - Dedicated TS-style `Sdk::invitations()` and `Sdk::invite_farm()` facades for invitation/referral workflows that are otherwise split across avatar helpers and the referrals backend client.
 - Optional referrals backend client surfaced through `Sdk::referrals()` for store/store-batch/retrieve/list flows when `referrals_service_url` is configured.

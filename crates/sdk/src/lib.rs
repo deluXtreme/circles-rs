@@ -68,6 +68,7 @@
 //!   [`HumanAvatar::find_farm_invite_path`] for the current invitation/referral query surface.
 //! - [`Sdk::invitations`] and [`Invitations::generate_invite`] for the dedicated TS-style
 //!   invitation service facade.
+//! - [`Sdk::data`] and [`Data::get_avatar`] for the dedicated TS-style basic-read namespace.
 //! - [`Sdk::data_profile_view`], [`Sdk::data_trust_network_summary`], and
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
 //! - [`Sdk::tokens`] and [`Tokens::get_inflationary_wrapper`] for the dedicated TS-style
@@ -101,6 +102,7 @@ mod runner;
 mod services;
 #[cfg(feature = "ws")]
 pub mod ws;
+pub use services::data::Data;
 pub use services::invitations::Invitations;
 pub use services::invite_farm::{
     GenerateInvitesResult, GenerateReferralsResult, GeneratedReferral, InviteFarm,
@@ -293,6 +295,11 @@ impl Sdk {
     /// Dedicated invitation-farm facade mirroring the TS SDK service surface.
     pub fn invite_farm(&self) -> InviteFarm {
         InviteFarm::new(self.core.clone(), self.referrals.clone())
+    }
+
+    /// Dedicated data facade mirroring the TS SDK service surface.
+    pub fn data(&self) -> Data<'_> {
+        Data::new(self)
     }
 
     /// Dedicated registration facade mirroring the TS SDK service surface.
@@ -850,5 +857,11 @@ mod tests {
     fn tokens_service_is_available_from_sdk() {
         let sdk = Sdk::new(config::gnosis_mainnet(), None).expect("sdk");
         let _ = sdk.tokens();
+    }
+
+    #[test]
+    fn data_service_is_available_from_sdk() {
+        let sdk = Sdk::new(config::gnosis_mainnet(), None).expect("sdk");
+        let _ = sdk.data();
     }
 }
