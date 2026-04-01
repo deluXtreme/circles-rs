@@ -71,6 +71,8 @@
 //!   optional referrals backend.
 //! - [`HumanAvatar::plan_referral_code`] and [`HumanAvatar::get_referral_code`] for the
 //!   TS-style single-referral planner used by `getReferralCode()`.
+//! - [`Sdk::invite_farm`] and [`InviteFarm::generate_referrals`] for the dedicated
+//!   invitation-farm facade mirroring the TS SDK service.
 //! - [`HumanAvatar::plan_generate_referrals`] and [`HumanAvatar::generate_referrals`] for
 //!   invitation-farm batch referral planning/execution.
 //!
@@ -88,6 +90,9 @@ mod runner;
 mod services;
 #[cfg(feature = "ws")]
 pub mod ws;
+pub use services::invite_farm::{
+    GenerateInvitesResult, GenerateReferralsResult, GeneratedReferral, InviteFarm,
+};
 pub use services::referrals::{
     AddKeysError, AddKeysResult, CreateSessionParams, DispenseErrorCode, DispenseResult,
     DistributionSession, DistributionSessionList, DistributionSessionListOptions, Distributions,
@@ -237,6 +242,11 @@ impl Sdk {
         self.referrals
             .as_ref()
             .map(|referrals| referrals.distributions())
+    }
+
+    /// Dedicated invitation-farm facade mirroring the TS SDK service surface.
+    pub fn invite_farm(&self) -> InviteFarm {
+        InviteFarm::new(self.core.clone(), self.referrals.clone())
     }
 
     /// Optional runner.
