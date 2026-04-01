@@ -64,6 +64,8 @@
 //!   [`HumanAvatar::find_farm_invite_path`] for the current invitation/referral query surface.
 //! - [`Sdk::data_profile_view`], [`Sdk::data_trust_network_summary`], and
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
+//! - [`Sdk::inflationary_wrapper`], [`Sdk::demurraged_wrapper`], and
+//!   [`Sdk::token_holders`] for the remaining top-level TS token conveniences.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
 //! - [`Sdk::referrals`], [`Sdk::distributions`], [`Referrals::with_auth_token`],
@@ -490,6 +492,42 @@ impl Sdk {
             .token()
             .get_token_holders_page(token, limit, cursor)
             .await?)
+    }
+
+    /// Get the inflationary ERC20 wrapper for a Circles token address.
+    pub async fn inflationary_wrapper(&self, token: Address) -> Result<Address, SdkError> {
+        Ok(self
+            .core
+            .lift_erc20()
+            .erc20Circles(1u8, token)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?
+            .0
+            .into())
+    }
+
+    /// Get the demurraged ERC20 wrapper for a Circles token address.
+    pub async fn demurraged_wrapper(&self, token: Address) -> Result<Address, SdkError> {
+        Ok(self
+            .core
+            .lift_erc20()
+            .erc20Circles(0u8, token)
+            .call()
+            .await
+            .map_err(|e| SdkError::Contract(e.to_string()))?
+            .0
+            .into())
+    }
+
+    /// Top-level token-holder convenience matching the TS SDK surface.
+    pub async fn token_holders(
+        &self,
+        token: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<TokenHolderRow>, SdkError> {
+        self.data_token_holders(token, limit, cursor).await
     }
 
     /// Search profiles by address prefix or text directly from the consolidated RPC endpoint.
