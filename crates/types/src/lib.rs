@@ -188,7 +188,7 @@ mod wrapper;
 pub use wrapper::{CirclesType, WrappedTokenInfo, WrappedTokensRecord};
 
 mod token;
-pub use token::{TokenBalance, TokenHolder, TokenInfo};
+pub use token::{TokenBalance, TokenHolder, TokenHolderRow, TokenInfo};
 
 mod client;
 pub use client::{AvatarRow, CirclesQuery, GroupType, TokenBalanceRow, TrustRelationRow};
@@ -198,10 +198,13 @@ pub use runner::{BatchRun, ContractRunner, RunnerConfig};
 
 mod rpc;
 pub use rpc::{
-    AllInvitationsResponse, AtScaleInvitation, Balance, CirclesQueryResponse, EscrowInvitation,
-    InvitationOriginResponse, InvitationsFromResponse, InvitedAccountInfo, JsonRpcError,
-    JsonRpcRequest, JsonRpcResponse, QueryResponse, SafeQueryResponse, TokenBalanceResponse,
-    TransactionHistoryRow, TrustInvitation,
+    AllInvitationsResponse, AtScaleInvitation, Balance, CirclesQueryResponse, EnrichedTransaction,
+    EnrichedTransactionHistoryOptions, EscrowInvitation, InvitationOriginResponse,
+    InvitationsFromResponse, InvitedAccountInfo, InviterInfo, JsonRpcError, JsonRpcRequest,
+    JsonRpcResponse, PagedAggregatedTrustRelationsResponse, PagedProfileSearchResponse,
+    PagedResponse, PagedValidInvitersResponse, ParticipantInfo, ProfileView, QueryResponse,
+    SafeQueryResponse, TokenBalanceResponse, TransactionHistoryRow, TrustInvitation,
+    TrustNetworkSummary, TrustRelationCounts, TrustRelationInfo, TrustStats,
 };
 
 mod query;

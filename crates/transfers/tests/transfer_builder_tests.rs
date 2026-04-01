@@ -9,8 +9,9 @@ use std::collections::HashMap;
 fn demo_config() -> CirclesConfig {
     CirclesConfig {
         circles_rpc_url: "http://localhost:8545".into(), // unused in these unit tests
-        pathfinder_url: "".into(),
-        profile_service_url: "".into(),
+        chain_rpc_url: None,
+        pathfinder_url: None,
+        profile_service_url: None,
         referrals_service_url: None,
         v1_hub_address: Address::ZERO,
         v2_hub_address: address!("0x0000000000000000000000000000000000000001"),

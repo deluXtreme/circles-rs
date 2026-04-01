@@ -1,13 +1,40 @@
 use crate::client::RpcClient;
-use crate::error::Result;
+use crate::error::{CirclesRpcError, Result};
 use crate::methods::QueryMethods;
 use crate::paged_query::{PagedFetch, PagedQuery};
 use circles_types::{
     Address, Conjunction, CursorColumn, Filter, FilterPredicate, GroupMembershipRow,
-    GroupQueryParams, GroupRow, GroupTokenHolderRow, OrderBy, PagedQueryParams, SortOrder,
+    GroupQueryParams, GroupRow, GroupTokenHolderRow, OrderBy, PagedQueryParams, PagedResponse,
+    SortOrder,
 };
+use serde::Serialize;
 use std::pin::Pin;
 use std::sync::Arc;
+
+const DEFAULT_FIND_GROUPS_LIMIT: u32 = 50;
+const DEFAULT_GROUP_MEMBERS_LIMIT: u32 = 100;
+const DEFAULT_GROUP_MEMBERSHIPS_LIMIT: u32 = 50;
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeGroupQueryParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name_starts_with: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    symbol_starts_with: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner_in: Option<Vec<Address>>,
+}
+
+impl From<GroupQueryParams> for NativeGroupQueryParams {
+    fn from(params: GroupQueryParams) -> Self {
+        Self {
+            name_starts_with: params.name_starts_with,
+            symbol_starts_with: params.symbol_starts_with,
+            owner_in: params.owner_in,
+        }
+    }
+}
 
 /// Methods for group membership lookups (`circles_getGroupMemberships`, `circles_getGroups`).
 #[derive(Clone, Debug)]
@@ -19,6 +46,74 @@ impl GroupMethods {
     /// Create a new accessor for group-related RPCs.
     pub fn new(client: RpcClient) -> Self {
         Self { client }
+    }
+
+    /// Native paged group discovery via `circles_findGroups`.
+    pub async fn find_groups_page(
+        &self,
+        limit: Option<u32>,
+        params: Option<GroupQueryParams>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<GroupRow>> {
+        if let Some(params_ref) = params.as_ref()
+            && (params_ref.group_address_in.is_some()
+                || params_ref.group_type_in.is_some()
+                || params_ref.mint_handler_equals.is_some()
+                || params_ref.treasury_equals.is_some())
+        {
+            return Err(CirclesRpcError::InvalidResponse {
+                message: "circles_findGroups only supports name_starts_with, symbol_starts_with, and owner_in filters".into(),
+            });
+        }
+
+        self.client
+            .call(
+                "circles_findGroups",
+                (
+                    limit.unwrap_or(DEFAULT_FIND_GROUPS_LIMIT),
+                    params.map(NativeGroupQueryParams::from),
+                    cursor.map(str::to_owned),
+                ),
+            )
+            .await
+    }
+
+    /// Native paged group-member lookup via `circles_getGroupMembers`.
+    pub async fn get_group_members_page(
+        &self,
+        group: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<GroupMembershipRow>> {
+        self.client
+            .call(
+                "circles_getGroupMembers",
+                (
+                    group,
+                    limit.unwrap_or(DEFAULT_GROUP_MEMBERS_LIMIT),
+                    cursor.map(str::to_owned),
+                ),
+            )
+            .await
+    }
+
+    /// Native paged group-membership lookup via `circles_getGroupMemberships`.
+    pub async fn get_group_memberships_page(
+        &self,
+        avatar: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+    ) -> Result<PagedResponse<GroupMembershipRow>> {
+        self.client
+            .call(
+                "circles_getGroupMemberships",
+                (
+                    avatar,
+                    limit.unwrap_or(DEFAULT_GROUP_MEMBERSHIPS_LIMIT),
+                    cursor.map(str::to_owned),
+                ),
+            )
+            .await
     }
 
     fn paged_query<TRow>(&self, params: PagedQueryParams) -> PagedQuery<TRow>
@@ -48,14 +143,57 @@ impl GroupMethods {
 
     /// circles_getGroupMemberships
     pub async fn get_memberships(&self, avatar: Address) -> Result<Vec<GroupMembershipRow>> {
-        self.client
-            .call("circles_getGroupMemberships", (avatar,))
-            .await
+        let mut cursor: Option<String> = None;
+        let mut rows = Vec::new();
+
+        loop {
+            let page = self
+                .get_group_memberships_page(
+                    avatar,
+                    Some(DEFAULT_GROUP_MEMBERSHIPS_LIMIT),
+                    cursor.as_deref(),
+                )
+                .await?;
+            rows.extend(page.results);
+            if !page.has_more {
+                break;
+            }
+            cursor = page.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+
+        Ok(rows)
     }
 
-    /// circles_getGroups
+    /// Legacy "groups by owner" helper backed by paged `circles_findGroups`.
     pub async fn get_groups(&self, avatar: Address) -> Result<Vec<GroupRow>> {
-        self.client.call("circles_getGroups", (avatar,)).await
+        let mut cursor: Option<String> = None;
+        let mut rows = Vec::new();
+
+        loop {
+            let page = self
+                .find_groups_page(
+                    Some(DEFAULT_FIND_GROUPS_LIMIT),
+                    Some(GroupQueryParams {
+                        owner_in: Some(vec![avatar]),
+                        ..Default::default()
+                    }),
+                    cursor.as_deref(),
+                )
+                .await?;
+            rows.extend(page.results);
+            if !page.has_more {
+                break;
+            }
+            cursor = page.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+
+        Ok(rows)
     }
 
     /// Paged `GroupMemberships` query filtered by member address.

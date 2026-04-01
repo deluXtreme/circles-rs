@@ -3,7 +3,7 @@ use crate::error::{CirclesRpcError, Result};
 use crate::methods::QueryMethods;
 use crate::paged_query::{PagedFetch, PagedQuery};
 use circles_types::{
-    Address, Conjunction, FilterPredicate, PagedQueryParams, PagedResult, SortOrder,
+    Address, Conjunction, FilterPredicate, PagedQueryParams, PagedResponse, PagedResult, SortOrder,
     TransactionHistoryRow, U256,
 };
 use circles_utils::converter::{
@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
+
+const DEFAULT_TX_LIMIT: u32 = 50;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +27,7 @@ struct RawTransactionHistoryRow {
     version: u32,
     from: Address,
     to: Address,
-    id: String,
+    id: Option<String>,
     token_address: Address,
     value: String,
 }
@@ -49,6 +51,7 @@ fn enrich_transaction_row(row: RawTransactionHistoryRow) -> Result<TransactionHi
         log_index: row.log_index,
         transaction_hash: row.transaction_hash,
         version: row.version,
+        operator: None,
         from: row.from,
         to: row.to,
         id: row.id,
@@ -73,6 +76,29 @@ impl TransactionMethods {
     /// Create a new accessor for transaction-history RPCs.
     pub fn new(client: RpcClient) -> Self {
         Self { client }
+    }
+
+    /// Native paged transaction history via `circles_getTransactionHistory`.
+    pub async fn get_transaction_history_page(
+        &self,
+        avatar: Address,
+        limit: Option<u32>,
+        cursor: Option<&str>,
+        version: Option<u32>,
+        exclude_intermediary: Option<bool>,
+    ) -> Result<PagedResponse<TransactionHistoryRow>> {
+        self.client
+            .call(
+                "circles_getTransactionHistory",
+                (
+                    avatar,
+                    limit.unwrap_or(DEFAULT_TX_LIMIT),
+                    cursor.map(str::to_owned),
+                    version,
+                    exclude_intermediary.unwrap_or(true),
+                ),
+            )
+            .await
     }
 
     /// Paged transaction history from the `V_Crc.TransferSummary` view.
@@ -179,7 +205,7 @@ mod tests {
             version: 2,
             from: Address::repeat_byte(0x11),
             to: Address::repeat_byte(0x22),
-            id: "1".into(),
+            id: Some("1".into()),
             token_address: Address::repeat_byte(0x33),
             value: "1000000000000000000".into(),
         })
@@ -194,5 +220,7 @@ mod tests {
         assert!(row.crc.expect("crc") > 0.0);
         assert!(row.static_atto_circles.expect("static atto") > U256::ZERO);
         assert!(row.atto_crc.expect("atto crc") > U256::ZERO);
+        assert_eq!(row.id.as_deref(), Some("1"));
+        assert_eq!(row.operator, None);
     }
 }

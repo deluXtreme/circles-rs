@@ -1,6 +1,8 @@
-use crate::AvatarInfo;
+use crate::{AvatarInfo, Profile};
 use alloy_primitives::{Address, TxHash, U256};
 use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::BTreeMap;
+use std::str::FromStr;
 
 /// JSON-RPC request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,6 +120,139 @@ impl<T> SafeQueryResponse<T> {
             error: Some(error),
         }
     }
+}
+
+/// Generic cursor-based page returned by dedicated RPC helper methods.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagedResponse<TRow> {
+    pub results: Vec<TRow>,
+    pub has_more: bool,
+    pub next_cursor: Option<String>,
+}
+
+/// Consolidated profile view returned by `circles_getProfileView`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileView {
+    pub address: Address,
+    pub avatar_info: Option<AvatarInfo>,
+    pub profile: Option<Profile>,
+    pub trust_stats: TrustStats,
+    pub v1_balance: Option<String>,
+    pub v2_balance: Option<String>,
+}
+
+/// Trust counters embedded in `ProfileView`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustStats {
+    pub trusts_count: u32,
+    pub trusted_by_count: u32,
+}
+
+/// Trust-network summary returned by `circles_getTrustNetworkSummary`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustNetworkSummary {
+    pub address: Address,
+    pub direct_trusts_count: u32,
+    pub direct_trusted_by_count: u32,
+    pub mutual_trusts_count: u32,
+    pub mutual_trusts: Vec<Address>,
+    pub network_reach: u32,
+}
+
+/// Enriched trust-relation row returned by `circles_getAggregatedTrustRelationsEnriched`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustRelationInfo {
+    pub address: Address,
+    pub avatar_info: Option<AvatarInfo>,
+    pub relation_type: String,
+}
+
+/// Counts grouped by relation type for enriched trust queries.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustRelationCounts {
+    pub mutual: u32,
+    pub trusts: u32,
+    pub trusted_by: u32,
+    pub total: u32,
+}
+
+/// Paginated enriched trust relations returned by `circles_getAggregatedTrustRelationsEnriched`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagedAggregatedTrustRelationsResponse {
+    pub address: Address,
+    pub results: Vec<TrustRelationInfo>,
+    pub counts: TrustRelationCounts,
+    pub has_more: bool,
+    pub next_cursor: Option<String>,
+}
+
+/// Inviter row returned by `circles_getValidInviters`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InviterInfo {
+    pub address: Address,
+    pub balance: String,
+    pub avatar_info: Option<AvatarInfo>,
+}
+
+/// Paginated valid-inviter response returned by `circles_getValidInviters`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagedValidInvitersResponse {
+    pub address: Address,
+    pub results: Vec<InviterInfo>,
+    pub has_more: bool,
+    pub next_cursor: Option<String>,
+}
+
+/// Participant profile/avatar data embedded in an enriched transaction.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParticipantInfo {
+    pub avatar_info: Option<AvatarInfo>,
+    pub profile: Option<Profile>,
+}
+
+/// Enriched transaction row returned by `circles_getTransactionHistoryEnriched`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnrichedTransaction {
+    pub block_number: u64,
+    pub timestamp: u64,
+    pub transaction_hash: TxHash,
+    pub transaction_index: u32,
+    pub log_index: u32,
+    pub event: serde_json::Value,
+    pub participants: BTreeMap<String, ParticipantInfo>,
+}
+
+/// Paginated unified profile-search response returned by `circles_searchProfileByAddressOrName`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagedProfileSearchResponse {
+    pub query: String,
+    pub search_type: String,
+    pub results: Vec<Profile>,
+    pub has_more: bool,
+    pub next_cursor: Option<String>,
+}
+
+/// Optional parameters for `circles_getTransactionHistoryEnriched`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnrichedTransactionHistoryOptions {
+    pub to_block: Option<u64>,
+    pub limit: Option<u32>,
+    pub cursor: Option<String>,
+    pub version: Option<u32>,
+    pub exclude_intermediary: Option<bool>,
 }
 
 /// Unified invitation-origin response from `circles_getInvitationOrigin`.
@@ -388,6 +523,162 @@ mod tests {
         assert_eq!(response.trust_invitations[0].balance, "150.5");
         assert_eq!(response.escrow_invitations[0].escrow_days, 7);
     }
+
+    #[test]
+    fn profile_view_deserializes_plugin_shape() {
+        let value = json!({
+            "address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+            "avatarInfo": null,
+            "profile": {
+                "name": "franco",
+                "description": "builder"
+            },
+            "trustStats": {
+                "trustsCount": 4,
+                "trustedByCount": 7
+            },
+            "v1Balance": null,
+            "v2Balance": "123.45"
+        });
+
+        let response: ProfileView =
+            serde_json::from_value(value).expect("deserialize profile view");
+
+        assert_eq!(response.trust_stats.trusts_count, 4);
+        assert_eq!(response.trust_stats.trusted_by_count, 7);
+        assert_eq!(response.v2_balance.as_deref(), Some("123.45"));
+        assert_eq!(
+            response.profile.as_ref().map(|p| p.name.as_str()),
+            Some("franco")
+        );
+    }
+
+    #[test]
+    fn paged_aggregated_trust_relations_deserialize_plugin_shape() {
+        let value = json!({
+            "address": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+            "results": [{
+                "address": "0x1234567890abcdef1234567890abcdef12345678",
+                "avatarInfo": null,
+                "relationType": "mutual"
+            }],
+            "counts": {
+                "mutual": 1,
+                "trusts": 2,
+                "trustedBy": 3,
+                "total": 6
+            },
+            "hasMore": true,
+            "nextCursor": "Zm9v"
+        });
+
+        let response: PagedAggregatedTrustRelationsResponse =
+            serde_json::from_value(value).expect("deserialize paged trust relations");
+
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].relation_type, "mutual");
+        assert_eq!(response.counts.total, 6);
+        assert!(response.has_more);
+        assert_eq!(response.next_cursor.as_deref(), Some("Zm9v"));
+    }
+
+    #[test]
+    fn enriched_transaction_page_deserializes_nested_shape() {
+        let value = json!({
+            "results": [{
+                "blockNumber": 123,
+                "timestamp": 456,
+                "transactionHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "transactionIndex": 1,
+                "logIndex": 2,
+                "event": {
+                    "from": "0xde374ece6fa50e781e81aac78e811b33d16912c7",
+                    "to": "0x1234567890abcdef1234567890abcdef12345678",
+                    "value": "100"
+                },
+                "participants": {
+                    "0xde374ece6fa50e781e81aac78e811b33d16912c7": {
+                        "avatarInfo": null,
+                        "profile": {
+                            "name": "sender"
+                        }
+                    }
+                }
+            }],
+            "hasMore": false,
+            "nextCursor": null
+        });
+
+        let response: PagedResponse<EnrichedTransaction> =
+            serde_json::from_value(value).expect("deserialize enriched tx page");
+
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].block_number, 123);
+        assert!(response.results[0]
+            .participants
+            .contains_key("0xde374ece6fa50e781e81aac78e811b33d16912c7"));
+        assert!(!response.has_more);
+    }
+
+    #[test]
+    fn paged_profile_search_response_deserializes_plugin_shape() {
+        let value = json!({
+            "query": "berlin",
+            "searchType": "text",
+            "results": [{
+                "name": "Berlin CRC",
+                "description": "community"
+            }],
+            "hasMore": true,
+            "nextCursor": "YmFy"
+        });
+
+        let response: PagedProfileSearchResponse =
+            serde_json::from_value(value).expect("deserialize profile search response");
+
+        assert_eq!(response.search_type, "text");
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].name, "Berlin CRC");
+        assert!(response.has_more);
+    }
+}
+
+fn deserialize_option_f64<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Number(number)) => number
+            .as_f64()
+            .map(Some)
+            .ok_or_else(|| serde::de::Error::custom("invalid f64 number")),
+        Some(serde_json::Value::String(raw)) => raw
+            .parse::<f64>()
+            .map(Some)
+            .map_err(|e| serde::de::Error::custom(e.to_string())),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected string or number, got {other}"
+        ))),
+    }
+}
+
+fn deserialize_option_u256<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Number(number)) => U256::from_str(&number.to_string())
+            .map(Some)
+            .map_err(|e| serde::de::Error::custom(e.to_string())),
+        Some(serde_json::Value::String(raw)) => U256::from_str(&raw)
+            .map(Some)
+            .map_err(|e| serde::de::Error::custom(e.to_string())),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected string or number, got {other}"
+        ))),
+    }
 }
 
 /// Transaction history row matching the TS RPC helper shape.
@@ -400,21 +691,64 @@ pub struct TransactionHistoryRow {
     pub log_index: u32,
     pub transaction_hash: TxHash,
     pub version: u32,
+    #[serde(default)]
+    pub operator: Option<Address>,
     pub from: Address,
     pub to: Address,
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub token_address: Address,
     pub value: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_option_f64")]
     pub circles: Option<f64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_option_u256")]
     pub atto_circles: Option<U256>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_option_f64")]
     pub static_circles: Option<f64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_option_u256")]
     pub static_atto_circles: Option<U256>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_option_f64")]
     pub crc: Option<f64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_option_u256")]
     pub atto_crc: Option<U256>,
+}
+
+#[cfg(test)]
+mod transaction_history_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn transaction_history_row_deserializes_native_rpc_shape() {
+        let value = json!({
+            "blockNumber": 123,
+            "timestamp": 456,
+            "transactionIndex": 1,
+            "logIndex": 2,
+            "transactionHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "version": 2,
+            "operator": "0x1111111111111111111111111111111111111111",
+            "from": "0x2222222222222222222222222222222222222222",
+            "to": "0x3333333333333333333333333333333333333333",
+            "id": null,
+            "tokenAddress": "0x4444444444444444444444444444444444444444",
+            "value": "100",
+            "circles": "0.1",
+            "attoCircles": "100",
+            "crc": "0.2",
+            "attoCrc": "200",
+            "staticCircles": "0.3",
+            "staticAttoCircles": "300"
+        });
+
+        let row: TransactionHistoryRow =
+            serde_json::from_value(value).expect("deserialize native tx history row");
+
+        assert_eq!(row.block_number, 123);
+        assert_eq!(row.operator, Some(Address::repeat_byte(0x11)));
+        assert_eq!(row.id, None);
+        assert_eq!(row.circles, Some(0.1));
+        assert_eq!(row.atto_circles, Some(U256::from(100)));
+        assert_eq!(row.static_atto_circles, Some(U256::from(300)));
+    }
 }

@@ -1479,8 +1479,9 @@ mod tests {
     fn dummy_config() -> CirclesConfig {
         CirclesConfig {
             circles_rpc_url: "https://rpc.example.com".into(),
-            pathfinder_url: "https://pathfinder.example.com".into(),
-            profile_service_url: "https://profiles.example.com".into(),
+            chain_rpc_url: None,
+            pathfinder_url: Some("https://pathfinder.example.com".into()),
+            profile_service_url: Some("https://profiles.example.com".into()),
             referrals_service_url: None,
             v1_hub_address: Address::repeat_byte(0x01),
             v2_hub_address: Address::repeat_byte(0x02),
@@ -1529,7 +1530,7 @@ mod tests {
             Address::repeat_byte(0xaa),
             dummy_avatar(Address::repeat_byte(0xaa)),
             Arc::new(Core::new(config.clone())),
-            Profiles::new(config.profile_service_url.clone()).expect("profiles"),
+            Profiles::new(config.effective_profile_service_url()).expect("profiles"),
             Arc::new(CirclesRpc::try_from_http(&config.circles_rpc_url).expect("rpc")),
             Some(runner.clone()),
         );

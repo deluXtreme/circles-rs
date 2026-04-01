@@ -19,7 +19,7 @@ pub use error::{CirclesRpcError, Result};
 pub use events::EventStream;
 pub use methods::{
     AvatarMethods, BalanceMethods, EventsMethods, GroupMethods, HealthMethods, InvitationMethods,
-    NetworkMethods, PathfinderMethods, QueryMethods, SearchMethods, TablesMethods,
+    NetworkMethods, PathfinderMethods, QueryMethods, SdkMethods, SearchMethods, TablesMethods,
     TokenInfoMethods, TokenMethods, TransactionMethods, TrustMethods,
 };
 pub use paged_query::{Page, PagedQuery};
