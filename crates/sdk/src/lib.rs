@@ -66,8 +66,9 @@
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
-//! - [`Sdk::referrals`], [`Referrals::with_auth_token`], [`Referrals::list_mine_authenticated`],
-//!   and [`HumanAvatar::list_referrals`] for the optional referrals backend.
+//! - [`Sdk::referrals`], [`Sdk::distributions`], [`Referrals::with_auth_token`],
+//!   [`Referrals::list_mine_authenticated`], and [`HumanAvatar::list_referrals`] for the
+//!   optional referrals backend.
 //! - [`HumanAvatar::plan_referral_code`] and [`HumanAvatar::get_referral_code`] for the
 //!   TS-style single-referral planner used by `getReferralCode()`.
 //! - [`HumanAvatar::plan_generate_referrals`] and [`HumanAvatar::generate_referrals`] for
@@ -88,10 +89,13 @@ mod services;
 #[cfg(feature = "ws")]
 pub mod ws;
 pub use services::referrals::{
+    AddKeysError, AddKeysResult, CreateSessionParams, DispenseErrorCode, DispenseResult,
+    DistributionSession, DistributionSessionList, DistributionSessionListOptions, Distributions,
     Referral, ReferralInfo, ReferralList, ReferralListMineOptions, ReferralPreview,
     ReferralPreviewList, ReferralPublicListOptions, ReferralSession, ReferralStatus,
-    ReferralStoreInput, ReferralSyncStatus, Referrals, ReferralsError, StoreBatchError,
-    StoreBatchResult,
+    ReferralStoreInput, ReferralSyncStatus, Referrals, ReferralsError, SessionErrorCode,
+    SessionKey, SessionKeyList, SessionKeyListOptions, SessionKeyStatus, StoreBatchError,
+    StoreBatchResult, UpdateSessionParams,
 };
 pub use services::registration;
 
@@ -226,6 +230,13 @@ impl Sdk {
     /// Optional referrals client when `referrals_service_url` is configured.
     pub fn referrals(&self) -> Option<&Referrals> {
         self.referrals.as_ref()
+    }
+
+    /// Optional distribution-session client when `referrals_service_url` is configured.
+    pub fn distributions(&self) -> Option<Distributions> {
+        self.referrals
+            .as_ref()
+            .map(|referrals| referrals.distributions())
     }
 
     /// Optional runner.
