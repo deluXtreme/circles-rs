@@ -1,7 +1,8 @@
 use crate::client::RpcClient;
 use crate::error::Result;
 use circles_types::{
-    Address, AllInvitationsResponse, Balance, InvitationOriginResponse, InvitationsFromResponse,
+    Address, AllInvitationsResponse, AtScaleInvitation, Balance, EscrowInvitation,
+    InvitationOriginResponse, InvitationsFromResponse, TrustInvitation,
 };
 use futures::pin_mut;
 use futures::stream::{self, StreamExt};
@@ -47,6 +48,43 @@ impl InvitationMethods {
             .get_invitation_origin(address)
             .await?
             .and_then(|origin| origin.inviter))
+    }
+
+    /// `circles_getTrustInvitations` — trust-based invitations for this avatar.
+    pub async fn get_trust_invitations(
+        &self,
+        address: Address,
+        minimum_balance: Option<String>,
+    ) -> Result<Vec<TrustInvitation>> {
+        match minimum_balance {
+            Some(minimum_balance) => {
+                self.client
+                    .call("circles_getTrustInvitations", (address, minimum_balance))
+                    .await
+            }
+            None => {
+                self.client
+                    .call("circles_getTrustInvitations", (address,))
+                    .await
+            }
+        }
+    }
+
+    /// `circles_getEscrowInvitations` — active escrow invitations for this avatar.
+    pub async fn get_escrow_invitations(&self, address: Address) -> Result<Vec<EscrowInvitation>> {
+        self.client
+            .call("circles_getEscrowInvitations", (address,))
+            .await
+    }
+
+    /// `circles_getAtScaleInvitations` — unclaimed at-scale invitations for this avatar.
+    pub async fn get_at_scale_invitations(
+        &self,
+        address: Address,
+    ) -> Result<Vec<AtScaleInvitation>> {
+        self.client
+            .call("circles_getAtScaleInvitations", (address,))
+            .await
     }
 
     /// `circles_getAllInvitations` — return trust, escrow, and at-scale invitations.

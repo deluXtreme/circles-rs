@@ -58,9 +58,10 @@
 //!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
 //! - [`HumanAvatar::plan_group_token_redeem`] and
 //!   [`OrganisationAvatar::plan_group_token_redeem`] for automatic group-token redeem planning.
-//! - [`HumanAvatar::available_invitations`], [`HumanAvatar::invitation_origin`],
-//!   [`HumanAvatar::proxy_inviters`], and [`HumanAvatar::find_farm_invite_path`] for the
-//!   current invitation/referral query surface.
+//! - [`HumanAvatar::available_invitations`], [`HumanAvatar::trust_invitations`],
+//!   [`HumanAvatar::escrow_invitations`], [`HumanAvatar::at_scale_invitations`],
+//!   [`HumanAvatar::invitation_origin`], [`HumanAvatar::proxy_inviters`], and
+//!   [`HumanAvatar::find_farm_invite_path`] for the current invitation/referral query surface.
 //! - [`Sdk::data_profile_view`], [`Sdk::data_trust_network_summary`], and
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
@@ -104,11 +105,12 @@ use circles_rpc::{CirclesRpc, PagedQuery};
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AggregatedTrustRelation, AvatarInfo, AvatarType, CirclesConfig, EnrichedTransaction,
-    EnrichedTransactionHistoryOptions, GroupMembershipRow, GroupQueryParams, GroupRow,
-    GroupTokenHolderRow, PagedAggregatedTrustRelationsResponse, PagedProfileSearchResponse,
-    PagedResponse, PagedValidInvitersResponse, ProfileView, SortOrder, TokenBalanceResponse,
-    TokenHolderRow, TransactionHistoryRow, TrustNetworkSummary, TrustRelation,
+    AggregatedTrustRelation, AllInvitationsResponse, AtScaleInvitation, AvatarInfo, AvatarType,
+    CirclesConfig, EnrichedTransaction, EnrichedTransactionHistoryOptions, EscrowInvitation,
+    GroupMembershipRow, GroupQueryParams, GroupRow, GroupTokenHolderRow,
+    PagedAggregatedTrustRelationsResponse, PagedProfileSearchResponse, PagedResponse,
+    PagedValidInvitersResponse, ProfileView, SortOrder, TokenBalanceResponse, TokenHolderRow,
+    TransactionHistoryRow, TrustInvitation, TrustNetworkSummary, TrustRelation,
 };
 use core::Core;
 pub use runner::{
@@ -330,6 +332,52 @@ impl Sdk {
             .rpc
             .sdk()
             .get_valid_inviters(avatar, minimum_balance, limit, cursor)
+            .await?)
+    }
+
+    /// Read all invitation sources for an avatar directly from the RPC service.
+    pub async fn data_all_invitations(
+        &self,
+        avatar: Address,
+        minimum_balance: Option<&str>,
+    ) -> Result<AllInvitationsResponse, SdkError> {
+        Ok(self
+            .rpc
+            .invitation()
+            .get_all_invitations(avatar, minimum_balance.map(str::to_owned))
+            .await?)
+    }
+
+    /// Read trust-based invitations for an avatar directly from the RPC service.
+    pub async fn data_trust_invitations(
+        &self,
+        avatar: Address,
+        minimum_balance: Option<&str>,
+    ) -> Result<Vec<TrustInvitation>, SdkError> {
+        Ok(self
+            .rpc
+            .invitation()
+            .get_trust_invitations(avatar, minimum_balance.map(str::to_owned))
+            .await?)
+    }
+
+    /// Read escrow-backed invitations for an avatar directly from the RPC service.
+    pub async fn data_escrow_invitations(
+        &self,
+        avatar: Address,
+    ) -> Result<Vec<EscrowInvitation>, SdkError> {
+        Ok(self.rpc.invitation().get_escrow_invitations(avatar).await?)
+    }
+
+    /// Read at-scale invitations for an avatar directly from the RPC service.
+    pub async fn data_at_scale_invitations(
+        &self,
+        avatar: Address,
+    ) -> Result<Vec<AtScaleInvitation>, SdkError> {
+        Ok(self
+            .rpc
+            .invitation()
+            .get_at_scale_invitations(avatar)
             .await?)
     }
 
