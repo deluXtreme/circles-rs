@@ -70,8 +70,10 @@
 //!   invitation service facade.
 //! - [`Sdk::data_profile_view`], [`Sdk::data_trust_network_summary`], and
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
+//! - [`Sdk::tokens`] and [`Tokens::get_inflationary_wrapper`] for the dedicated TS-style
+//!   token-helper namespace.
 //! - [`Sdk::inflationary_wrapper`], [`Sdk::demurraged_wrapper`], and
-//!   [`Sdk::token_holders`] for the remaining top-level TS token conveniences.
+//!   [`Sdk::token_holders`] remain available as flat helpers.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
 //! - [`Sdk::referrals`], [`Sdk::distributions`], [`Referrals::with_auth_token`],
@@ -114,6 +116,7 @@ pub use services::referrals::{
 };
 pub use services::registration;
 pub use services::registration::{Registration, RegistrationProfileInput};
+pub use services::tokens::Tokens;
 
 #[cfg(feature = "ws")]
 use alloy_json_rpc::RpcSend;
@@ -306,6 +309,11 @@ impl Sdk {
             self.runner.clone(),
             self.referrals.clone(),
         )
+    }
+
+    /// Dedicated tokens facade mirroring the TS SDK service surface.
+    pub fn tokens(&self) -> Tokens<'_> {
+        Tokens::new(self)
     }
 
     /// Optional runner.
@@ -836,5 +844,11 @@ mod tests {
     fn registration_service_is_available_from_sdk() {
         let sdk = Sdk::new(config::gnosis_mainnet(), None).expect("sdk");
         let _ = sdk.register();
+    }
+
+    #[test]
+    fn tokens_service_is_available_from_sdk() {
+        let sdk = Sdk::new(config::gnosis_mainnet(), None).expect("sdk");
+        let _ = sdk.tokens();
     }
 }
