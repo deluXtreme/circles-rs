@@ -1,3 +1,5 @@
+/// Dedicated invitations facade mirroring the TS SDK service.
+pub mod invitations;
 /// Dedicated invitation-farm facade mirroring the TS SDK service.
 pub mod invite_farm;
 /// Optional referrals backend client and related response types.

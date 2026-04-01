@@ -64,6 +64,8 @@
 //!   [`HumanAvatar::escrow_invitations`], [`HumanAvatar::at_scale_invitations`],
 //!   [`HumanAvatar::invitation_origin`], [`HumanAvatar::proxy_inviters`], and
 //!   [`HumanAvatar::find_farm_invite_path`] for the current invitation/referral query surface.
+//! - [`Sdk::invitations`] and [`Invitations::generate_invite`] for the dedicated TS-style
+//!   invitation service facade.
 //! - [`Sdk::data_profile_view`], [`Sdk::data_trust_network_summary`], and
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
 //! - [`Sdk::inflationary_wrapper`], [`Sdk::demurraged_wrapper`], and
@@ -95,6 +97,7 @@ mod runner;
 mod services;
 #[cfg(feature = "ws")]
 pub mod ws;
+pub use services::invitations::Invitations;
 pub use services::invite_farm::{
     GenerateInvitesResult, GenerateReferralsResult, GeneratedReferral, InviteFarm,
 };
@@ -112,6 +115,7 @@ pub use services::registration;
 #[cfg(feature = "ws")]
 use alloy_json_rpc::RpcSend;
 use alloy_primitives::Address;
+pub use avatar::human::{ProxyInviter, ReferralCodePlan};
 pub use avatar::{BaseGroupAvatar, HumanAvatar, OrganisationAvatar};
 use circles_profiles::{Profile, Profiles};
 #[cfg(feature = "ws")]
@@ -283,6 +287,17 @@ impl Sdk {
     /// Dedicated invitation-farm facade mirroring the TS SDK service surface.
     pub fn invite_farm(&self) -> InviteFarm {
         InviteFarm::new(self.core.clone(), self.referrals.clone())
+    }
+
+    /// Dedicated invitations facade mirroring the TS SDK service surface.
+    pub fn invitations(&self) -> Invitations {
+        Invitations::new(
+            self.core.clone(),
+            self.profiles.clone(),
+            self.rpc.clone(),
+            self.runner.clone(),
+            self.referrals.clone(),
+        )
     }
 
     /// Optional runner.
@@ -796,5 +811,16 @@ mod tests {
 
         assert!(sdk.referrals().is_some());
         assert!(sdk.distributions().is_some());
+    }
+
+    #[test]
+    fn invitations_service_is_available_from_sdk() {
+        let sdk = Sdk::new(config::gnosis_mainnet(), None).expect("sdk");
+        let generated = sdk
+            .invitations()
+            .generate_secrets(2)
+            .expect("generated secrets");
+
+        assert_eq!(generated.len(), 2);
     }
 }

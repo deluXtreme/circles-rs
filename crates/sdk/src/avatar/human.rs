@@ -235,7 +235,7 @@ fn summarize_proxy_inviters(
 }
 
 impl HumanAvatar {
-    async fn ensure_inviter_setup(&self) -> Result<Vec<PreparedTransaction>, SdkError> {
+    pub(crate) async fn ensure_inviter_setup(&self) -> Result<Vec<PreparedTransaction>, SdkError> {
         let invitation_module = self.common.core.config.invitation_module_address;
         let module_enabled = SafeMinimal::new(self.address, self.core.provider())
             .isModuleEnabled(invitation_module)

@@ -14,6 +14,7 @@ The usage model is intentionally simple:
 
 - Typed avatar helpers for balances, aggregated trust, profiles, direct-transfer planning/execution, pathfinding, replenish planning, group-token redeem planning/execution, registration flows, and invitation/referral discovery.
 - Invitation and referral helpers for human avatars, including invitation-origin lookups, inbound/outbound invitation queries, invitation fee/module/quota helpers, proxy-inviter discovery, invite-path and farm-path lookup, deterministic referral-address computation, direct-invite planning/execution, single-referral `getReferralCode` planning, batch referral generation planning/execution, and public referral listing via the optional referrals backend.
+- Dedicated TS-style `Sdk::invitations()` and `Sdk::invite_farm()` facades for invitation/referral workflows that are otherwise split across avatar helpers and the referrals backend client.
 - Optional referrals backend client surfaced through `Sdk::referrals()` for store/store-batch/retrieve/list flows when `referrals_service_url` is configured.
 - Profile metadata / short-name write helpers plus personal minting for human avatars.
 - Transaction-history pagination for all typed avatars plus human group-membership/detail helpers.
@@ -97,5 +98,5 @@ The crate now ships two built-in runner implementations plus a Safe preparation 
 - `HumanAvatar` now also exposes `invitation_origin`, `invited_by`, `available_invitations`, `invitations_from`, `accepted_invitees`, `pending_invitees`, `invitation_fee`, `invitation_module`, `invitation_quota`, `proxy_inviters`, `find_invite_path`, `find_farm_invite_path`, `compute_referral_address`, `plan_invite`, `invite`, `plan_referral_code`, `get_referral_code`, `plan_generate_referrals`, `generate_referrals`, and `list_referrals`.
 - `Sdk::referrals()` returns the optional referrals backend client, which currently supports store/store-batch/retrieve/public-list flows plus authenticated `list_mine` when a bearer token is supplied explicitly.
 - The SDK still uses flatter Rust methods instead of the TS object namespaces (`balances.*`, `trust.*`, `groupToken.*`), so some convenience parity remains outstanding even where the underlying capability now exists.
-- The main remaining facade gaps are the follow-up referrals service/auth polish plus actual browser-provider Safe execution on top of the new preparation foundation.
+- The main remaining gaps are the follow-up referrals service/auth polish plus actual browser-provider Safe execution on top of the new preparation foundation.
 - Generate local rustdoc with `cargo doc -p circles-sdk --all-features`.
