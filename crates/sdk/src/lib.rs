@@ -54,6 +54,8 @@
 //!   execution backends for existing wallets.
 //! - [`SafeExecutionBuilder::connect`] when you need the TS-style Safe transaction-preparation
 //!   seam before an external/browser signer submits the transaction.
+//! - [`Sdk::register`] and [`Registration::as_human`] for the dedicated TS-style
+//!   registration namespace.
 //! - [`HumanAvatar::plan_transfer`], [`OrganisationAvatar::plan_transfer`], and
 //!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
 //! - [`HumanAvatar::plan_direct_transfer`], [`OrganisationAvatar::plan_direct_transfer`], and
@@ -111,6 +113,7 @@ pub use services::referrals::{
     StoreBatchResult, UpdateSessionParams,
 };
 pub use services::registration;
+pub use services::registration::{Registration, RegistrationProfileInput};
 
 #[cfg(feature = "ws")]
 use alloy_json_rpc::RpcSend;
@@ -287,6 +290,11 @@ impl Sdk {
     /// Dedicated invitation-farm facade mirroring the TS SDK service surface.
     pub fn invite_farm(&self) -> InviteFarm {
         InviteFarm::new(self.core.clone(), self.referrals.clone())
+    }
+
+    /// Dedicated registration facade mirroring the TS SDK service surface.
+    pub fn register(&self) -> Registration<'_> {
+        Registration::new(self)
     }
 
     /// Dedicated invitations facade mirroring the TS SDK service surface.
@@ -822,5 +830,11 @@ mod tests {
             .expect("generated secrets");
 
         assert_eq!(generated.len(), 2);
+    }
+
+    #[test]
+    fn registration_service_is_available_from_sdk() {
+        let sdk = Sdk::new(config::gnosis_mainnet(), None).expect("sdk");
+        let _ = sdk.register();
     }
 }
