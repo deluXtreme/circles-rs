@@ -419,6 +419,48 @@ impl SafeContractRunner {
         Ok(Self { wallet, provider })
     }
 
+    /// TypeScript-style constructor alias for [`SafeContractRunner::connect`].
+    pub async fn create(
+        rpc_url: &str,
+        private_key: &str,
+        safe_address: Address,
+    ) -> Result<Self, RunnerError> {
+        Self::connect(rpc_url, private_key, safe_address).await
+    }
+
+    /// Optional alias matching the TypeScript runner surface.
+    pub fn address(&self) -> Option<Address> {
+        Some(self.wallet.address())
+    }
+
+    /// Estimate gas for a prepared transaction using the runner's backend.
+    pub async fn estimate_gas(&self, tx: PreparedTransaction) -> Result<u64, RunnerError> {
+        ContractRunner::estimate_gas(self, tx).await
+    }
+
+    /// Execute a read-only call using the runner's backend.
+    pub async fn call(&self, tx: PreparedTransaction) -> Result<Bytes, RunnerError> {
+        ContractRunner::call(self, tx).await
+    }
+
+    /// Resolve a name using the runner backend when supported.
+    pub async fn resolve_name(&self, name: &str) -> Result<Option<Address>, RunnerError> {
+        ContractRunner::resolve_name(self, name).await
+    }
+
+    /// Create a buffered batch helper using this concrete runner.
+    pub fn send_batch_transaction(&self) -> Box<dyn BatchRun + '_> {
+        ContractRunner::send_batch_transaction(self)
+    }
+
+    /// TypeScript-style alias for submitting one or more prepared transactions.
+    pub async fn send_transaction(
+        &self,
+        txs: Vec<PreparedTransaction>,
+    ) -> Result<Vec<SubmittedTx>, RunnerError> {
+        ContractRunner::send_transactions(self, txs).await
+    }
+
     /// Prepare the canonical Safe payload/hash for one or more SDK transactions
     /// without executing them immediately.
     pub async fn prepare_transactions(
@@ -497,6 +539,44 @@ impl EoaContractRunner {
             .await
             .map_err(map_safe_error)?;
         Ok(Self { wallet, provider })
+    }
+
+    /// Constructor alias matching the concrete Safe runner style.
+    pub async fn create(rpc_url: &str, private_key: &str) -> Result<Self, RunnerError> {
+        Self::connect(rpc_url, private_key).await
+    }
+
+    /// Optional alias matching the TypeScript runner surface.
+    pub fn address(&self) -> Option<Address> {
+        Some(self.wallet.address())
+    }
+
+    /// Estimate gas for a prepared transaction using the runner's backend.
+    pub async fn estimate_gas(&self, tx: PreparedTransaction) -> Result<u64, RunnerError> {
+        ContractRunner::estimate_gas(self, tx).await
+    }
+
+    /// Execute a read-only call using the runner's backend.
+    pub async fn call(&self, tx: PreparedTransaction) -> Result<Bytes, RunnerError> {
+        ContractRunner::call(self, tx).await
+    }
+
+    /// Resolve a name using the runner backend when supported.
+    pub async fn resolve_name(&self, name: &str) -> Result<Option<Address>, RunnerError> {
+        ContractRunner::resolve_name(self, name).await
+    }
+
+    /// Create a buffered batch helper using this concrete runner.
+    pub fn send_batch_transaction(&self) -> Box<dyn BatchRun + '_> {
+        ContractRunner::send_batch_transaction(self)
+    }
+
+    /// TypeScript-style alias for submitting one or more prepared transactions.
+    pub async fn send_transaction(
+        &self,
+        txs: Vec<PreparedTransaction>,
+    ) -> Result<Vec<SubmittedTx>, RunnerError> {
+        ContractRunner::send_transactions(self, txs).await
     }
 }
 
@@ -889,8 +969,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn safe_runner_create_alias_rejects_invalid_private_key() {
+        let result = SafeContractRunner::create(
+            "https://rpc.example.invalid",
+            "not-a-private-key",
+            Address::ZERO,
+        )
+        .await;
+
+        assert!(matches!(result, Err(RunnerError::Rejected(_))));
+    }
+
+    #[tokio::test]
     async fn eoa_runner_rejects_invalid_private_key() {
         let result = EoaContractRunner::connect("https://rpc.example.invalid", "bad-key").await;
+
+        assert!(matches!(result, Err(RunnerError::Rejected(_))));
+    }
+
+    #[tokio::test]
+    async fn eoa_runner_create_alias_rejects_invalid_private_key() {
+        let result = EoaContractRunner::create("https://rpc.example.invalid", "bad-key").await;
 
         assert!(matches!(result, Err(RunnerError::Rejected(_))));
     }
@@ -937,6 +1036,32 @@ mod tests {
             .await
             .expect("balance after transfer");
         assert_eq!(after - before, U256::from(123u64));
+    }
+
+    #[tokio::test]
+    async fn eoa_runner_send_transaction_alias_executes_on_anvil() {
+        if !anvil_binary_available() {
+            eprintln!("skipping anvil-backed test because `anvil` is not installed");
+            return;
+        }
+
+        let anvil = Anvil::new().spawn();
+        let runner = EoaContractRunner::create(&anvil.endpoint(), ANVIL_FIRST_PRIVATE_KEY)
+            .await
+            .expect("connect EOA runner");
+
+        assert_eq!(runner.address(), Some(ANVIL_FIRST_ADDRESS));
+
+        let submitted = runner
+            .send_transaction(vec![PreparedTransaction {
+                to: ANVIL_SECOND_ADDRESS,
+                data: Bytes::new(),
+                value: Some(U256::from(123u64)),
+            }])
+            .await
+            .expect("EOA transfer executes");
+
+        assert_eq!(submitted.len(), 1);
     }
 
     #[tokio::test]

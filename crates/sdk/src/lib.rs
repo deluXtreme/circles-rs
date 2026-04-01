@@ -38,7 +38,8 @@
 //!   and transfer submission.
 //! - [`SafeContractRunner`] and [`EoaContractRunner`] are the built-in execution backends for
 //!   existing single-owner Safe wallets and direct EOA execution, and now expose buffered batch,
-//!   gas-estimation, and read-call helper surface on the runner itself.
+//!   gas-estimation, read-call helper surface, and direct runner method aliases on the concrete
+//!   runner itself.
 //! - [`SafeExecutionBuilder`] is the browser/external-signature foundation for Safe-backed
 //!   flows: it prepares the canonical Safe payload/hash without requiring a local private key.
 //! - The optional `ws` feature enables WebSocket subscriptions with retry/backoff and HTTP catch-up helpers.
@@ -48,7 +49,8 @@
 //! - [`config::gnosis_mainnet`] for the shared mainnet configuration.
 //! - [`Sdk::avatar_info`] for a fast read-only probe.
 //! - [`Sdk::get_avatar`] when you want a typed avatar wrapper.
-//! - [`EoaContractRunner::connect`] and [`SafeContractRunner::connect`] when you want built-in
+//! - [`EoaContractRunner::connect`], [`EoaContractRunner::create`],
+//!   [`SafeContractRunner::connect`], and [`SafeContractRunner::create`] when you want built-in
 //!   execution backends for existing wallets.
 //! - [`SafeExecutionBuilder::connect`] when you need the TS-style Safe transaction-preparation
 //!   seam before an external/browser signer submits the transaction.
