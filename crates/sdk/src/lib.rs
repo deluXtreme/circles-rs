@@ -66,7 +66,8 @@
 //!   [`Sdk::data_transaction_history_enriched`] for the newer consolidated RPC read surface.
 //! - [`HumanAvatar::plan_invite`] and [`HumanAvatar::invite`] for TS-style direct invite
 //!   planning/execution against existing Safe wallets.
-//! - [`Sdk::referrals`] and [`HumanAvatar::list_referrals`] for the optional referrals backend.
+//! - [`Sdk::referrals`], [`Referrals::with_auth_token`], [`Referrals::list_mine_authenticated`],
+//!   and [`HumanAvatar::list_referrals`] for the optional referrals backend.
 //! - [`HumanAvatar::plan_referral_code`] and [`HumanAvatar::get_referral_code`] for the
 //!   TS-style single-referral planner used by `getReferralCode()`.
 //! - [`HumanAvatar::plan_generate_referrals`] and [`HumanAvatar::generate_referrals`] for

@@ -4,6 +4,8 @@ use circles_abis::ReferralsModule;
 use k256::{SecretKey, elliptic_curve::rand_core::OsRng, elliptic_curve::sec1::ToEncodedPoint};
 use reqwest::{Client, StatusCode, Url};
 use serde::{Deserialize, Serialize};
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -180,12 +182,20 @@ pub struct ReferralPublicListOptions {
     pub in_session: Option<bool>,
 }
 
+/// Async token future returned by a referrals auth-token provider.
+pub type ReferralsAuthTokenFuture =
+    Pin<Box<dyn Future<Output = Result<String, ReferralsError>> + Send>>;
+
+/// Async bearer-token source for authenticated referrals backend calls.
+pub type ReferralsAuthTokenProvider = Arc<dyn Fn() -> ReferralsAuthTokenFuture + Send + Sync>;
+
 /// Optional referrals backend client.
 #[derive(Clone)]
 pub struct Referrals {
     base_url: Url,
     client: Client,
     core: Arc<Core>,
+    auth_token_provider: Option<ReferralsAuthTokenProvider>,
 }
 
 impl Referrals {
@@ -206,7 +216,28 @@ impl Referrals {
             base_url,
             client,
             core,
+            auth_token_provider: None,
         })
+    }
+
+    /// Clone this client and use a fixed bearer token for authenticated calls.
+    pub fn with_auth_token(mut self, token: impl Into<String>) -> Self {
+        let token = Arc::new(token.into());
+        self.auth_token_provider = Some(Arc::new(move || {
+            let token = token.clone();
+            Box::pin(async move { Ok((*token).clone()) })
+        }));
+        self
+    }
+
+    /// Clone this client and use an async bearer-token provider for authenticated calls.
+    pub fn with_auth_token_provider<F, Fut>(mut self, provider: F) -> Self
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<String, ReferralsError>> + Send + 'static,
+    {
+        self.auth_token_provider = Some(Arc::new(move || Box::pin(provider())));
+        self
     }
 
     pub async fn store(&self, private_key: &str, inviter: Address) -> Result<(), ReferralsError> {
@@ -295,7 +326,7 @@ impl Referrals {
         auth_token: Option<&str>,
         opts: Option<ReferralListMineOptions>,
     ) -> Result<ReferralList, ReferralsError> {
-        let token = auth_token.ok_or(ReferralsError::AuthRequired)?;
+        let token = self.resolve_auth_token(auth_token).await?;
         let mut url = endpoint(&self.base_url, "my-referrals")?;
         append_mine_query(&mut url, opts.as_ref());
 
@@ -308,6 +339,14 @@ impl Referrals {
         }
 
         serde_json::from_str(&body).map_err(|_| ReferralsError::DecodeFailed { status, body })
+    }
+
+    /// TypeScript-style authenticated referral listing using the configured token source.
+    pub async fn list_mine_authenticated(
+        &self,
+        opts: Option<ReferralListMineOptions>,
+    ) -> Result<ReferralList, ReferralsError> {
+        self.list_mine(None, opts).await
     }
 
     pub async fn list_public(
@@ -325,6 +364,18 @@ impl Referrals {
         }
 
         serde_json::from_str(&body).map_err(|_| ReferralsError::DecodeFailed { status, body })
+    }
+
+    async fn resolve_auth_token(&self, explicit: Option<&str>) -> Result<String, ReferralsError> {
+        if let Some(token) = explicit {
+            return Ok(token.to_owned());
+        }
+
+        let provider = self
+            .auth_token_provider
+            .as_ref()
+            .ok_or(ReferralsError::AuthRequired)?;
+        provider().await
     }
 }
 
@@ -453,11 +504,24 @@ fn referral_not_found_info(signer: Address, info: Option<ReferralInfo>) -> Refer
 #[cfg(test)]
 mod tests {
     use super::{
-        ReferralInfo, ReferralListMineOptions, ReferralPublicListOptions, api_reason,
-        normalize_base_url, private_key_to_address, referral_not_found_info,
+        ReferralInfo, ReferralListMineOptions, ReferralPublicListOptions, Referrals,
+        ReferralsError, api_reason, normalize_base_url, private_key_to_address,
+        referral_not_found_info,
     };
+    use crate::{config, core::Core};
     use alloy_primitives::{Address, address};
+    use reqwest::Client;
     use reqwest::StatusCode;
+    use std::sync::Arc;
+
+    fn test_referrals() -> Referrals {
+        Referrals::with_client(
+            "https://example.com/api",
+            Arc::new(Core::new(config::gnosis_mainnet())),
+            Client::new(),
+        )
+        .unwrap()
+    }
 
     #[test]
     fn ensures_trailing_slash() {
@@ -517,5 +581,29 @@ mod tests {
         let mine = ReferralListMineOptions::default();
         assert!(public.limit.is_none());
         assert!(mine.status.is_none());
+    }
+
+    #[tokio::test]
+    async fn resolve_auth_token_prefers_explicit_token() {
+        let referrals = test_referrals().with_auth_token("configured-token");
+        let token = referrals
+            .resolve_auth_token(Some("explicit-token"))
+            .await
+            .unwrap();
+        assert_eq!(token, "explicit-token");
+    }
+
+    #[tokio::test]
+    async fn resolve_auth_token_uses_provider_fallback() {
+        let referrals = test_referrals()
+            .with_auth_token_provider(|| async { Ok("provider-token".to_string()) });
+        let token = referrals.resolve_auth_token(None).await.unwrap();
+        assert_eq!(token, "provider-token");
+    }
+
+    #[tokio::test]
+    async fn resolve_auth_token_requires_auth_when_missing() {
+        let err = test_referrals().resolve_auth_token(None).await.unwrap_err();
+        assert!(matches!(err, ReferralsError::AuthRequired));
     }
 }
