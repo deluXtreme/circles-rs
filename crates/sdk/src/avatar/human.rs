@@ -19,10 +19,11 @@ use circles_transfers::TransferBuilder;
 #[cfg(feature = "ws")]
 use circles_types::CirclesEvent;
 use circles_types::{
-    AdvancedTransferOptions, AggregatedTrustRelation, AllInvitationsResponse, AvatarInfo, Balance,
-    GroupMembershipRow, GroupQueryParams, GroupRow, InvitationOriginResponse,
-    InvitationsFromResponse, InvitedAccountInfo, PathfindingResult, PathfindingTransferStep,
-    SimulatedTrust, SortOrder, TokenBalanceResponse, TransactionHistoryRow, TrustRelation,
+    AdvancedTransferOptions, AggregatedTrustRelation, AllInvitationsResponse, AtScaleInvitation,
+    AvatarInfo, Balance, EscrowInvitation, GroupMembershipRow, GroupQueryParams, GroupRow,
+    InvitationOriginResponse, InvitationsFromResponse, InvitedAccountInfo, PathfindingResult,
+    PathfindingTransferStep, SimulatedTrust, SortOrder, TokenBalanceResponse,
+    TransactionHistoryRow, TrustInvitation, TrustRelation,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
@@ -1040,6 +1041,39 @@ impl HumanAvatar {
             .rpc
             .invitation()
             .get_all_invitations(self.address, minimum_balance)
+            .await?)
+    }
+
+    /// Trust-based invitation availability for this avatar.
+    pub async fn trust_invitations(
+        &self,
+        minimum_balance: Option<String>,
+    ) -> Result<Vec<TrustInvitation>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_trust_invitations(self.address, minimum_balance)
+            .await?)
+    }
+
+    /// Escrow-backed invitation availability for this avatar.
+    pub async fn escrow_invitations(&self) -> Result<Vec<EscrowInvitation>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_escrow_invitations(self.address)
+            .await?)
+    }
+
+    /// At-scale invitation availability for this avatar.
+    pub async fn at_scale_invitations(&self) -> Result<Vec<AtScaleInvitation>, SdkError> {
+        Ok(self
+            .common
+            .rpc
+            .invitation()
+            .get_at_scale_invitations(self.address)
             .await?)
     }
 
