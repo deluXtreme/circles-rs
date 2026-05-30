@@ -5,9 +5,9 @@
 //! from any wallet, Safe, or signer transport while still allowing a concrete
 //! execution backend when the caller wants write parity.
 
-use alloy_network::AnyNetwork;
+use alloy_network::{AnyNetwork, EthereumWallet};
 use alloy_primitives::{Address, B256, Bytes, U256, aliases::TxHash};
-use alloy_provider::{Identity, Provider, ProviderBuilder, RootProvider};
+use alloy_provider::{DynProvider, Identity, Provider, ProviderBuilder, RootProvider};
 use alloy_rpc_types::TransactionRequest;
 use alloy_signer_local::PrivateKeySigner;
 use alloy_sol_types::SolCall;
@@ -20,9 +20,15 @@ use safe_rs::{
 };
 use thiserror::Error;
 
+// Read-only provider for the browser/external-signing builder (no local key).
 type AnyHttpProvider = RootProvider<AnyNetwork>;
-type SafeWallet = Wallet<Safe<AnyHttpProvider>>;
-type EoaWallet = Wallet<Eoa<AnyHttpProvider>>;
+// Provider for runners that submit transactions. It carries a WalletFiller so
+// `.send()` signs locally and uses eth_sendRawTransaction; without it alloy
+// falls back to eth_sendTransaction, which public RPCs don't implement. Erased
+// to DynProvider so the wallet alias types stay simple.
+type SigningProvider = DynProvider<AnyNetwork>;
+type SafeWallet = Wallet<Safe<SigningProvider>>;
+type EoaWallet = Wallet<Eoa<SigningProvider>>;
 
 /// Prepared transaction for a runner to submit. This is intentionally simple;
 /// we can swap to richer contract-specific types as we wire more flows.
@@ -312,6 +318,16 @@ fn build_read_provider(rpc_url: Url) -> AnyHttpProvider {
     ProviderBuilder::<Identity, Identity, AnyNetwork>::default().connect_http(rpc_url)
 }
 
+// A provider with the signer's wallet attached, so transaction sends are signed
+// locally (eth_sendRawTransaction) rather than delegated to the node
+// (eth_sendTransaction). Erased to DynProvider to keep the runner types simple.
+fn build_signing_provider(rpc_url: Url, signer: &PrivateKeySigner) -> SigningProvider {
+    ProviderBuilder::<Identity, Identity, AnyNetwork>::default()
+        .wallet(EthereumWallet::from(signer.clone()))
+        .connect_http(rpc_url)
+        .erased()
+}
+
 fn prepared_to_safe_call(tx: &PreparedTransaction) -> Call {
     Call::new(tx.to, tx.value.unwrap_or_default(), tx.data.clone())
 }
@@ -393,7 +409,7 @@ where
 /// current capabilities of the underlying Safe crate used here.
 pub struct SafeContractRunner {
     wallet: SafeWallet,
-    provider: AnyHttpProvider,
+    provider: SigningProvider,
 }
 
 impl SafeContractRunner {
@@ -406,7 +422,10 @@ impl SafeContractRunner {
     ) -> Result<Self, RunnerError> {
         let rpc_url = parse_rpc_url(rpc_url)?;
         let signer = parse_private_key(private_key)?;
-        let provider = build_read_provider(rpc_url);
+        // Wallet-bearing provider: the Safe's execTransaction is signed locally
+        // and broadcast via eth_sendRawTransaction. A read-only provider would
+        // emit eth_sendTransaction, which public RPCs reject.
+        let provider = build_signing_provider(rpc_url, &signer);
         let wallet = WalletBuilder::new(provider.clone(), signer)
             .connect(safe_address)
             .await
@@ -525,7 +544,7 @@ impl ContractRunner for SafeContractRunner {
 /// and therefore are not atomic.
 pub struct EoaContractRunner {
     wallet: EoaWallet,
-    provider: AnyHttpProvider,
+    provider: SigningProvider,
 }
 
 impl EoaContractRunner {
@@ -533,7 +552,9 @@ impl EoaContractRunner {
     pub async fn connect(rpc_url: &str, private_key: &str) -> Result<Self, RunnerError> {
         let rpc_url = parse_rpc_url(rpc_url)?;
         let signer = parse_private_key(private_key)?;
-        let provider = build_read_provider(rpc_url.clone());
+        // Wallet-bearing provider so sends are signed locally
+        // (eth_sendRawTransaction) rather than delegated to the node.
+        let provider = build_signing_provider(rpc_url.clone(), &signer);
         let wallet = WalletBuilder::new(provider.clone(), signer)
             .connect_eoa(rpc_url)
             .await
