@@ -300,9 +300,16 @@ async fn construct_replenish_prefers_local_unwraps_before_pathfinding() {
                     "token_owner": format!("{token:#x}"),
                 },
                 {
+                    // Inflationary (static) balance. total_available() converts
+                    // this to demurraged units at *now* via
+                    // atto_static_circles_to_atto_circles, whose factor shrinks
+                    // every day. Use a large amount so the local-unwrap branch is
+                    // taken for the foreseeable future regardless of the wall
+                    // clock — a tight value (e.g. 300) decays below the gate over
+                    // time and silently flips this test to the pathfinding branch.
                     "tokenId": format!("{inf_wrapper:#x}"),
-                    "balance": U256::from(300u64),
-                    "staticAttoCircles": U256::from(300u64),
+                    "balance": U256::from(1_000_000u64),
+                    "staticAttoCircles": U256::from(1_000_000u64),
                     "token_owner": format!("{token:#x}"),
                 }
             ]),
