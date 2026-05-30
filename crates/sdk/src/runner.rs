@@ -320,9 +320,13 @@ fn build_read_provider(rpc_url: Url) -> AnyHttpProvider {
 
 // A provider with the signer's wallet attached, so transaction sends are signed
 // locally (eth_sendRawTransaction) rather than delegated to the node
-// (eth_sendTransaction). Erased to DynProvider to keep the runner types simple.
+// (eth_sendTransaction). The recommended fillers populate nonce, gas limit,
+// chain id, and fees before signing — without them the wallet rejects the tx
+// ("missing properties: nonce, gas_limit, max_fee_per_gas, ..."). Erased to
+// DynProvider to keep the runner types simple.
 fn build_signing_provider(rpc_url: Url, signer: &PrivateKeySigner) -> SigningProvider {
     ProviderBuilder::<Identity, Identity, AnyNetwork>::default()
+        .with_recommended_fillers()
         .wallet(EthereumWallet::from(signer.clone()))
         .connect_http(rpc_url)
         .erased()
