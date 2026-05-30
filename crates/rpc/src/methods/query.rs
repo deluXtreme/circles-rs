@@ -126,7 +126,7 @@ impl QueryMethods {
             });
         }
         let mut map = serde_json::Map::new();
-        for (col, val) in columns.iter().cloned().zip(row.into_iter()) {
+        for (col, val) in columns.iter().cloned().zip(row) {
             map.insert(col, val);
         }
         serde_json::from_value(Value::Object(map)).map_err(|e| CirclesRpcError::InvalidResponse {
