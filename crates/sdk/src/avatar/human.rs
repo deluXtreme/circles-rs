@@ -1113,12 +1113,12 @@ impl HumanAvatar {
             .collect::<std::collections::HashSet<_>>();
         let set2 = trusts_inviter_relations
             .into_iter()
-            .chain(mutual_trust_relations.into_iter())
+            .chain(mutual_trust_relations)
             .map(|relation| relation.object_avatar)
             .collect::<std::collections::HashSet<_>>();
         let set3 = module_trusts_relations
             .into_iter()
-            .chain(module_mutual_trust_relations.into_iter())
+            .chain(module_mutual_trust_relations)
             .map(|relation| relation.object_avatar)
             .collect::<std::collections::HashSet<_>>();
 
