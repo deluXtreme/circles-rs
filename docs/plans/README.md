@@ -8,6 +8,7 @@ GitHub issues are still the source of truth for active work, assignment, status,
 
 - Milestone: [TypeScript SDK parity: non-web](https://github.com/deluXtreme/circles-rs/milestone/1)
 - Roadmap index: [`ts-sdk-parity-non-web.md`](ts-sdk-parity-non-web.md)
+- Validation policy: [`../parity-validation.md`](../parity-validation.md)
 
 ## Plan naming
 
