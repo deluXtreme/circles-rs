@@ -35,7 +35,7 @@ Excluded unless a specific issue says otherwise:
 | [#46](https://github.com/deluXtreme/circles-rs/issues/46) | Profile service search | Medium | `status:backlog` | Fill `circles-profiles` search/get-many parity. |
 | [#47](https://github.com/deluXtreme/circles-rs/issues/47) | CMG/group-specific methods | Medium | `status:backlog` | Decide type shape, then add read/write planning/execution helpers. |
 | [#48](https://github.com/deluXtreme/circles-rs/issues/48) | Convenience aliases and docs | Medium | `status:backlog` | Add honest TS-to-Rust mapping and thin aliases only where semantics match. |
-| [#49](https://github.com/deluXtreme/circles-rs/issues/49) | SDK parity confidence suite | Medium | `status:backlog` | Add validation policy, mock runner helpers, golden fixture conventions, and coverage visibility. |
+| [#49](https://github.com/deluXtreme/circles-rs/issues/49) | SDK parity confidence suite | Medium | `status:in-progress` | Add validation policy, mock runner helpers, golden fixture conventions, and coverage visibility. See [`../parity-validation.md`](../parity-validation.md). |
 | [#50](https://github.com/deluXtreme/circles-rs/issues/50) | Repo hygiene | Medium | `status:ready` | Add `AGENTS.md` and this plans index. |
 
 ## Recommended sequence

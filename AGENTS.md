@@ -90,7 +90,7 @@ For transaction-writing parity work:
 
 ## Standard validation commands
 
-Use the most specific command that proves your change, then run broader checks before opening a PR.
+Detailed validation policy lives in [`docs/parity-validation.md`](docs/parity-validation.md). Use the most specific command that proves your change, then run broader checks before opening a PR.
 
 Common commands:
 
