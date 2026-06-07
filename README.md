@@ -55,6 +55,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - Generate docs with `cargo doc --workspace --all-features --no-deps`.
 - `crates/sdk/README.md` is the best starting point for application integration.
+- `AGENTS.md` contains contributor/agent guidance for parity work, validation, and safe live-test rules.
+- `docs/plans/` contains repo-local implementation plan indexes, including the current non-web TypeScript SDK parity roadmap.
 - Per-crate READMEs cover focused examples and feature notes.
 
 ## Examples
