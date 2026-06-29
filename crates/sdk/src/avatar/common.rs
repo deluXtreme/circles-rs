@@ -403,6 +403,50 @@ impl CommonAvatar {
         Ok(vec![build_unwrap_inflation_erc20_tx(wrapper_token, amount)])
     }
 
+    /// Execute wrapping demurraged ERC20 Circles through the runner.
+    pub async fn wrap_demurrage_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self.plan_wrap_demurrage_erc20(avatar, amount).await?;
+        self.send(txs).await
+    }
+
+    /// Execute wrapping inflationary ERC20 Circles through the runner.
+    pub async fn wrap_inflation_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self.plan_wrap_inflation_erc20(avatar, amount).await?;
+        self.send(txs).await
+    }
+
+    /// Execute unwrapping demurraged ERC20 Circles through the runner.
+    pub async fn unwrap_demurrage_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self
+            .plan_unwrap_demurrage_erc20(wrapper_token, amount)
+            .await?;
+        self.send(txs).await
+    }
+
+    /// Execute unwrapping inflationary ERC20 Circles through the runner.
+    pub async fn unwrap_inflation_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self
+            .plan_unwrap_inflation_erc20(wrapper_token, amount)
+            .await?;
+        self.send(txs).await
+    }
+
     /// Plan a replenish flow for `token_id`, optionally delivering the final
     /// balance to `receiver` instead of keeping it on this avatar.
     pub async fn plan_replenish(
