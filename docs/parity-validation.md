@@ -100,7 +100,7 @@ A fixture should record:
 - command or script used to generate it
 - normalization rules, if any
 
-See [`fixtures/ts-sdk/README.md`](../fixtures/ts-sdk/README.md).
+See [`fixtures/ts-sdk/README.md`](../fixtures/ts-sdk/README.md). The first committed fixture set is `converter-demurrage-inflation.json`, compared by `cargo test -p circles-utils matches_ts_golden_converter_fixture`.
 
 ### Layer 5 — Optional live read tests
 
