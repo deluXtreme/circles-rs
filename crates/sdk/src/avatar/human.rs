@@ -547,6 +547,52 @@ impl HumanAvatar {
             .await
     }
 
+    /// Plan an explicit ERC20 transfer without token-type lookup or pathfinding.
+    pub async fn plan_transfer_erc20(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common.plan_transfer_erc20(token, to, amount).await
+    }
+
+    /// Execute an explicit ERC20 transfer using the runner.
+    pub async fn transfer_erc20(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.transfer_erc20(token, to, amount).await
+    }
+
+    /// Plan an explicit ERC1155 transfer through the Circles Hub.
+    pub async fn plan_transfer_erc1155(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common
+            .plan_transfer_erc1155(token, to, amount, tx_data)
+            .await
+    }
+
+    /// Execute an explicit ERC1155 transfer through the Circles Hub using the runner.
+    pub async fn transfer_erc1155(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .transfer_erc1155(token, to, amount, tx_data)
+            .await
+    }
+
     /// Plan wrapping demurraged ERC20 Circles without submitting.
     pub async fn plan_wrap_demurrage_erc20(
         &self,
@@ -1909,6 +1955,18 @@ mod tests {
             .await
             .expect_err("unwrap inflation requires runner");
         assert!(matches!(err, SdkError::MissingRunner));
+
+        let err = avatar
+            .transfer_erc20(wrapper, avatar_address, amount)
+            .await
+            .expect_err("ERC20 transfer requires runner");
+        assert!(matches!(err, SdkError::MissingRunner));
+
+        let err = avatar
+            .transfer_erc1155(wrapper, avatar_address, amount, None)
+            .await
+            .expect_err("ERC1155 transfer requires runner");
+        assert!(matches!(err, SdkError::MissingRunner));
     }
 
     #[tokio::test]
@@ -1972,6 +2030,44 @@ mod tests {
                 .plan_unwrap_inflation_erc20(wrapper, amount)
                 .await
                 .expect("plan unwrap inflation")
+        );
+    }
+
+    #[tokio::test]
+    async fn direct_token_execution_helpers_send_planned_transactions() {
+        let (avatar, runner, _config) = test_avatar();
+        let token = Address::repeat_byte(0xef);
+        let to = Address::repeat_byte(0x12);
+        let amount = U256::from(42u64);
+        let data = Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]);
+
+        avatar
+            .transfer_erc20(token, to, amount)
+            .await
+            .expect("transfer ERC20");
+        avatar
+            .transfer_erc1155(token, to, amount, Some(data.clone()))
+            .await
+            .expect("transfer ERC1155");
+
+        let sent = {
+            let sent = runner.sent.lock().expect("lock");
+            sent.clone()
+        };
+        assert_eq!(sent.len(), 2);
+        assert_eq!(
+            sent[0],
+            avatar
+                .plan_transfer_erc20(token, to, amount)
+                .await
+                .expect("plan ERC20")
+        );
+        assert_eq!(
+            sent[1],
+            avatar
+                .plan_transfer_erc1155(token, to, amount, Some(data))
+                .await
+                .expect("plan ERC1155")
         );
     }
 

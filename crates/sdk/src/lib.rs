@@ -35,7 +35,7 @@
 //! - [`Sdk`] wires together RPC, profile lookups, pathfinding, transfers, and contract bindings.
 //! - [`Avatar`] gives you a typed wrapper after runtime avatar detection.
 //! - [`ContractRunner`] is only required for write paths such as registrations, trust changes,
-//!   transfer submission, and ERC20 wrapper wrap/unwrap execution.
+//!   transfer submission, explicit ERC20/ERC1155 transfer execution, and ERC20 wrapper wrap/unwrap execution.
 //! - [`SafeContractRunner`] and [`EoaContractRunner`] are the built-in execution backends for
 //!   existing single-owner Safe wallets and direct EOA execution, and now expose buffered batch,
 //!   gas-estimation, read-call helper surface, and direct runner method aliases on the concrete
@@ -60,6 +60,9 @@
 //!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
 //! - [`HumanAvatar::plan_direct_transfer`], [`OrganisationAvatar::plan_direct_transfer`], and
 //!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
+//! - [`HumanAvatar::plan_transfer_erc20`], [`HumanAvatar::transfer_erc20`],
+//!   [`HumanAvatar::plan_transfer_erc1155`], and [`HumanAvatar::transfer_erc1155`] for explicit
+//!   ERC20/ERC1155 transfer helpers when callers already know the token standard.
 //! - [`HumanAvatar::plan_wrap_demurrage_erc20`], [`HumanAvatar::plan_wrap_inflation_erc20`],
 //!   [`HumanAvatar::plan_unwrap_demurrage_erc20`], and
 //!   [`HumanAvatar::plan_unwrap_inflation_erc20`] for plan-first ERC20 wrapper operations.
