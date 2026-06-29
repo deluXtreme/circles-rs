@@ -204,6 +204,46 @@ impl OrganisationAvatar {
             .await
     }
 
+    /// Plan wrapping demurraged ERC20 Circles without submitting.
+    pub async fn plan_wrap_demurrage_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common.plan_wrap_demurrage_erc20(avatar, amount).await
+    }
+
+    /// Plan wrapping inflationary ERC20 Circles without submitting.
+    pub async fn plan_wrap_inflation_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common.plan_wrap_inflation_erc20(avatar, amount).await
+    }
+
+    /// Plan unwrapping demurraged ERC20 Circles without submitting.
+    pub async fn plan_unwrap_demurrage_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common
+            .plan_unwrap_demurrage_erc20(wrapper_token, amount)
+            .await
+    }
+
+    /// Plan unwrapping inflationary ERC20 Circles without submitting.
+    pub async fn plan_unwrap_inflation_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common
+            .plan_unwrap_inflation_erc20(wrapper_token, amount)
+            .await
+    }
+
     /// Plan a replenish flow without submitting.
     pub async fn plan_replenish(
         &self,
