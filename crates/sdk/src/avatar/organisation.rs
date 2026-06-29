@@ -204,6 +204,52 @@ impl OrganisationAvatar {
             .await
     }
 
+    /// Plan an explicit ERC20 transfer without token-type lookup or pathfinding.
+    pub async fn plan_transfer_erc20(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common.plan_transfer_erc20(token, to, amount).await
+    }
+
+    /// Execute an explicit ERC20 transfer using the runner.
+    pub async fn transfer_erc20(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.transfer_erc20(token, to, amount).await
+    }
+
+    /// Plan an explicit ERC1155 transfer through the Circles Hub.
+    pub async fn plan_transfer_erc1155(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        self.common
+            .plan_transfer_erc1155(token, to, amount, tx_data)
+            .await
+    }
+
+    /// Execute an explicit ERC1155 transfer through the Circles Hub using the runner.
+    pub async fn transfer_erc1155(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .transfer_erc1155(token, to, amount, tx_data)
+            .await
+    }
+
     /// Plan wrapping demurraged ERC20 Circles without submitting.
     pub async fn plan_wrap_demurrage_erc20(
         &self,

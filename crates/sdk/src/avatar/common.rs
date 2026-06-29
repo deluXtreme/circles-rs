@@ -74,6 +74,10 @@ fn build_direct_erc1155_transfer_tx(
     call_to_tx(hub, call, None)
 }
 
+fn address_to_erc1155_token_id(token: Address) -> U256 {
+    U256::from_be_slice(token.as_slice())
+}
+
 fn build_direct_erc20_transfer_tx(
     token: Address,
     to: Address,
@@ -357,6 +361,69 @@ impl CommonAvatar {
         self.send(txs).await
     }
 
+    /// Plan an explicit ERC20 transfer without token-type lookup or pathfinding.
+    pub async fn plan_transfer_erc20(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        if amount.is_zero() {
+            return Err(SdkError::OperationFailed(
+                "ERC20 transfer amount must be positive".to_string(),
+            ));
+        }
+        Ok(vec![build_direct_erc20_transfer_tx(token, to, amount)])
+    }
+
+    /// Execute an explicit ERC20 transfer using the runner.
+    pub async fn transfer_erc20(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self.plan_transfer_erc20(token, to, amount).await?;
+        self.send(txs).await
+    }
+
+    /// Plan an explicit ERC1155 transfer through the Circles Hub.
+    pub async fn plan_transfer_erc1155(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        if amount.is_zero() {
+            return Err(SdkError::OperationFailed(
+                "ERC1155 transfer amount must be positive".to_string(),
+            ));
+        }
+        Ok(vec![build_direct_erc1155_transfer_tx(
+            self.core.config.v2_hub_address,
+            self.address,
+            to,
+            address_to_erc1155_token_id(token),
+            amount,
+            tx_data.unwrap_or_default(),
+        )])
+    }
+
+    /// Execute an explicit ERC1155 transfer through the Circles Hub using the runner.
+    pub async fn transfer_erc1155(
+        &self,
+        token: Address,
+        to: Address,
+        amount: U256,
+        tx_data: Option<Bytes>,
+    ) -> Result<Vec<crate::SubmittedTx>, SdkError> {
+        let txs = self
+            .plan_transfer_erc1155(token, to, amount, tx_data)
+            .await?;
+        self.send(txs).await
+    }
+
     /// Plan wrapping demurraged ERC20 Circles through HubV2::wrap.
     pub async fn plan_wrap_demurrage_erc20(
         &self,
@@ -613,6 +680,18 @@ mod tests {
         assert_eq!(
             classify_direct_transfer_kind("CrcV2_RegisterOrganization"),
             None
+        );
+    }
+
+    #[test]
+    fn address_to_erc1155_token_id_matches_ts_uint256_conversion() {
+        let token = address!("0000000000000000000000000000000000000007");
+        assert_eq!(address_to_erc1155_token_id(token), U256::from(7u64));
+
+        let token = address!("1234567890abcdef1234567890abcdef12345678");
+        assert_eq!(
+            address_to_erc1155_token_id(token),
+            U256::from_be_slice(token.as_slice())
         );
     }
 
