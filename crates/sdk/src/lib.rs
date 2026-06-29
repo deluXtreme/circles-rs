@@ -66,6 +66,9 @@
 //! - [`HumanAvatar::plan_wrap_demurrage_erc20`], [`HumanAvatar::plan_wrap_inflation_erc20`],
 //!   [`HumanAvatar::plan_unwrap_demurrage_erc20`], and
 //!   [`HumanAvatar::plan_unwrap_inflation_erc20`] for plan-first ERC20 wrapper operations.
+//! - [`HumanAvatar::static_wrapped_token_totals`], [`HumanAvatar::redeemable_amount`],
+//!   [`Sdk::static_wrapped_token_totals_from_sender`], and [`Sdk::redeemable_amount`] for
+//!   wrapper-total and redeemable-collateral read parity.
 //! - [`HumanAvatar::plan_group_token_redeem`] and
 //!   [`OrganisationAvatar::plan_group_token_redeem`] for automatic group-token redeem planning.
 //! - [`HumanAvatar::available_invitations`], [`HumanAvatar::trust_invitations`],
@@ -128,7 +131,7 @@ pub use services::tokens::Tokens;
 
 #[cfg(feature = "ws")]
 use alloy_json_rpc::RpcSend;
-use alloy_primitives::Address;
+use alloy_primitives::{Address, U256};
 pub use avatar::human::{ProxyInviter, ReferralCodePlan};
 pub use avatar::{BaseGroupAvatar, HumanAvatar, OrganisationAvatar};
 use circles_profiles::{Profile, Profiles};
@@ -608,6 +611,28 @@ impl Sdk {
         self.data_token_holders(token, limit, cursor).await
     }
 
+    /// Get static wrapped-token totals for inflationary ERC20 wrappers held by a sender.
+    pub async fn static_wrapped_token_totals_from_sender(
+        &self,
+        sender: Address,
+    ) -> Result<Vec<TokenBalanceResponse>, SdkError> {
+        let balances = self
+            .rpc
+            .token()
+            .get_token_balances(sender, false, false)
+            .await?;
+        Ok(services::tokens::static_wrapped_token_totals(balances))
+    }
+
+    /// Get redeemable collateral amount for a group/collateral pair.
+    pub async fn redeemable_amount(
+        &self,
+        group: Address,
+        collateral: Address,
+    ) -> Result<U256, SdkError> {
+        redeemable_amount_with_core(&self.core, group, collateral).await
+    }
+
     /// Search profiles by address prefix or text directly from the consolidated RPC endpoint.
     pub async fn search_profiles_by_address_or_name(
         &self,
@@ -789,6 +814,26 @@ impl Sdk {
         )
         .await
     }
+}
+
+/// Resolve the redeemable collateral amount held by a group's treasury.
+pub(crate) async fn redeemable_amount_with_core(
+    core: &Core,
+    group: Address,
+    collateral: Address,
+) -> Result<U256, SdkError> {
+    let treasury = core
+        .hub_v2()
+        .treasuries(group)
+        .call()
+        .await
+        .map_err(|e| SdkError::Contract(e.to_string()))?;
+    let token_id = U256::from_be_slice(collateral.as_slice());
+    core.hub_v2()
+        .balanceOf(treasury, token_id)
+        .call()
+        .await
+        .map_err(|e| SdkError::Contract(e.to_string()))
 }
 
 /// Top-level avatar enum (human, organisation, group).

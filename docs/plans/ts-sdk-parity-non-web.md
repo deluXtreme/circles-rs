@@ -31,7 +31,7 @@ Excluded unless a specific issue says otherwise:
 | Issue | Area | Priority | Status label | Notes |
 | --- | --- | --- | --- | --- |
 | [#44](https://github.com/deluXtreme/circles-rs/issues/44) | V1 → V2 migration | High | `status:ready` | Largest missing non-web feature. Start with config/ABI access, then read-only eligibility, then planning, then execution. |
-| [#45](https://github.com/deluXtreme/circles-rs/issues/45) | ERC20/ERC1155 wrapper operations | High | `status:in-progress` | ERC20 wrap/unwrap planning and runner-backed execution helpers are covered; explicit ERC20/ERC1155 transfer helpers are in progress; wrapper-total polish remains follow-up work. |
+| [#45](https://github.com/deluXtreme/circles-rs/issues/45) | ERC20/ERC1155 wrapper operations | High | `status:in-progress` | ERC20 wrap/unwrap planning/execution, explicit ERC20/ERC1155 transfer helpers, static wrapper-total reads, and redeemable collateral reads are covered; remaining work is final docs/API parity cleanup. |
 | [#46](https://github.com/deluXtreme/circles-rs/issues/46) | Profile service search | Medium | `status:backlog` | Fill `circles-profiles` search/get-many parity. |
 | [#47](https://github.com/deluXtreme/circles-rs/issues/47) | CMG/group-specific methods | Medium | `status:backlog` | Decide type shape, then add read/write planning/execution helpers. |
 | [#48](https://github.com/deluXtreme/circles-rs/issues/48) | Convenience aliases and docs | Medium | `status:backlog` | Add honest TS-to-Rust mapping and thin aliases only where semantics match. |

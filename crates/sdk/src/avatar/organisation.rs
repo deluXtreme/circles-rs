@@ -250,6 +250,20 @@ impl OrganisationAvatar {
             .await
     }
 
+    /// Get static wrapped-token totals for this avatar's inflationary ERC20 wrapper balances.
+    pub async fn static_wrapped_token_totals(&self) -> Result<Vec<TokenBalanceResponse>, SdkError> {
+        self.common.static_wrapped_token_totals().await
+    }
+
+    /// Get redeemable collateral amount for a group/collateral pair.
+    pub async fn redeemable_amount(
+        &self,
+        group: Address,
+        collateral: Address,
+    ) -> Result<U256, SdkError> {
+        self.common.redeemable_amount(group, collateral).await
+    }
+
     /// Plan wrapping demurraged ERC20 Circles without submitting.
     pub async fn plan_wrap_demurrage_erc20(
         &self,
