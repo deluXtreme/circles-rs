@@ -35,7 +35,7 @@
 //! - [`Sdk`] wires together RPC, profile lookups, pathfinding, transfers, and contract bindings.
 //! - [`Avatar`] gives you a typed wrapper after runtime avatar detection.
 //! - [`ContractRunner`] is only required for write paths such as registrations, trust changes,
-//!   and transfer submission.
+//!   transfer submission, and ERC20 wrapper wrap/unwrap execution.
 //! - [`SafeContractRunner`] and [`EoaContractRunner`] are the built-in execution backends for
 //!   existing single-owner Safe wallets and direct EOA execution, and now expose buffered batch,
 //!   gas-estimation, read-call helper surface, and direct runner method aliases on the concrete

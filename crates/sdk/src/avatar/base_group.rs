@@ -377,6 +377,46 @@ impl BaseGroupAvatar {
             .await
     }
 
+    /// Execute wrapping demurraged ERC20 Circles using the runner.
+    pub async fn wrap_demurrage_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.wrap_demurrage_erc20(avatar, amount).await
+    }
+
+    /// Execute wrapping inflationary ERC20 Circles using the runner.
+    pub async fn wrap_inflation_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.wrap_inflation_erc20(avatar, amount).await
+    }
+
+    /// Execute unwrapping demurraged ERC20 Circles using the runner.
+    pub async fn unwrap_demurrage_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .unwrap_demurrage_erc20(wrapper_token, amount)
+            .await
+    }
+
+    /// Execute unwrapping inflationary ERC20 Circles using the runner.
+    pub async fn unwrap_inflation_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .unwrap_inflation_erc20(wrapper_token, amount)
+            .await
+    }
+
     /// Plan a replenish flow without submitting.
     pub async fn plan_replenish(
         &self,

@@ -587,6 +587,46 @@ impl HumanAvatar {
             .await
     }
 
+    /// Execute wrapping demurraged ERC20 Circles using the runner.
+    pub async fn wrap_demurrage_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.wrap_demurrage_erc20(avatar, amount).await
+    }
+
+    /// Execute wrapping inflationary ERC20 Circles using the runner.
+    pub async fn wrap_inflation_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common.wrap_inflation_erc20(avatar, amount).await
+    }
+
+    /// Execute unwrapping demurraged ERC20 Circles using the runner.
+    pub async fn unwrap_demurrage_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .unwrap_demurrage_erc20(wrapper_token, amount)
+            .await
+    }
+
+    /// Execute unwrapping inflationary ERC20 Circles using the runner.
+    pub async fn unwrap_inflation_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<SubmittedTx>, SdkError> {
+        self.common
+            .unwrap_inflation_erc20(wrapper_token, amount)
+            .await
+    }
+
     /// Plan a replenish flow without submitting.
     pub async fn plan_replenish(
         &self,
@@ -1611,6 +1651,19 @@ mod tests {
         (avatar, runner, config)
     }
 
+    fn test_avatar_without_runner() -> (HumanAvatar, CirclesConfig) {
+        let config = dummy_config();
+        let avatar = HumanAvatar::new(
+            Address::repeat_byte(0xaa),
+            dummy_avatar(Address::repeat_byte(0xaa)),
+            Arc::new(Core::new(config.clone())),
+            Profiles::new(config.effective_profile_service_url()).expect("profiles"),
+            Arc::new(CirclesRpc::try_from_http(&config.circles_rpc_url).expect("rpc")),
+            None,
+        );
+        (avatar, config)
+    }
+
     #[test]
     fn referral_payload_encodes() {
         let signers = vec![address!("1000000000000000000000000000000000000001")];
@@ -1824,6 +1877,102 @@ mod tests {
         };
 
         assert_eq!(data, Bytes::from(expected_payload.abi_encode()));
+    }
+
+    #[tokio::test]
+    async fn wrapper_execution_helpers_require_runner() {
+        let (avatar, _config) = test_avatar_without_runner();
+        let avatar_address = Address::repeat_byte(0xab);
+        let wrapper = Address::repeat_byte(0xcd);
+        let amount = U256::from(42u64);
+
+        let err = avatar
+            .wrap_demurrage_erc20(avatar_address, amount)
+            .await
+            .expect_err("wrap demurrage requires runner");
+        assert!(matches!(err, SdkError::MissingRunner));
+
+        let err = avatar
+            .wrap_inflation_erc20(avatar_address, amount)
+            .await
+            .expect_err("wrap inflation requires runner");
+        assert!(matches!(err, SdkError::MissingRunner));
+
+        let err = avatar
+            .unwrap_demurrage_erc20(wrapper, amount)
+            .await
+            .expect_err("unwrap demurrage requires runner");
+        assert!(matches!(err, SdkError::MissingRunner));
+
+        let err = avatar
+            .unwrap_inflation_erc20(wrapper, amount)
+            .await
+            .expect_err("unwrap inflation requires runner");
+        assert!(matches!(err, SdkError::MissingRunner));
+    }
+
+    #[tokio::test]
+    async fn wrapper_execution_helpers_send_planned_transactions() {
+        let (avatar, runner, config) = test_avatar();
+        let avatar_address = Address::repeat_byte(0xab);
+        let wrapper = Address::repeat_byte(0xcd);
+        let amount = U256::from(42u64);
+
+        avatar
+            .wrap_demurrage_erc20(avatar_address, amount)
+            .await
+            .expect("wrap demurrage");
+        avatar
+            .wrap_inflation_erc20(avatar_address, amount)
+            .await
+            .expect("wrap inflation");
+        avatar
+            .unwrap_demurrage_erc20(wrapper, amount)
+            .await
+            .expect("unwrap demurrage");
+        avatar
+            .unwrap_inflation_erc20(wrapper, amount)
+            .await
+            .expect("unwrap inflation");
+
+        let sent = {
+            let sent = runner.sent.lock().expect("lock");
+            sent.clone()
+        };
+        assert_eq!(sent.len(), 4);
+        assert_eq!(sent[0][0].to, config.v2_hub_address);
+        assert_eq!(sent[1][0].to, config.v2_hub_address);
+        assert_eq!(sent[2][0].to, wrapper);
+        assert_eq!(sent[3][0].to, wrapper);
+
+        assert_eq!(
+            sent[0],
+            avatar
+                .plan_wrap_demurrage_erc20(avatar_address, amount)
+                .await
+                .expect("plan wrap demurrage")
+        );
+        assert_eq!(
+            sent[1],
+            avatar
+                .plan_wrap_inflation_erc20(avatar_address, amount)
+                .await
+                .expect("plan wrap inflation")
+        );
+        assert_eq!(
+            sent[2],
+            avatar
+                .plan_unwrap_demurrage_erc20(wrapper, amount)
+                .await
+                .expect("plan unwrap demurrage")
+        );
+        assert_eq!(
+            sent[3],
+            avatar
+                .plan_unwrap_inflation_erc20(wrapper, amount)
+                .await
+                .expect("plan unwrap inflation")
+        );
     }
 
     #[tokio::test]
