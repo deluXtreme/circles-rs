@@ -424,6 +424,27 @@ impl CommonAvatar {
         self.send(txs).await
     }
 
+    /// Get static wrapped-token totals for this avatar's inflationary ERC20 wrapper balances.
+    pub async fn static_wrapped_token_totals(&self) -> Result<Vec<TokenBalanceResponse>, SdkError> {
+        let balances = self
+            .rpc
+            .token()
+            .get_token_balances(self.address, false, false)
+            .await?;
+        Ok(crate::services::tokens::static_wrapped_token_totals(
+            balances,
+        ))
+    }
+
+    /// Get redeemable collateral amount for a group/collateral pair.
+    pub async fn redeemable_amount(
+        &self,
+        group: Address,
+        collateral: Address,
+    ) -> Result<U256, SdkError> {
+        crate::redeemable_amount_with_core(&self.core, group, collateral).await
+    }
+
     /// Plan wrapping demurraged ERC20 Circles through HubV2::wrap.
     pub async fn plan_wrap_demurrage_erc20(
         &self,
