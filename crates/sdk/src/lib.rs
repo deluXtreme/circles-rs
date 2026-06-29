@@ -60,6 +60,9 @@
 //!   [`BaseGroupAvatar::plan_transfer`] for pathfinding-based transaction planning.
 //! - [`HumanAvatar::plan_direct_transfer`], [`OrganisationAvatar::plan_direct_transfer`], and
 //!   [`BaseGroupAvatar::plan_direct_transfer`] for TS-style direct-send planning.
+//! - [`HumanAvatar::plan_wrap_demurrage_erc20`], [`HumanAvatar::plan_wrap_inflation_erc20`],
+//!   [`HumanAvatar::plan_unwrap_demurrage_erc20`], and
+//!   [`HumanAvatar::plan_unwrap_inflation_erc20`] for plan-first ERC20 wrapper operations.
 //! - [`HumanAvatar::plan_group_token_redeem`] and
 //!   [`OrganisationAvatar::plan_group_token_redeem`] for automatic group-token redeem planning.
 //! - [`HumanAvatar::available_invitations`], [`HumanAvatar::trust_invitations`],

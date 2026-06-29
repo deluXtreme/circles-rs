@@ -3,7 +3,7 @@ use crate::ws;
 use crate::{ContractRunner, Core, PreparedTransaction, Profile, SdkError, call_to_tx};
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::sol;
-use circles_abis::HubV2;
+use circles_abis::{DemurrageCircles, HubV2, InflationaryCircles};
 use circles_profiles::Profiles;
 #[cfg(feature = "ws")]
 use circles_rpc::events::subscription::CirclesSubscription;
@@ -22,6 +22,21 @@ use std::sync::Arc;
 sol! {
     interface IERC20Like {
         function transfer(address to, uint256 value) external returns (bool);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WrapperKind {
+    Demurrage,
+    Inflation,
+}
+
+impl WrapperKind {
+    fn hub_type(self) -> u8 {
+        match self {
+            Self::Demurrage => 0,
+            Self::Inflation => 1,
+        }
     }
 }
 
@@ -66,6 +81,30 @@ fn build_direct_erc20_transfer_tx(
 ) -> PreparedTransaction {
     let call = IERC20Like::transferCall { to, value: amount };
     call_to_tx(token, call, None)
+}
+
+fn build_wrap_erc20_tx(
+    hub: Address,
+    avatar: Address,
+    amount: U256,
+    kind: WrapperKind,
+) -> PreparedTransaction {
+    let call = HubV2::wrapCall {
+        _avatar: avatar,
+        _amount: amount,
+        _type: kind.hub_type(),
+    };
+    call_to_tx(hub, call, None)
+}
+
+fn build_unwrap_demurrage_erc20_tx(wrapper: Address, amount: U256) -> PreparedTransaction {
+    let call = DemurrageCircles::unwrapCall { _amount: amount };
+    call_to_tx(wrapper, call, None)
+}
+
+fn build_unwrap_inflation_erc20_tx(wrapper: Address, amount: U256) -> PreparedTransaction {
+    let call = InflationaryCircles::unwrapCall { _amount: amount };
+    call_to_tx(wrapper, call, None)
 }
 
 /// Shared avatar context and read helpers.
@@ -318,6 +357,52 @@ impl CommonAvatar {
         self.send(txs).await
     }
 
+    /// Plan wrapping demurraged ERC20 Circles through HubV2::wrap.
+    pub async fn plan_wrap_demurrage_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        Ok(vec![build_wrap_erc20_tx(
+            self.core.config.v2_hub_address,
+            avatar,
+            amount,
+            WrapperKind::Demurrage,
+        )])
+    }
+
+    /// Plan wrapping inflationary ERC20 Circles through HubV2::wrap.
+    pub async fn plan_wrap_inflation_erc20(
+        &self,
+        avatar: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        Ok(vec![build_wrap_erc20_tx(
+            self.core.config.v2_hub_address,
+            avatar,
+            amount,
+            WrapperKind::Inflation,
+        )])
+    }
+
+    /// Plan unwrapping demurraged ERC20 Circles through the wrapper token.
+    pub async fn plan_unwrap_demurrage_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        Ok(vec![build_unwrap_demurrage_erc20_tx(wrapper_token, amount)])
+    }
+
+    /// Plan unwrapping inflationary ERC20 Circles through the wrapper token.
+    pub async fn plan_unwrap_inflation_erc20(
+        &self,
+        wrapper_token: Address,
+        amount: U256,
+    ) -> Result<Vec<PreparedTransaction>, SdkError> {
+        Ok(vec![build_unwrap_inflation_erc20_tx(wrapper_token, amount)])
+    }
+
     /// Plan a replenish flow for `token_id`, optionally delivering the final
     /// balance to `receiver` instead of keeping it on this avatar.
     pub async fn plan_replenish(
@@ -526,6 +611,66 @@ mod tests {
         };
 
         assert_eq!(tx.to, address!("4000000000000000000000000000000000000000"));
+        assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
+        assert_eq!(tx.value, None);
+    }
+
+    #[test]
+    fn wrap_demurrage_erc20_plan_matches_hub_wrap_call() {
+        let hub = address!("1000000000000000000000000000000000000000");
+        let avatar = address!("2000000000000000000000000000000000000000");
+        let tx = build_wrap_erc20_tx(hub, avatar, U256::from(42u64), WrapperKind::Demurrage);
+
+        let expected = HubV2::wrapCall {
+            _avatar: avatar,
+            _amount: U256::from(42u64),
+            _type: 0,
+        };
+
+        assert_eq!(tx.to, hub);
+        assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
+        assert_eq!(tx.value, None);
+    }
+
+    #[test]
+    fn wrap_inflation_erc20_plan_matches_hub_wrap_call() {
+        let hub = address!("1000000000000000000000000000000000000000");
+        let avatar = address!("2000000000000000000000000000000000000000");
+        let tx = build_wrap_erc20_tx(hub, avatar, U256::from(42u64), WrapperKind::Inflation);
+
+        let expected = HubV2::wrapCall {
+            _avatar: avatar,
+            _amount: U256::from(42u64),
+            _type: 1,
+        };
+
+        assert_eq!(tx.to, hub);
+        assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
+        assert_eq!(tx.value, None);
+    }
+
+    #[test]
+    fn unwrap_demurrage_erc20_plan_matches_wrapper_unwrap_call() {
+        let wrapper = address!("3000000000000000000000000000000000000000");
+        let tx = build_unwrap_demurrage_erc20_tx(wrapper, U256::from(42u64));
+        let expected = DemurrageCircles::unwrapCall {
+            _amount: U256::from(42u64),
+        };
+
+        assert_eq!(tx.to, wrapper);
+        assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
+        assert_eq!(tx.value, None);
+    }
+
+    #[test]
+    fn unwrap_inflation_erc20_plan_matches_wrapper_unwrap_call() {
+        let wrapper = address!("3000000000000000000000000000000000000000");
+        let tx = build_unwrap_inflation_erc20_tx(wrapper, U256::from(42u64));
+        let expected = InflationaryCircles::unwrapCall {
+            _amount: U256::from(42u64),
+        };
+
+        assert_eq!(tx.to, wrapper);
         assert_eq!(tx.data, Bytes::from(expected.abi_encode()));
         assert_eq!(tx.value, None);
     }
