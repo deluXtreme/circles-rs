@@ -34,9 +34,20 @@ Recommended metadata shape:
 }
 ```
 
-## Good fixture candidates
+## Current fixtures
 
-- converter/demurrage/inflation calculations
+| Fixture | Source | Rust comparison test | Covers |
+| --- | --- | --- | --- |
+| [`converter-demurrage-inflation.json`](converter-demurrage-inflation.json) | `@circles-sdk/utils` `CirclesConverter` at `bdd94bd1f771335d8e678e823705a35dcac840cf` | `cargo test -p circles-utils matches_ts_golden_converter_fixture` | demurraged/static conversion, V1 CRC conversion, UI circle conversion |
+
+Regenerate the converter fixture with:
+
+```bash
+node fixtures/ts-sdk/scripts/generate-converter-fixture.mjs > fixtures/ts-sdk/converter-demurrage-inflation.json
+```
+
+## Good next fixture candidates
+
 - pathfinder packing and flow-matrix transformations
 - wrapped-token total helpers
 - transfer/replenish transaction plan shapes

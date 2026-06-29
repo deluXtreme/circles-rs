@@ -163,21 +163,63 @@ mod tests {
         assert_eq!(day_from_timestamp(INFLATION_DAY_ZERO_UNIX), 0);
     }
 
+    #[derive(Debug, serde::Deserialize)]
+    struct ConverterFixture {
+        cases: Vec<ConverterCase>,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct ConverterCase {
+        name: String,
+        timestamp: u64,
+        demurraged_atto_circles: String,
+        static_atto_circles: String,
+        roundtrip_demurraged_atto_circles: String,
+        v1_crc_atto: String,
+        ui_circles: f64,
+    }
+
     #[test]
-    fn matches_ts_fixture() {
-        // TS CirclesConverter: attoCirclesToAttoStaticCircles(1e18, ts=1700000000) -> 1250475269390674654
-        let ts = 1_700_000_000u64;
-        let dem = U256::from(1_000_000_000_000_000_000u64);
-        let static_val = atto_circles_to_atto_static_circles(dem, Some(ts));
-        let expected = U256::from(1_250_475_269_390_674_654u64);
-        let diff = if static_val > expected {
-            static_val - expected
-        } else {
-            expected - static_val
-        };
-        assert!(diff < U256::from(1_000u64));
-        let back = atto_static_circles_to_atto_circles(static_val, Some(ts));
-        let back_diff = if back > dem { back - dem } else { dem - back };
-        assert!(back_diff < U256::from(2u64));
+    fn matches_ts_golden_converter_fixture() {
+        let fixture: ConverterFixture = serde_json::from_str(include_str!(
+            "../../../fixtures/ts-sdk/converter-demurrage-inflation.json"
+        ))
+        .expect("fixture parses");
+
+        for case in fixture.cases {
+            let dem = U256::from_str_radix(&case.demurraged_atto_circles, 10)
+                .unwrap_or_else(|err| panic!("{} demurraged amount parses: {err}", case.name));
+            let expected_static = U256::from_str_radix(&case.static_atto_circles, 10)
+                .unwrap_or_else(|err| panic!("{} static amount parses: {err}", case.name));
+            let expected_roundtrip =
+                U256::from_str_radix(&case.roundtrip_demurraged_atto_circles, 10)
+                    .unwrap_or_else(|err| panic!("{} roundtrip amount parses: {err}", case.name));
+            let expected_crc = U256::from_str_radix(&case.v1_crc_atto, 10)
+                .unwrap_or_else(|err| panic!("{} crc amount parses: {err}", case.name));
+
+            assert_eq!(
+                atto_circles_to_atto_static_circles(dem, Some(case.timestamp)),
+                expected_static,
+                "{} demurraged -> static",
+                case.name
+            );
+            assert_eq!(
+                atto_static_circles_to_atto_circles(expected_static, Some(case.timestamp)),
+                expected_roundtrip,
+                "{} static -> demurraged",
+                case.name
+            );
+            assert_eq!(
+                atto_circles_to_atto_crc(dem, case.timestamp),
+                expected_crc,
+                "{} demurraged -> v1 crc",
+                case.name
+            );
+            assert!(
+                (atto_circles_to_circles(dem) - case.ui_circles).abs() <= 1e-12,
+                "{} demurraged -> UI circles",
+                case.name
+            );
+        }
     }
 }

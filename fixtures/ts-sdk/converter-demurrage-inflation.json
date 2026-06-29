@@ -1,0 +1,52 @@
+{
+  "source": {
+    "repo": "https://github.com/aboutcircles/circles-sdk",
+    "commit": "bdd94bd1f771335d8e678e823705a35dcac840cf",
+    "package": "@circles-sdk/utils",
+    "version": "0.29.2",
+    "source_file": "packages/utils/src/circlesConverter.ts"
+  },
+  "generated_by": "node fixtures/ts-sdk/scripts/generate-converter-fixture.mjs",
+  "normalization": [
+    "BigInt outputs serialized as base-10 strings",
+    "Uses exact 1e36 CirclesConverter methods for demurrage/static conversion"
+  ],
+  "cases": [
+    {
+      "name": "epoch-day-zero-one-circle",
+      "timestamp": 1602720000,
+      "demurraged_atto_circles": "1000000000000000000",
+      "static_atto_circles": "1000000000000000000",
+      "roundtrip_demurraged_atto_circles": "1000000000000000000",
+      "v1_crc_atto": "3000000000000000000",
+      "ui_circles": 1
+    },
+    {
+      "name": "nov-2023-one-circle",
+      "timestamp": 1700000000,
+      "demurraged_atto_circles": "1000000000000000000",
+      "static_atto_circles": "1250475269390674743",
+      "roundtrip_demurraged_atto_circles": "999999999999999999",
+      "v1_crc_atto": "2434801889118657409",
+      "ui_circles": 1
+    },
+    {
+      "name": "nov-2023-fractional-six-decimals",
+      "timestamp": 1700000000,
+      "demurraged_atto_circles": "1234567890000000000",
+      "static_atto_circles": "1543796614828826903",
+      "roundtrip_demurraged_atto_circles": "1234567889999999999",
+      "v1_crc_atto": "3005928230817234837",
+      "ui_circles": 1.2345678900000001
+    },
+    {
+      "name": "jan-2026-large",
+      "timestamp": 1767225600,
+      "demurraged_atto_circles": "42000000000000000000000",
+      "static_atto_circles": "61311722318585096009756",
+      "roundtrip_demurraged_atto_circles": "41999999999999999999999",
+      "v1_crc_atto": "88516630974514942781186",
+      "ui_circles": 42000
+    }
+  ]
+}
